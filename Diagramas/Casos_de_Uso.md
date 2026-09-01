@@ -6,6 +6,14 @@ Basado en `casos_de_uso_final.xml`. Actores: **DEHú/LEMA**, **Departamento**, *
 
 ---
 
+## Diagrama
+
+![Diagrama de casos de uso](img/casos_de_uso.png)
+
+*Nota: la imagen debe estar en `img/casos_de_uso.png`, relativa a este `.md` — si mueves el `.md`, mueve también la carpeta `img/`.*
+
+---
+
 ## Paquete: Recepción
 
 ### CU1 — Consultar listado de comunicaciones
@@ -135,7 +143,7 @@ Basado en `casos_de_uso_final.xml`. Actores: **DEHú/LEMA**, **Departamento**, *
 
 ---
 
-## Diagrama
+## Código PlantUML (fuente del diagrama)
 
 ```plantuml
 @startuml casos_de_uso
