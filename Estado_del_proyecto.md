@@ -29,6 +29,9 @@ Actualmente los usuarios de MGS acceden **manualmente** a las notificaciones a t
 | `ER_Explicacion.md` | Explicación detallada de cada tabla y relación del ER |
 | `DEHu_Campos_Respuesta_Servicios.md` | Campos de petición y respuesta de los 6 servicios DEHú/LEMA, con dependencias entre llamadas |
 | `estructura_memoria_TFM.md` | Estructura orientativa de la memoria del TFM (aportada por la universidad) |
+| `Gantt.md` | Planificación completa: código Mermaid del diagrama de Gantt + tabla de períodos, lista para la memoria |
+| `Diagrama_Clases.md` | Diagrama de clases en capas (`modelo`/`aplicacion`/`infraestructura`/`api`), código PlantUML, y análisis de cumplimiento SOLID/GRASP |
+| `Estado_Tecnico_Ticketing.md` | ⚠️ Análisis de arquitectura del proyecto interno de Ticketing (MGS) — información propietaria de la empresa, **no incluir si el repo se hace público** |
 
 ## 3. Hechos técnicos clave (guía LEMA)
 
@@ -54,3 +57,29 @@ Actualmente los usuarios de MGS acceden **manualmente** a las notificaciones a t
 - Diagnóstico sistemático de errores de clasificación: idea a explorar; datos ya contemplados en el ER (`CLASIFICACION`, `INTERPRETACION`).
 - RF-11.2/11.3: la distinción editable/no-editable ya no depende de `tipoEnvio` de DEHú (correspondencia 1/2 = notificación/comunicación no verificada contra la guía LEMA), sino de si la comunicación ya tiene una acción de derivación (`DERIVACION`) asociada.
 - ER revisado a fondo esta sesión — renombrado general de tablas, tabla `USUARIO` añadida con clave compartida a `PERSONA`; no se incluye tabla de eventos, la trazabilidad e idempotencia quedan cubiertas por `CLASIFICACION` y `DERIVACION`. Enviado a Judit para primera revisión, pendiente de respuesta.
+
+## 5. Planificación (Gantt)
+
+Planificación completa cerrada — ver `Gantt.md` (código Mermaid + períodos).
+
+**5 fases:** Análisis y Diseño → Desarrollo → Testing → Memoria → Revisión Final (esta última al final, ya que incluye la revisión de la propia memoria una vez escrita).
+
+**Desarrollo:** Infraestructura → Pipeline → Motor IA (OCR + clasificación) → Integración con Ticketing → Gestión de derivaciones y consultas (Operador) [Backend + Frontend en paralelo] → Despliegue continuo a producción (en paralelo, desde que el Pipeline está listo).
+
+**Testing:** Pruebas en entorno SE + Validación en entorno PRO (LEMA) — sin subtarea intermedia de "integración e IA" (redundante).
+
+**Memoria (6 bloques, mapeados contra `estructura_memoria_TFM.md`):** Introducción → Gestión del proyecto y planificación → Análisis → Desarrollo → Evaluación → Conclusiones.
+
+**Deadlines de negocio:** Backend/Frontend antes del 25 dic; Desarrollo y Testing cierran ambos el 31 dic; Revisión Final en enero 2027 (4–15 ene).
+
+**Calendario:** semana laboral lunes-viernes, con 7 festivos configurados (11 sep, 24 sep, 12 oct, 8 dic, 25 dic, 1 ene, 6 ene) — pendiente de recalcular fechas de tareas que los cruzan.
+
+## 6. Arquitectura de software — capas y patrones
+
+- **Stack técnico confirmado** (vía análisis del repositorio real de Ticketing, `Estado_Tecnico_Ticketing.md`): Java 8, **Java EE 7/8** (namespace `javax.*`, no Jakarta EE), IBM WebSphere Application Server traditional 9.0. Sin JPA/Hibernate — persistencia por JDBC puro con framework propio (`JdbcTemplate`/`RowMapper`). Sin Spring — inyección de dependencias con **CDI** (`@Inject`, `@Produces`). Endpoints con **JAX-RS**.
+- **Decisión de diseño**: adoptar el mismo patrón arquitectónico ya en producción en Ticketing, para consistencia y mantenibilidad — Repository (interfaz de dominio + implementación de infraestructura), Service de aplicación, Controller JAX-RS, con los mismos estereotipos CDI que usa Ticketing (`@Repositorio`, `@Servicio`, `@Endpoint`, `@Transaccional`).
+- **Versión simplificada respecto al DDD táctico completo de Ticketing**: sin `<<AggregateRoot>>` formal ni eventos de dominio CDI — el rol de estos últimos ya lo cubre RF-07 (evento de comunicación clasificada) a nivel de arquitectura de eventos corporativa, así que añadirlos aquí sería redundante. Decisión tomada explícitamente para evitar sobre-ingeniería dado el alcance y calendario del TFM.
+- **Diagrama de clases en capas** (`modelo`/`aplicacion`/`infraestructura`/`api`) diseñado como rebanada vertical del flujo RF-09 (aceptar/reclasificar) — ver `Diagrama_Clases.md`. Pendiente extender el mismo patrón a RF-08 (ejecución de derivación), RF-10 (Agente IA) y RF-11.4 (modificación in-place).
+- **Corrección DIP aplicada**: `TicketingGateway` y `LemaGateway` añadidas como interfaces de dominio (junto a `ComunicacionRepository`), implementadas por `TicketingClient`/`LemaClient` en infraestructura — antes los Services dependían directamente de las clases concretas, inconsistente con el tratamiento ya dado al Repository.
+- **Análisis de cumplimiento SOLID/GRASP documentado** en `Diagrama_Clases.md`, con ejemplos concretos del propio dominio (`Revision.resolver()` como Information Expert, `TicketingGateway` como DIP, etc.). OCP y Polymorphism marcados explícitamente como pendientes — no hay caso real que los demuestre en la rebanada RF-09; aplicarán al diseñar RF-08.4 (selección de canal de notificación).
+- **Nota de confidencialidad**: `Estado_Tecnico_Ticketing.md` contiene fragmentos de código real y detalles de arquitectura del sistema de Ticketing de MGS — información propietaria de la empresa. No debe publicarse si el repositorio del TFM se hace público (ver `TODO.md`).

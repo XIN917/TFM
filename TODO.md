@@ -6,13 +6,18 @@ ER del sistema propio revisado a fondo y enviado a Judit para su primera revisi�
 ## Próximos pasos
 - [x] Diagramas de flujo (versión inicial) — ver `Diagramas_de_flujo.md`
 - [x] Diagrama ER (versión inicial, revisado a fondo) — ver `ER_Explicacion.md`
-- [ ] Esperar revisión de Judit sobre el ER; ajustar según feedback
 - [ ] Diagrama de arquitectura de componentes (siguiente pieza — la dependencia estricta entre llamadas LEMA, documentada en `DEHu_Campos_Respuesta_Servicios.md`, condiciona el orden de los pasos)
 - [x] Descripciones textuales de casos de uso — ver `Casos_de_Uso.md`
+- [x] Planificación / Gantt — ver `Gantt.md`
+- [x] Diagrama de clases (rebanada RF-09: aceptar/reclasificar) — ver `Diagrama_Clases.md`, con capas modelo/aplicacion/infraestructura/api y análisis SOLID/GRASP
+- [ ] Extender el diagrama de clases a RF-08 (ejecución de derivación), RF-10 (Agente IA reclasificación) y RF-11.4 (modificación in-place) — mismo patrón de capas ya validado
 - [ ] Diagrama de secuencia RF-10 (evaluar si hace falta)
 - [ ] Diseño de interfaz RF-09.2 (documento como vista principal, texto extraído como panel auxiliar)
 - [ ] Decidir alcance del diagnóstico sistemático de errores de clasificación
 - [ ] Definir rol de "consulta" en `USUARIO` (departamento consultando sus propios tickets desde el frontal propio) — bloqueado hasta hablar con Silvia (ver preguntas pendientes)
+- [ ] Confirmar duración real de la subtarea "Infraestructura" en el Gantt (7 días laborables estimados, pendiente de fecha real de acceso — dependencia externa no controlada, igual que el alta como Gran Destinatario)
+- [ ] Revisar fechas del Gantt contra los festivos configurados (11 sep, 24 sep, 12 oct, 8 dic, 25 dic, 1 ene, 6 ene) — varias tareas los cruzan y pueden desplazarse ligeramente al recalcular en la herramienta
+- [ ] **Antes de hacer público el repo del TFM**: revisar que `Estado_Tecnico_Ticketing.md` (y cualquier fragmento de código real de Ticketing) no esté incluido — es información propietaria de MGS, no publicable sin autorización
 
 ## Preguntas pendientes para compañeros
 
@@ -22,6 +27,7 @@ ER del sistema propio revisado a fondo y enviado a Judit para su primera revisi�
 - [ ] Mecanismo de detección de cancelación de ticket (RF-10.1): ¿Ticketing publica un evento accesible externamente (ecosistema de eventos de la empresa / n8n), ofrece webhook, o hay que hacer polling? Dani mencionó que se publica un evento — falta confirmar dónde y si es suscribible. **No es bloqueante ahora** (aún no empieza desarrollo); confirmar cuando se aborde la implementación de RF-10.
 - [ ] ¿El endpoint de creación de tickets permite deduplicar por un identificador externo (el `identificador` DEHú)? Relevante para RF-08.5: si una llamada tiene éxito en Ticketing pero el sistema falla antes de registrar la `DERIVACION` localmente, hace falta poder detectar el duplicado del lado de Ticketing, no solo consultando la base de datos propia.
 - [ ] Condiciones exactas del canal email (RF-08.2)
+- [ ] Confirmar si el propio equipo de Ticketing tiene alguna preferencia/restricción sobre replicar su patrón de arquitectura (CDI, Repository/Gateway a medida) en un sistema nuevo, o si prefieren otra convención para el proyecto del TFM
 
 **Para Silvia:**
 - [ ] Roles de acceso al frontal propio: ¿el Departamento necesita consultar sus propios tickets desde el frontal del sistema (no desde Ticketing directamente)? Judit mencionó que sí — pendiente de que Silvia lo confirme antes de diseñar el rol `consulta` y su alcance (¿limitado al propio departamento? ¿cómo se modela esa pertenencia en `USUARIO`?)
@@ -31,6 +37,13 @@ ER del sistema propio revisado a fondo y enviado a Judit para su primera revisi�
 
 ## Decisiones ya cerradas (no reabrir sin motivo)
 
+**De esta sesión (arquitectura / diagrama de clases):**
+- Stack técnico confirmado vía análisis real del repo de Ticketing: Java 8, Java EE 7/8 (`javax.*`, no Jakarta EE), sin JPA/Spring, CDI + JAX-RS, WebSphere traditional 9.0. Ver `Estado_Tecnico_Ticketing.md` (⚠️ no publicar, es propietario de MGS).
+- Capas del diagrama de clases: `modelo` (dominio + interfaces Repository/Gateway) / `aplicacion` (Services) / `infraestructura` (implementaciones + clientes SOAP/REST) / `api` (Controllers JAX-RS) — mismo patrón que ya usa Ticketing internamente (Repository a medida, no JPA; Service envolviendo Repository; estereotipos CDI propios).
+- Sin `<<AggregateRoot>>` formal ni eventos de dominio CDI en el diseño propio — evitar duplicar lo que RF-07 ya cubre a nivel de arquitectura de eventos corporativa. Decisión consciente de simplicidad (KISS/YAGNI) frente al DDD táctico completo de Ticketing.
+- `TicketingGateway`/`LemaGateway` añadidas como interfaces de dominio (principio DIP) — los Services de `aplicacion` nunca dependen directamente de `TicketingClient`/`LemaClient` (clases concretas de `infraestructura`).
+- Rebanada RF-09 (aceptar/reclasificar) es la única diagramada por ahora, a propósito — patrón por validar antes de replicar a RF-08/RF-10/RF-11.4.
+
 **De sesiones anteriores:**
 - RF-11.4/11.5 confirmado con OpenAPI real: PATCH /tickets no permite cambiar cola → edición in-place solo si no cambia departamento
 - `ticketRelacionado` (campo nativo) para enlazar tickets en reclasificación
@@ -38,7 +51,7 @@ ER del sistema propio revisado a fondo y enviado a Judit para su primera revisi�
 - Aprendizaje continuo del Agente IA: dirección futura, ya en RF-09 de la especificación
 
 **De esta sesión:**
-- `COMUNICACION`–`REVISION` cambiada de 1:1 a 1:N: una comunicación puede escalar a revisión más de una vez (p. ej. si tras una reclasificación la nueva propuesta vuelve a caer bajo el umbral). Cada escalada genera una fila nueva; las anteriores quedan cerradas (`resuelto = true`). Para localizar la revisión activa hay que filtrar por `resuelto = false`, no asumir fila única. `ER_Explicacion.md` actualizado (diagrama, resumen de relaciones, sección `REVISION`).
+- `COMUNICACION`–`REVISION` cambiada de 1:1 a 1:N (feedback de Judit tras su revisión del ER): una comunicación puede escalar a revisión más de una vez (p. ej. si tras una reclasificación la nueva propuesta vuelve a caer bajo el umbral). Cada escalada genera una fila nueva; las anteriores quedan cerradas (`resuelto = true`). Para localizar la revisión activa hay que filtrar por `resuelto = false`, no asumir fila única. `ER_Explicacion.md` actualizado (diagrama, resumen de relaciones, sección `REVISION`).
 
 **De sesión anterior (revisión completa del ER):**
 - Campos `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre` añadidos a `COMUNICACION` — vienen de `localiza()`, no de `peticionAcceso()` (verificado contra la guía DEHú)
