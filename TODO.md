@@ -1,9 +1,11 @@
 # TODO (retomar en próxima sesión)
 
-**IMPORTANTE — pendiente de acción manual del usuario**: `Diagrama_Clases.md` pasó a un único diagrama combinado (las cuatro rebanadas RF-09/RF-08/RF-10/RF-11.4 en una sola imagen, ya no una por rebanada). La imagen nueva de `img/diagrama_clases.png` se entregó al usuario como descarga — hay que sustituir el `diagrama_clases.png` del repo real del TFM por esa versión.
+**PRÓXIMO PASO INMEDIATO**: revisar `Diagrama_Clases.md` (el diagrama de clases combinado) al empezar la siguiente sesión — quedó pendiente de repaso, sin cerrar todavía.
+
+**IMPORTANTE — pendiente de acción manual del usuario**: `Diagrama_Clases.md` pasó a un único diagrama combinado (las cuatro rebanadas RF-09/RF-08/RF-10/RF-11.4 en una sola imagen). Imágenes regeneradas y entregadas como descarga esta sesión — sustituir en el repo real del TFM: `img/diagrama_clases.png` (sin buzón, solo ticket/email) y `img/diagrama_componentes.png` (sin componente Buzón Interno). Los cambios de texto en `Especificacion_Requisitos.md`, `Diagrama_Componentes.md`, `Diagrama_Clases.md`, `Estado_del_proyecto.md` y este `TODO.md` (retirada del buzón, RF-08.3) están guardados aquí en el proyecto de Claude, pero **no se han commiteado todavía al repo real** — el usuario pidió dejarlo pendiente esta sesión.
 
 ## Contexto rápido
-ER del sistema propio revisado a fondo y aprobado por la tutora de empresa en su primera revisión. Código ER completo y explicación detallada de cada tabla en `ER_Explicacion.md`. Descripciones textuales de casos de uso completadas en `Casos_de_Uso.md` (formato simplificado, provisional hasta validar diseño). Diagrama de clases extendido esta sesión a RF-08/RF-10/RF-11.4 (ver `Diagrama_Clases.md`) — mismo patrón de capas ya validado en la rebanada RF-09.
+ER del sistema propio revisado a fondo y aprobado por la tutora de empresa en su primera revisión. Código ER completo y explicación detallada de cada tabla en `ER_Explicacion.md`. Descripciones textuales de casos de uso completadas en `Casos_de_Uso.md` (formato simplificado, provisional hasta validar diseño). Diagrama de clases extendido esta sesión a RF-08/RF-10/RF-11.4 (ver `Diagrama_Clases.md`) — mismo patrón de capas ya validado en la rebanada RF-09. Buzón interno (RF-08.3) retirado del alcance activo del MVP en todos los documentos (ver más abajo). Diagrama de clases combinado pendiente de revisión conjunta en la próxima sesión.
 
 ## Próximos pasos
 - [x] Diagramas de flujo (versión inicial) — ver `Diagramas_de_flujo.md`
