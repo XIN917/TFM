@@ -1,6 +1,6 @@
 # Diagrama de arquitectura de componentes
 
-*Vista de alto nivel del sistema completo (módulos y su comunicación), complementaria al [Diagrama de clases](Diagrama_Clases.md) — este diagrama muestra el "qué habla con qué" a nivel de sistema; el de clases muestra el detalle interno de una rebanada vertical (RF-09) en capas `modelo`/`aplicacion`/`infraestructura`/`api`.*
+*Vista de alto nivel del sistema completo (módulos y su comunicación), complementaria al [Diagrama de clases](Diagrama_Clases.md) — este diagrama muestra el "qué habla con qué" a nivel de sistema; el de clases muestra el detalle interno en capas `modelo`/`aplicacion`/`infraestructura`/`api`.*
 
 ---
 
@@ -19,7 +19,7 @@
 Los componentes se agrupan en cuatro bloques, cada uno correspondiente a un tramo de requisitos funcionales, siguiendo la misma frontera que ya separa el `Especificacion_Requisitos.md` (sección 1: "generar el evento" vs. "ejecutar la acción") y el `Estado_del_proyecto.md` (sección 6, decisión de capas/patrones):
 
 - **Pipeline de Ingesta y Clasificación (RF-01–RF-07)**: sondeo LEMA, almacenamiento documental, OCR/interpretación, clasificación, generación del contenido del ticket y publicación del evento.
-- **Ejecución de Acciones (RF-08)**: un único componente (Ejecutor/Selector de Canal) que consume el evento y decide el canal de salida (ticket, email o buzón) por configuración, no por código específico (RF-08.4).
+- **Ejecución de Acciones (RF-08)**: un único componente (Ejecutor/Selector de Canal) que consume el evento y decide el canal de salida (ticket o email) por configuración, no por código específico (RF-08.4).
 
 Ambos bloques se marcan como orquestados por **n8n**, siguiendo la tabla de componentes internos de `Especificacion_Requisitos.md` (sección 2.2): *"Orquestador (n8n u equivalente): coordina el flujo completo (RF-01 a RF-08) y publica/consume eventos"* — n8n no se limita al pipeline de ingesta, también implementa el enrutado/ejecución de la acción resultante.
 - **Reclasificación Automática (RF-10)**: el Agente IA, aislado en su propio bloque porque su alcance de invocación MCP está deliberadamente acotado a una sola acción (finalizar+crear ticket) — no es un agente de propósito general.
@@ -36,7 +36,7 @@ Ambos bloques se marcan como orquestados por **n8n**, siguiendo la tabla de comp
 - **El evento de cancelación (`Sistema de Ticketing` → `Bus de Eventos Corporativo`, RF-10.1) también se dibuja discontinuo, por el mismo motivo.** Un análisis del sistema de Ticketing confirmó que no realiza ninguna notificación de red directa (ni webhook ni cola de mensajes) ante un cambio de estado de ticket — el mecanismo real es interno a Ticketing. Que ese cambio interno llegue finalmente al bus de eventos corporativo depende de una pieza intermedia aún no identificada, ajena a Ticketing. La línea discontinua es intencionadamente la misma que la de "modificar ticket": ambas representan integraciones que forman parte del diseño pero no están confirmadas al 100%.
 - **Autenticación contra el Directorio de Personal** aparece como dependencia de la API REST, reflejando el RNF de control de acceso (roles `operador`/`administrador`).
 - **Base de Datos como componente único compartido** entre Pipeline, Ejecución y Gestión — coherente con el ER ya cerrado (`ER_Explicacion.md`) y con la ausencia deliberada de una tabla de eventos propia (la trazabilidad la cubren `CLASIFICACION` y `DERIVACION`).
-- **Nota de maquetación**: `nodesep 60` (frente a los 30 iniciales) y los `\n` sueltos al final de algunas etiquetas de una sola línea (`depositar`, `crear ticket (REST)`) no son arbitrarios — sin ellos, PlantUML/Graphviz centra el texto justo encima de su propia línea o del borde de un package, y el trazo lo atraviesa por la mitad (aspecto de texto tachado). Si se vuelve a tocar el layout, revisar primero si esas etiquetas siguen legibles antes de simplificar el `skinparam`.
+- **Nota de maquetación**: `nodesep 60` (frente a los 30 iniciales) no es arbitrario — sin él, PlantUML/Graphviz aprieta demasiado las etiquetas de los paquetes contiguos (`Ejecución de Acciones`, `Gestión y Revisión`) y el trazo de alguna flecha acaba atravesando el texto por la mitad. Si se vuelve a tocar el layout, revisar primero si las etiquetas siguen legibles antes de simplificar el `skinparam`.
 
 ## Correspondencia RF → componente
 
@@ -138,7 +138,6 @@ package "Sistema de Automatización DEHú" {
 cloud "Bus de Eventos\nCorporativo" as Bus
 [Sistema de\nTicketing] as Ticketing
 [Servidor de\nCorreo] as Correo
-[Buzón Interno] as Buzon
 [Directorio de\nPersonal] as Directorio
 
 ' --- Ingesta ---
@@ -154,7 +153,6 @@ Bus --> Ejecutor : consume evento
 ' --- Ejecución de la acción ---
 Ejecutor --> Ticketing : crear ticket (REST)
 Ejecutor --> Correo : enviar email
-Ejecutor --> Buzon : depositar\n
 Ejecutor --> BD : registra resultado
 
 ' --- Reclasificación automática ---
