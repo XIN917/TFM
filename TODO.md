@@ -1,7 +1,7 @@
 # TODO (retomar en próxima sesión)
 
 ## Contexto rápido
-ER del sistema propio revisado a fondo y enviado a Judit para su primera revisión (pendiente de respuesta). Código ER completo y explicación detallada de cada tabla en `ER_Explicacion.md`. Descripciones textuales de casos de uso completadas en `Casos_de_Uso.md` (formato simplificado, provisional hasta validar diseño).
+ER del sistema propio revisado a fondo y enviado a la tutora de empresa para su primera revisión (pendiente de respuesta). Código ER completo y explicación detallada de cada tabla en `ER_Explicacion.md`. Descripciones textuales de casos de uso completadas en `Casos_de_Uso.md` (formato simplificado, provisional hasta validar diseño).
 
 ## Próximos pasos
 - [x] Diagramas de flujo (versión inicial) — ver `Diagramas_de_flujo.md`
@@ -14,23 +14,23 @@ ER del sistema propio revisado a fondo y enviado a Judit para su primera revisi�
 - [ ] Diagrama de secuencia RF-10 (evaluar si hace falta)
 - [ ] Diseño de interfaz RF-09.2 (documento como vista principal, texto extraído como panel auxiliar)
 - [ ] Decidir alcance del diagnóstico sistemático de errores de clasificación
-- [ ] Definir rol de "consulta" en `USUARIO` (departamento consultando sus propios tickets desde el frontal propio) — bloqueado hasta hablar con Silvia (ver preguntas pendientes)
+- [ ] Definir rol de "consulta" en `USUARIO` (departamento consultando sus propios tickets desde el frontal propio) — bloqueado hasta hablar con el responsable de IT/Seguridad (ver preguntas pendientes)
 - [ ] Confirmar duración real de la subtarea "Infraestructura" en el Gantt (7 días laborables estimados, pendiente de fecha real de acceso — dependencia externa no controlada, igual que el alta como Gran Destinatario)
 - [ ] Revisar fechas del Gantt contra los festivos configurados (11 sep, 24 sep, 12 oct, 8 dic, 25 dic, 1 ene, 6 ene) — varias tareas los cruzan y pueden desplazarse ligeramente al recalcular en la herramienta
 - [ ] **Antes de hacer público el repo del TFM**: revisar que `Estado_Tecnico_Ticketing.md` (y cualquier fragmento de código real de Ticketing) no esté incluido — es información propietaria de MGS, no publicable sin autorización
 
 ## Preguntas pendientes para compañeros
 
-**Para Dani:**
+**Para el responsable de Ticketing:**
 - [ ] Capacidades reales de audiencia back (API de modificación de tickets, RF-11.4/11.5)
 - [ ] Confirmar el campo `motivoResolucion` en `POST /tickets/{id}/estado` — ¿contradice lo de "sin motivo en frontend"?
-- [ ] Mecanismo de detección de cancelación de ticket (RF-10.1): ¿Ticketing publica un evento accesible externamente (ecosistema de eventos de la empresa / n8n), ofrece webhook, o hay que hacer polling? Dani mencionó que se publica un evento — falta confirmar dónde y si es suscribible. **No es bloqueante ahora** (aún no empieza desarrollo); confirmar cuando se aborde la implementación de RF-10.
+- [ ] Mecanismo de detección de cancelación de ticket (RF-10.1): ¿Ticketing publica un evento accesible externamente (ecosistema de eventos de la empresa / n8n), ofrece webhook, o hay que hacer polling? se mencionó que se publica un evento — falta confirmar dónde y si es suscribible. **No es bloqueante ahora** (aún no empieza desarrollo); confirmar cuando se aborde la implementación de RF-10.
 - [ ] ¿El endpoint de creación de tickets permite deduplicar por un identificador externo (el `identificador` DEHú)? Relevante para RF-08.5: si una llamada tiene éxito en Ticketing pero el sistema falla antes de registrar la `DERIVACION` localmente, hace falta poder detectar el duplicado del lado de Ticketing, no solo consultando la base de datos propia.
 - [ ] Condiciones exactas del canal email (RF-08.2)
 - [ ] Confirmar si el propio equipo de Ticketing tiene alguna preferencia/restricción sobre replicar su patrón de arquitectura (CDI, Repository/Gateway a medida) en un sistema nuevo, o si prefieren otra convención para el proyecto del TFM
 
-**Para Silvia:**
-- [ ] Roles de acceso al frontal propio: ¿el Departamento necesita consultar sus propios tickets desde el frontal del sistema (no desde Ticketing directamente)? Judit mencionó que sí — pendiente de que Silvia lo confirme antes de diseñar el rol `consulta` y su alcance (¿limitado al propio departamento? ¿cómo se modela esa pertenencia en `USUARIO`?)
+**Para el responsable de IT/Seguridad:**
+- [ ] Roles de acceso al frontal propio: ¿el Departamento necesita consultar sus propios tickets desde el frontal del sistema (no desde Ticketing directamente)? La tutora de empresa mencionó que sí — pendiente de que se confirme antes de diseñar el rol `consulta` y su alcance (¿limitado al propio departamento? ¿cómo se modela esa pertenencia en `USUARIO`?)
 
 **Interno (implementación, no bloqueante para el diseño):**
 - [ ] Al comprobar idempotencia (RF-08.5), la condición debe ser `DERIVACION.estado = 'exito'`, no solo "existe una fila" — una fila con `estado='fallo'` debe permitir reintento, no bloquearlo.
@@ -51,7 +51,7 @@ ER del sistema propio revisado a fondo y enviado a Judit para su primera revisi�
 - Aprendizaje continuo del Agente IA: dirección futura, ya en RF-09 de la especificación
 
 **De esta sesión:**
-- `COMUNICACION`–`REVISION` cambiada de 1:1 a 1:N (feedback de Judit tras su revisión del ER): una comunicación puede escalar a revisión más de una vez (p. ej. si tras una reclasificación la nueva propuesta vuelve a caer bajo el umbral). Cada escalada genera una fila nueva; las anteriores quedan cerradas (`resuelto = true`). Para localizar la revisión activa hay que filtrar por `resuelto = false`, no asumir fila única. `ER_Explicacion.md` actualizado (diagrama, resumen de relaciones, sección `REVISION`).
+- `COMUNICACION`–`REVISION` cambiada de 1:1 a 1:N (feedback de la tutora de empresa tras su revisión del ER): una comunicación puede escalar a revisión más de una vez (p. ej. si tras una reclasificación la nueva propuesta vuelve a caer bajo el umbral). Cada escalada genera una fila nueva; las anteriores quedan cerradas (`resuelto = true`). Para localizar la revisión activa hay que filtrar por `resuelto = false`, no asumir fila única. `ER_Explicacion.md` actualizado (diagrama, resumen de relaciones, sección `REVISION`).
 
 **De sesión anterior (revisión completa del ER):**
 - Campos `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre` añadidos a `COMUNICACION` — vienen de `localiza()`, no de `peticionAcceso()` (verificado contra la guía DEHú)

@@ -7,14 +7,14 @@
 ## 1. Contexto del proyecto
 
 - **Proyecto**: automatización de la recepción y procesamiento de comunicaciones de la administración pública (DEHú/LEMA) para MGS Seguros, con IA (OCR + LLM) para interpretar, clasificar y generar tickets/notificaciones, integrado con el sistema interno de Ticketing.
-- **Judit — tutora de empresa (mentora en MGS Seguros)**: revisa el diseño (casos de uso, requisitos, diagramas UML).
-- **Marc — ponente de la universidad**: supervisa el TFM desde el lado académico.
-- **JM (manager de empresa)**: directrices funcionales/negocio.
-- **Dani**: gestiona el sistema de Ticketing internamente.
+- **Tutora de empresa (mentora en MGS Seguros)**: revisa el diseño (casos de uso, requisitos, diagramas UML).
+- **Ponente de la universidad**: supervisa el TFM desde el lado académico.
+- **Manager de empresa**: directrices funcionales/negocio.
+- **Responsable de Ticketing**: gestiona el sistema de Ticketing internamente.
 
 ## 1.1 Aclaración: Mi Carpeta Ciudadana vs. LEMA
 
-Actualmente los usuarios de MGS acceden **manualmente** a las notificaciones a través de la interfaz web de **Mi Carpeta Ciudadana** (la vía de acceso para persona física/jurídica dentro del Punto Único DEHú). El proyecto automatiza ese acceso manual sustituyéndolo por los **servicios web LEMA** (la vía para Grandes Destinatarios del mismo Punto Único). No son sistemas distintos: son dos formas de acceso al mismo DEHú. Todo el diseño ya realizado (especificación, diagramas, casos de uso, certificado solicitado a Silvia) sigue siendo correcto y aplica sobre LEMA.
+Actualmente los usuarios de MGS acceden **manualmente** a las notificaciones a través de la interfaz web de **Mi Carpeta Ciudadana** (la vía de acceso para persona física/jurídica dentro del Punto Único DEHú). El proyecto automatiza ese acceso manual sustituyéndolo por los **servicios web LEMA** (la vía para Grandes Destinatarios del mismo Punto Único). No son sistemas distintos: son dos formas de acceso al mismo DEHú. Todo el diseño ya realizado (especificación, diagramas, casos de uso, certificado solicitado al responsable de IT/Seguridad) sigue siendo correcto y aplica sobre LEMA.
 
 ## 2. Documentos generados hasta ahora
 
@@ -56,7 +56,7 @@ Actualmente los usuarios de MGS acceden **manualmente** a las notificaciones a t
 - Aprendizaje continuo del Agente IA a partir del feedback humano: dirección de evolución del proyecto, ya anotada en RF-09; mecanismo técnico por definir.
 - Diagnóstico sistemático de errores de clasificación: idea a explorar; datos ya contemplados en el ER (`CLASIFICACION`, `INTERPRETACION`).
 - RF-11.2/11.3: la distinción editable/no-editable ya no depende de `tipoEnvio` de DEHú (correspondencia 1/2 = notificación/comunicación no verificada contra la guía LEMA), sino de si la comunicación ya tiene una acción de derivación (`DERIVACION`) asociada.
-- ER revisado a fondo esta sesión — renombrado general de tablas, tabla `USUARIO` añadida con clave compartida a `PERSONA`; no se incluye tabla de eventos, la trazabilidad e idempotencia quedan cubiertas por `CLASIFICACION` y `DERIVACION`. Enviado a Judit para primera revisión, pendiente de respuesta.
+- ER revisado a fondo esta sesión — renombrado general de tablas, tabla `USUARIO` añadida con clave compartida a `PERSONA`; no se incluye tabla de eventos, la trazabilidad e idempotencia quedan cubiertas por `CLASIFICACION` y `DERIVACION`. Enviado a la tutora de empresa para primera revisión, pendiente de respuesta.
 
 ## 5. Planificación (Gantt)
 

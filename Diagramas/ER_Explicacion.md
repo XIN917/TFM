@@ -154,7 +154,7 @@ Historial completo de decisiones de clasificación — no se sobrescribe, se acu
 El resultado de RF-08: cada vez que se ejecuta una acción real hacia un departamento (crear ticket, enviar email, depositar en buzón), queda una fila aquí.
 
 - `departamento` (FK) — a qué departamento se derivó
-- `esReclasificacion` + `ticketRelacionadoId` — cubren el caso confirmado con Dani: Ticketing no permite cambiar de cola, así que una reclasificación finaliza el ticket original y crea uno nuevo, enlazados por este campo nativo de la API
+- `esReclasificacion` + `ticketRelacionadoId` — cubren el caso confirmado con el responsable de Ticketing: Ticketing no permite cambiar de cola, así que una reclasificación finaliza el ticket original y crea uno nuevo, enlazados por este campo nativo de la API
 
 ### `REVISION` (1:N opcional)
 
