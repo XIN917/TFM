@@ -16,32 +16,15 @@
 
 Actualmente los usuarios de MGS acceden **manualmente** a las notificaciones a través de la interfaz web de **Mi Carpeta Ciudadana** (la vía de acceso para persona física/jurídica dentro del Punto Único DEHú). El proyecto automatiza ese acceso manual sustituyéndolo por los **servicios web LEMA** (la vía para Grandes Destinatarios del mismo Punto Único). No son sistemas distintos: son dos formas de acceso al mismo DEHú. Todo el diseño ya realizado (especificación, diagramas, casos de uso, certificado solicitado al responsable de IT/Seguridad) sigue siendo correcto y aplica sobre LEMA.
 
-## 2. Documentos generados hasta ahora
+## 2. Documentos del proyecto
 
-| Archivo | Contenido |
-|---|---|
-| `Propuesta_de_proyecto.md` | Propuesta original del proyecto |
-| `Especificacion_Requisitos.md` | RF-01 a RF-11 + RNF |
-| `casos_de_uso_final.png` | Diagrama de casos de uso, 3 actores (DEHú/LEMA, Usuario/Operador, Departamento) |
-| `Casos_de_Uso.md` | Descripciones textuales de cada caso de uso (formato simplificado), más el diagrama en código PlantUML |
-| `Diagramas_de_flujo.md` | Flujo principal (RF-01–RF-09) y flujo de reconciliación, separados |
-| `TODO.md` | Traspaso entre sesiones — checklist, preguntas pendientes, código ER |
-| `ER_Explicacion.md` | Explicación detallada de cada tabla y relación del ER |
-| `DEHu_Campos_Respuesta_Servicios.md` | Campos de petición y respuesta de los 6 servicios DEHú/LEMA, con dependencias entre llamadas |
-| `estructura_memoria_TFM.md` | Estructura orientativa de la memoria del TFM (aportada por la universidad) |
-| `Gantt.md` | Planificación completa: código Mermaid del diagrama de Gantt + tabla de períodos, lista para la memoria |
-| `Diagrama_Clases.md` | Diagrama de clases en capas (`modelo`/`aplicacion`/`infraestructura`/`api`), cuatro rebanadas verticales (RF-09, RF-08, RF-10, RF-11.4), código PlantUML de cada una, y análisis SOLID/GRASP consolidado |
-| `Diagrama_Componentes.md` | Diagrama de arquitectura de componentes (vista de sistema completo), código PlantUML — ver sección 6 |
-| `Estado_Tecnico_Ticketing.md` | ⚠️ Análisis de arquitectura del proyecto interno de Ticketing (MGS) — información propietaria de la empresa, **no incluir si el repo se hace público** |
+Índice completo y descripción de cada documento: ver [`README.md`](README.md).
+
+⚠️ `Estado_Tecnico_Ticketing.md` (análisis de arquitectura del sistema interno de Ticketing de MGS) es información propietaria de la empresa y **no debe incluirse** ahora que el repositorio del TFM es público — no aparece en el índice del README por ese motivo.
 
 ## 3. Hechos técnicos clave (guía LEMA)
 
-- Protocolo: SOAP 1.1 + WS-Security con certificado X.509.
-- Dos familias de servicios: LEMA (`localiza`, `peticionAcceso`, `consultaAnexos`, `consultaAcusePdf`) y ConsultaRealizadas (`localizaRealizadas`, `consultaRealizadas`).
-- Restricción de 1 día: `consultaAnexos()` y `consultaAcusePdf()` no acceden a elementos con más de 1 día de antigüedad.
-- Anexos por URL directa y por referencia — ambos se descargan siempre.
-- Paginación soportada; sin filtro por fecha en la petición (filtrado del lado de la aplicación).
-- Sin canal de envío/respuesta hacia la administración — fuera de alcance del MVP.
+Ver `Especificacion_Requisitos.md`, sección 0 (Notas de anclaje técnico) — protocolo SOAP/WS-Security, familias de servicios, restricción de 1 día, límite de peticiones, onboarding.
 
 ## 4. Decisiones de diseño cerradas
 
@@ -74,7 +57,7 @@ Planificación completa cerrada — ver `Gantt.md` (código Mermaid + períodos)
 
 **Deadlines de negocio:** Backend/Frontend antes del 25 dic; Desarrollo y Testing cierran ambos el 31 dic; Revisión Final en enero 2027 (4–15 ene).
 
-**Calendario:** semana laboral lunes-viernes, con 7 festivos configurados (11 sep, 24 sep, 12 oct, 8 dic, 25 dic, 1 ene, 6 ene) — pendiente de recalcular fechas de tareas que los cruzan.
+**Calendario:** semana laboral lunes-viernes, festivos configurados en `Gantt.md` — pendiente de recalcular fechas de tareas que los cruzan.
 
 ## 6. Arquitectura de software — capas, patrones y componentes
 

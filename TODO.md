@@ -24,7 +24,7 @@ ER del sistema propio revisado a fondo y aprobado por la tutora de empresa en su
 - [ ] Decidir alcance del diagnóstico sistemático de errores de clasificación
 - [ ] Definir rol de "consulta" en `USUARIO` (departamento consultando sus propios tickets desde el frontal propio) — bloqueado hasta hablar con el responsable de IT/Seguridad (ver preguntas pendientes)
 - [ ] Confirmar duración real de la subtarea "Infraestructura" en el Gantt (7 días laborables estimados, pendiente de fecha real de acceso — dependencia externa no controlada, igual que el alta como Gran Destinatario)
-- [ ] Revisar fechas del Gantt contra los festivos configurados (11 sep, 24 sep, 12 oct, 8 dic, 25 dic, 1 ene, 6 ene) — varias tareas los cruzan y pueden desplazarse ligeramente al recalcular en la herramienta
+- [ ] Revisar fechas del Gantt contra los festivos configurados (ver `Gantt.md`) — varias tareas los cruzan y pueden desplazarse ligeramente al recalcular en la herramienta
 - [ ] Revisar el diagrama de arquitectura de componentes (`Diagrama_Componentes.md`) a la luz de la conclusión sobre RF-10.1 (ver más abajo): la flecha `Ticketing → Bus de Eventos Corporativo → Agente IA` asume que Ticketing publica directamente al bus, pero el mecanismo real confirmado es un outbox en BD — falta identificar (y decidir cómo dibujar) el proceso intermedio que lee esa tabla y la convierte en el evento que sí llega al bus/n8n
 - [ ] **Antes de hacer público el repo del TFM**: revisar que `Estado_Tecnico_Ticketing.md` (y cualquier fragmento de código real de Ticketing) no esté incluido — es información propietaria de MGS, no publicable sin autorización
 
@@ -46,33 +46,11 @@ ER del sistema propio revisado a fondo y aprobado por la tutora de empresa en su
 
 ## Decisiones ya cerradas (no reabrir sin motivo)
 
-**De esta sesión (extensión del diagrama de clases a RF-08/RF-10/RF-11.4):**
-- RF-08: nueva interfaz `NotificacionGateway` (no se reutiliza `TicketingGateway` para esto) porque RF-08.4 exige selección de canal por configuración, no por código específico — `TicketingNotificacionGateway`/`EmailNotificacionGateway` la implementan (el buzón, antes RF-08.3, retirado del alcance activo del MVP), `NotificacionGatewayResolver` (Pure Fabrication) la resuelve por canal. Es donde OCP y Polymorphism, pendientes desde la rebanada RF-09, quedan demostrados.
-- RF-08: idempotencia (RF-08.5) usa `Comunicacion.tieneDerivacionExitosa()`, nuevo y distinto de `tieneDerivacionAsociada()` (ya existente, usado para RF-11.2/11.3) — resuelve la nota interna pendiente sobre `estado='exito'` vs. "existe una fila".
-- RF-10: `AgenteReclasificacionService` (aplicación) cubre solo la parte determinista (contador, límite, escalada); `AgenteIAGateway`/`AgenteIAClient` (modelo/infraestructura) cubre generación de la propuesta y, si la confianza es suficiente, la propia invocación MCP de finalizar+crear — lectura literal de RF-10.4 ("el agente invoca"), sin confirmar con el equipo (ver "Próximos pasos").
-- RF-11.4: `Derivacion.esModificableInPlace(cambios)` como Information Expert; `RegistroController` reutiliza `Comunicacion.tieneDerivacionAsociada()` (RF-09) para la distinción solo-lectura/editable de RF-11.1-11.3. RF-11.5 no se diagrama todavía (ver "Próximos pasos").
+*Resumen consolidado de todas las decisiones cerradas: ver `Estado_del_proyecto.md` §4 y §6 (esa es la fuente única). El detalle de diseño de clases (RF-08/RF-10/RF-11.4) vive en `Diagrama_Clases.md`; el de componentes en `Diagrama_Componentes.md`.*
 
-**De esta sesión (análisis técnico Ticketing, RF-10.1):**
-- Confirmado mediante análisis interno del sistema de Ticketing (no publicable): no hay webhook saliente ni cola de mensajes; el mecanismo real es un patrón outbox interno. Detalle completo (información propietaria de MGS) mantenido fuera de este repositorio.
-- Pendiente de decidir cómo reflejar esto en `Diagrama_Componentes.md` (ver "Próximos pasos" arriba).
+Lo que sigue aquí es únicamente el historial de cambios del ER, que no está consolidado en ningún otro documento (el ER final sí lo está, en `ER_Explicacion.md`):
 
-**De esta sesión (arquitectura de componentes):**
-- Diagrama de arquitectura de componentes cerrado (`Diagrama_Componentes.md`) — cuatro bloques: Pipeline de Ingesta y Clasificación, Ejecución de Acciones (ambos orquestados por n8n, según la tabla de componentes internos de `Especificacion_Requisitos.md`), Reclasificación Automática (Agente IA vía MCP), y Gestión y Revisión (frontal + API REST + BD). El diagrama en sí no lleva numeración RF-XX ni anotaciones de proceso (esas quedan en el documento, para que la imagen sea usable directamente en la memoria). `n8n` y el `Bus de Eventos Corporativo` se representan como dos elementos separados a propósito, dado que no estaba confirmado si son la misma infraestructura — ahora sabemos que Ticketing tampoco publica directamente a ese bus, así que hay un proceso intermedio (aún sin identificar) entre el mecanismo interno de Ticketing y el bus/n8n.
-
-**De sesión anterior (arquitectura / diagrama de clases):**
-- Stack técnico confirmado vía análisis real del repo de Ticketing: Java 8, Java EE 7/8 (`javax.*`, no Jakarta EE), sin JPA/Spring, CDI + JAX-RS, WebSphere traditional 9.0. Ver `Estado_Tecnico_Ticketing.md` (⚠️ no publicar, es propietario de MGS).
-- Capas del diagrama de clases: `modelo` (dominio + interfaces Repository/Gateway) / `aplicacion` (Services) / `infraestructura` (implementaciones + clientes SOAP/REST) / `api` (Controllers JAX-RS) — mismo patrón que ya usa Ticketing internamente (Repository a medida, no JPA; Service envolviendo Repository; estereotipos CDI propios).
-- Sin `<<AggregateRoot>>` formal ni eventos de dominio CDI en el diseño propio — evitar duplicar lo que RF-07 ya cubre a nivel de arquitectura de eventos corporativa. Decisión consciente de simplicidad (KISS/YAGNI) frente al DDD táctico completo de Ticketing.
-- `TicketingGateway`/`LemaGateway` añadidas como interfaces de dominio (principio DIP) — los Services de `aplicacion` nunca dependen directamente de `TicketingClient`/`LemaClient` (clases concretas de `infraestructura`).
-- Rebanada RF-09 (aceptar/reclasificar) fue la primera diagramada, a propósito — patrón validado antes de replicar a RF-08/RF-10/RF-11.4, ya extendido esta sesión.
-
-**De sesiones anteriores:**
-- RF-11.4/11.5 confirmado con OpenAPI real: PATCH /tickets no permite cambiar cola → edición in-place solo si no cambia departamento
-- `ticketRelacionado` (campo nativo) para enlazar tickets en reclasificación
-- Estados de `COMUNICACION.estado`: pendiente → en_proceso → en_revision / procesada
-- Aprendizaje continuo del Agente IA: dirección futura, ya en RF-09 de la especificación
-
-**De sesión anterior (revisión completa del ER):**
+**Historial de revisión completa del ER (sesión anterior):**
 - Campos `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre` añadidos a `COMUNICACION` — vienen de `localiza()`, no de `peticionAcceso()` (verificado contra la guía DEHú)
 - `csvResguardo` añadido a `DOCUMENTO` (antes `DOCUMENTO_ADJUNTO`)
 - `tipoAsignado` añadido a `CLASIFICACION` (antes `REGISTRO_CLASIFICACION`) — cubre que RF-09.6 permite reclasificar departamento y/o tipo
