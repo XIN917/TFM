@@ -28,6 +28,7 @@ final.
 | [Casos_de_Uso.md](Diagramas/Casos_de_Uso.md) | Diagrama y descripciones textuales de casos de uso |
 | [ER_Explicacion.md](Diagramas/ER_Explicacion.md) | Modelo entidad-relación y explicación de cada tabla |
 | [Diagrama_Clases.md](Diagramas/Diagrama_Clases.md) | Diagrama de clases (capas modelo/aplicación/infraestructura/api) |
+| [Diagrama_Componentes.md](Diagramas/Diagrama_Componentes.md) | Diagrama de arquitectura de componentes |
 | [Diagramas_de_flujo.md](Diagramas/Diagramas_de_flujo.md) | Flujos de proceso principales |
 | [Gantt.md](Diagramas/Gantt.md) | Planificación temporal del proyecto |
 

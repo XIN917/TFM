@@ -6,7 +6,7 @@ ER del sistema propio revisado a fondo y aprobado por la tutora de empresa en su
 ## Próximos pasos
 - [x] Diagramas de flujo (versión inicial) — ver `Diagramas_de_flujo.md`
 - [x] Diagrama ER (versión inicial, revisado a fondo) — ver `ER_Explicacion.md`
-- [ ] Diagrama de arquitectura de componentes (siguiente pieza — la dependencia estricta entre llamadas LEMA, documentada en `DEHu_Campos_Respuesta_Servicios.md`, condiciona el orden de los pasos)
+- [x] Diagrama de arquitectura de componentes — ver `Diagrama_Componentes.md`
 - [x] Descripciones textuales de casos de uso — ver `Casos_de_Uso.md`
 - [x] Planificación / Gantt — ver `Gantt.md`
 - [x] Diagrama de clases (rebanada RF-09: aceptar/reclasificar) — ver `Diagrama_Clases.md`, con capas modelo/aplicacion/infraestructura/api y análisis SOLID/GRASP
@@ -17,6 +17,7 @@ ER del sistema propio revisado a fondo y aprobado por la tutora de empresa en su
 - [ ] Definir rol de "consulta" en `USUARIO` (departamento consultando sus propios tickets desde el frontal propio) — bloqueado hasta hablar con el responsable de IT/Seguridad (ver preguntas pendientes)
 - [ ] Confirmar duración real de la subtarea "Infraestructura" en el Gantt (7 días laborables estimados, pendiente de fecha real de acceso — dependencia externa no controlada, igual que el alta como Gran Destinatario)
 - [ ] Revisar fechas del Gantt contra los festivos configurados (11 sep, 24 sep, 12 oct, 8 dic, 25 dic, 1 ene, 6 ene) — varias tareas los cruzan y pueden desplazarse ligeramente al recalcular en la herramienta
+- [ ] Revisar el diagrama de arquitectura de componentes (`Diagrama_Componentes.md`) a la luz de la conclusión sobre RF-10.1 (ver más abajo): la flecha `Ticketing → Bus de Eventos Corporativo → Agente IA` asume que Ticketing publica directamente al bus, pero el mecanismo real confirmado es un outbox en BD — falta identificar (y decidir cómo dibujar) el proceso intermedio que lee esa tabla y la convierte en el evento que sí llega al bus/n8n
 - [ ] **Antes de hacer público el repo del TFM**: revisar que `Estado_Tecnico_Ticketing.md` (y cualquier fragmento de código real de Ticketing) no esté incluido — es información propietaria de MGS, no publicable sin autorización
 
 ## Preguntas pendientes para compañeros
@@ -24,7 +25,7 @@ ER del sistema propio revisado a fondo y aprobado por la tutora de empresa en su
 **Para el responsable de Ticketing:**
 - [ ] Capacidades reales de audiencia back (API de modificación de tickets, RF-11.4/11.5)
 - [ ] Confirmar el campo `motivoResolucion` en `POST /tickets/{id}/estado` — ¿contradice lo de "sin motivo en frontend"?
-- [ ] Mecanismo de detección de cancelación de ticket (RF-10.1): ¿Ticketing publica un evento accesible externamente (ecosistema de eventos de la empresa / n8n), ofrece webhook, o hay que hacer polling? se mencionó que se publica un evento — falta confirmar dónde y si es suscribible. **No es bloqueante ahora** (aún no empieza desarrollo); confirmar cuando se aborde la implementación de RF-10.
+- [x] ~~Mecanismo de detección de cancelación de ticket (RF-10.1)~~ — **Resuelto mediante análisis interno del sistema de Ticketing** (documento no publicable, información propietaria de MGS): no expone webhook saliente ni cola de mensajes; el cambio de estado de un ticket se propaga mediante un mecanismo de persistencia interno (patrón outbox), no una notificación de red directa. **Sigue pendiente confirmar con el responsable de Ticketing** quién consume esa información y cómo llega al ecosistema de eventos corporativo/n8n. No bloqueante para el diseño de alto nivel; si acaban implementando RF-10 antes de tener esta respuesta, la alternativa de fallback sería un proceso propio que haga poll directo a la fuente de persistencia interna.
 - [ ] ¿El endpoint de creación de tickets permite deduplicar por un identificador externo (el `identificador` DEHú)? Relevante para RF-08.5: si una llamada tiene éxito en Ticketing pero el sistema falla antes de registrar la `DERIVACION` localmente, hace falta poder detectar el duplicado del lado de Ticketing, no solo consultando la base de datos propia.
 - [ ] Condiciones exactas del canal email (RF-08.2)
 - [ ] Confirmar si el propio equipo de Ticketing tiene alguna preferencia/restricción sobre replicar su patrón de arquitectura (CDI, Repository/Gateway a medida) en un sistema nuevo, o si prefieren otra convención para el proyecto del TFM
@@ -37,7 +38,14 @@ ER del sistema propio revisado a fondo y aprobado por la tutora de empresa en su
 
 ## Decisiones ya cerradas (no reabrir sin motivo)
 
-**De esta sesión (arquitectura / diagrama de clases):**
+**De esta sesión (análisis técnico Ticketing, RF-10.1):**
+- Confirmado mediante análisis interno del sistema de Ticketing (no publicable): no hay webhook saliente ni cola de mensajes; el mecanismo real es un patrón outbox interno. Detalle completo (información propietaria de MGS) mantenido fuera de este repositorio.
+- Pendiente de decidir cómo reflejar esto en `Diagrama_Componentes.md` (ver "Próximos pasos" arriba).
+
+**De esta sesión (arquitectura de componentes):**
+- Diagrama de arquitectura de componentes cerrado (`Diagrama_Componentes.md`) — cuatro bloques: Pipeline de Ingesta y Clasificación, Ejecución de Acciones (ambos orquestados por n8n, según la tabla de componentes internos de `Especificacion_Requisitos.md`), Reclasificación Automática (Agente IA vía MCP), y Gestión y Revisión (frontal + API REST + BD). El diagrama en sí no lleva numeración RF-XX ni anotaciones de proceso (esas quedan en el documento, para que la imagen sea usable directamente en la memoria). `n8n` y el `Bus de Eventos Corporativo` se representan como dos elementos separados a propósito, dado que no estaba confirmado si son la misma infraestructura — ahora sabemos que Ticketing tampoco publica directamente a ese bus, así que hay un proceso intermedio (aún sin identificar) entre el mecanismo interno de Ticketing y el bus/n8n.
+
+**De sesión anterior (arquitectura / diagrama de clases):**
 - Stack técnico confirmado vía análisis real del repo de Ticketing: Java 8, Java EE 7/8 (`javax.*`, no Jakarta EE), sin JPA/Spring, CDI + JAX-RS, WebSphere traditional 9.0. Ver `Estado_Tecnico_Ticketing.md` (⚠️ no publicar, es propietario de MGS).
 - Capas del diagrama de clases: `modelo` (dominio + interfaces Repository/Gateway) / `aplicacion` (Services) / `infraestructura` (implementaciones + clientes SOAP/REST) / `api` (Controllers JAX-RS) — mismo patrón que ya usa Ticketing internamente (Repository a medida, no JPA; Service envolviendo Repository; estereotipos CDI propios).
 - Sin `<<AggregateRoot>>` formal ni eventos de dominio CDI en el diseño propio — evitar duplicar lo que RF-07 ya cubre a nivel de arquitectura de eventos corporativa. Decisión consciente de simplicidad (KISS/YAGNI) frente al DDD táctico completo de Ticketing.
