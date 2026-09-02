@@ -56,7 +56,7 @@ Actualmente los usuarios de MGS acceden **manualmente** a las notificaciones a t
 - Aprendizaje continuo del Agente IA a partir del feedback humano: dirección de evolución del proyecto, ya anotada en RF-09; mecanismo técnico por definir.
 - Diagnóstico sistemático de errores de clasificación: idea a explorar; datos ya contemplados en el ER (`CLASIFICACION`, `INTERPRETACION`).
 - RF-11.2/11.3: la distinción editable/no-editable ya no depende de `tipoEnvio` de DEHú (correspondencia 1/2 = notificación/comunicación no verificada contra la guía LEMA), sino de si la comunicación ya tiene una acción de derivación (`DERIVACION`) asociada.
-- ER revisado a fondo esta sesión — renombrado general de tablas, tabla `USUARIO` añadida con clave compartida a `PERSONA`; no se incluye tabla de eventos, la trazabilidad e idempotencia quedan cubiertas por `CLASIFICACION` y `DERIVACION`. Enviado a la tutora de empresa para primera revisión, pendiente de respuesta.
+- ER revisado a fondo esta sesión — renombrado general de tablas, tabla `USUARIO` añadida con clave compartida a `PERSONA`; no se incluye tabla de eventos, la trazabilidad e idempotencia quedan cubiertas por `CLASIFICACION` y `DERIVACION`. Enviado a la tutora de empresa para primera revisión — aprobado.
 
 ## 5. Planificación (Gantt)
 

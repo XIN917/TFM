@@ -1,7 +1,7 @@
 # TODO (retomar en próxima sesión)
 
 ## Contexto rápido
-ER del sistema propio revisado a fondo y enviado a la tutora de empresa para su primera revisión (pendiente de respuesta). Código ER completo y explicación detallada de cada tabla en `ER_Explicacion.md`. Descripciones textuales de casos de uso completadas en `Casos_de_Uso.md` (formato simplificado, provisional hasta validar diseño).
+ER del sistema propio revisado a fondo y aprobado por la tutora de empresa en su primera revisión. Código ER completo y explicación detallada de cada tabla en `ER_Explicacion.md`. Descripciones textuales de casos de uso completadas en `Casos_de_Uso.md` (formato simplificado, provisional hasta validar diseño).
 
 ## Próximos pasos
 - [x] Diagramas de flujo (versión inicial) — ver `Diagramas_de_flujo.md`
