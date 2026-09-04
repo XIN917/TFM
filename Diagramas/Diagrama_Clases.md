@@ -1,6 +1,6 @@
 # Diagrama de clases y análisis de principios de diseño
 
-*Estado actual: un único diagrama de clases en capas (`modelo` / `aplicacion` / `infraestructura` / `api`), que cubre las cinco rebanadas de flujo diseñadas hasta ahora — RF-09 (aceptar/reclasificar), RF-08 (ejecución de la acción resultante), RF-10 (reclasificación automática vía Agente IA), RF-11.4 (modificación in-place) y RF-11.5 (cambio de departamento, finalizar+crear) — alineadas con los patrones reales del sistema de Ticketing (CDI, Repository/Gateway a medida, JAX-RS — sin JPA, sin Spring, Java 8). RF-11.5 se diagrama como propuesta de alto nivel, no como diseño técnico cerrado (ver nota más abajo). Pendiente: valorar si hace falta un diagrama de secuencia para RF-10 (ver `TODO.md`).*
+*Estado actual: un único diagrama de clases en capas (`modelo` / `aplicacion` / `infraestructura` / `api`), que cubre las cinco rebanadas de flujo diseñadas hasta ahora — RF-09 (aceptar/reclasificar), RF-08 (ejecución de la acción resultante), RF-10 (reclasificación automática vía Agente IA), RF-11.4 (modificación in-place) y RF-11.5 (cambio de departamento, finalizar+crear) — alineadas con los patrones reales del sistema de Ticketing (CDI, Repository/Gateway a medida, JAX-RS — sin JPA, sin Spring, Java 8). RF-11.5 se diagrama como propuesta de alto nivel, no como diseño técnico cerrado (ver nota más abajo). Evaluado y descartado un diagrama de secuencia aparte para RF-10 (ver nota al final): el flujo de decisión ya está en `Diagramas_de_flujo.md` y el reparto de responsabilidad `AgenteReclasificacionService`/`AgenteIAClient` ya está explicado en prosa más abajo.*
 
 ---
 
@@ -44,7 +44,7 @@ Cuando `Derivacion.esModificableInPlace(cambios)` da `false` — el `cambios.dep
 
 ---
 
-## Análisis SOLID (consolidado, las cuatro rebanadas)
+## Análisis SOLID (consolidado, las cinco rebanadas)
 
 ### S — Single Responsibility Principle
 
@@ -68,7 +68,7 @@ El más trabajado de los cinco: los seis Services de `aplicacion` dependen únic
 
 ---
 
-## Análisis GRASP (consolidado, las cuatro rebanadas)
+## Análisis GRASP (consolidado, las cinco rebanadas)
 
 ### Information Expert
 
@@ -153,7 +153,7 @@ Bajo acoplamiento vía `TicketingGateway`/`LemaGateway`/`NotificacionGateway`/`A
 ## Pendiente (traspasado a `TODO.md`)
 
 - RF-11.5 ya está diagramada (finalizar+crear, reutilizando el mecanismo de RF-09.6/RF-10.4) pero como propuesta de alto nivel — pendiente de cerrar el diseño técnico cuando se confirme la API "audiencia back" de Ticketing; candidato a extraer como colaborador compartido si el número de sitios que reconstruyen el mecanismo crece más allá de los tres actuales (RF-09.6, RF-10.4, RF-11.5).
-- Evaluar si hace falta un diagrama de secuencia específico para RF-10, dado que el reparto de responsabilidades entre `AgenteReclasificacionService` y `AgenteIAGateway`/MCP no es evidente solo con el diagrama de clases.
+- ~~Evaluar si hace falta un diagrama de secuencia específico para RF-10~~ — **Evaluado y descartado**: el flujo de decisión (contador de intentos, umbral de confianza, éxito/escalada) ya está representado en `Diagramas_de_flujo.md` (flujo 2, "Departamento + Autocorrección"); el único aporte adicional de un diagrama de secuencia sería formalizar que es `AgenteIAClient` (no `AgenteReclasificacionService`) quien invoca `TicketingGateway`, y eso ya está explicado en prosa en la nota "Quién invoca el MCP" más arriba. Añadir un quinto diagrama que repite la misma información en otra notación no aporta lo suficiente, más aún tratándose de una decisión no confirmada con el equipo (ver punto siguiente) que podría quedar obsoleta.
 - La decisión de que sea `AgenteIAClient` (no `AgenteReclasificacionService`) quien invoque `TicketingGateway` vía MCP es razonamiento propio a partir de la literalidad de RF-10.4, no algo confirmado con nadie del equipo — revisar si se sostiene cuando se aborde la implementación real del agente.
 
 ---
