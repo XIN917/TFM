@@ -1,6 +1,6 @@
 # Diagrama de clases y análisis de principios de diseño
 
-*Estado actual: un único diagrama de clases en capas (`modelo` / `aplicacion` / `infraestructura` / `api`), que cubre las cuatro rebanadas de flujo diseñadas hasta ahora — RF-09 (aceptar/reclasificar), RF-08 (ejecución de la acción resultante), RF-10 (reclasificación automática vía Agente IA) y RF-11.4 (modificación in-place) — alineadas con los patrones reales del sistema de Ticketing (CDI, Repository/Gateway a medida, JAX-RS — sin JPA, sin Spring, Java 8). Pendiente: RF-11.5 (no diagramada aún, ver nota más abajo) y valorar si hace falta un diagrama de secuencia para RF-10 (ver `TODO.md`).*
+*Estado actual: un único diagrama de clases en capas (`modelo` / `aplicacion` / `infraestructura` / `api`), que cubre las cinco rebanadas de flujo diseñadas hasta ahora — RF-09 (aceptar/reclasificar), RF-08 (ejecución de la acción resultante), RF-10 (reclasificación automática vía Agente IA), RF-11.4 (modificación in-place) y RF-11.5 (cambio de departamento, finalizar+crear) — alineadas con los patrones reales del sistema de Ticketing (CDI, Repository/Gateway a medida, JAX-RS — sin JPA, sin Spring, Java 8). RF-11.5 se diagrama como propuesta de alto nivel, no como diseño técnico cerrado (ver nota más abajo). Pendiente: valorar si hace falta un diagrama de secuencia para RF-10 (ver `TODO.md`).*
 
 ---
 
@@ -34,7 +34,13 @@
 
 ### RF-11.4 — Modificación in-place
 
-`ModificarDerivacionService`, expuesto por `RegistroController` junto con la consulta de RF-11.1-11.3 (que reutiliza `Comunicacion.tieneDerivacionAsociada()` para la distinción solo-lectura/editable). `Derivacion.esModificableInPlace(cambios)` es Information Expert: `Derivacion` es quien tiene el campo `departamento`, así que es quien sabe si un cambio propuesto lo altera o no. Cuando da `false`, la rama correcta es RF-11.5 — el mismo mecanismo de "finalizar ticket original + crear uno nuevo" ya usado en RF-09.6 y RF-10.4 — que no se ha diagramado todavía porque sigue condicionado a que exista la API "audiencia back" de Ticketing (ver `Especificacion_Requisitos.md`, sección 6). Tres sitios distintos ya reconstruyen ese mismo mecanismo (RF-09.6, RF-10.4, y RF-11.5 cuando se cierre) — candidato razonable a extraer en un colaborador compartido más adelante, no forzado todavía.
+`ModificarDerivacionService`, expuesto por `RegistroController` junto con la consulta de RF-11.1-11.3 (que reutiliza `Comunicacion.tieneDerivacionAsociada()` para la distinción solo-lectura/editable). `Derivacion.esModificableInPlace(cambios)` es Information Expert: `Derivacion` es quien tiene el campo `departamento`, así que es quien sabe si un cambio propuesto lo altera o no. Cuando da `true`, `Derivacion.actualizar(cambios)` aplica el cambio de `titulo`/`resumen` y `ModificarDerivacionService` delega en `TicketingGateway.modificarTicket()`. Cuando da `false`, la rama correcta es RF-11.5 (ver siguiente apartado).
+
+### RF-11.5 — Cambio de departamento (finalizar + crear)
+
+Cuando `Derivacion.esModificableInPlace(cambios)` da `false` — el `cambios.departamentoDestino` propuesto por el Operador es distinto del `departamento` actual de la `Derivacion` —, `ModificarDerivacionService` no llama a `TicketingGateway.modificarTicket()`, sino que reutiliza literalmente el mismo mecanismo ya cerrado en RF-09.6 (`ReclasificarComunicacionService`) y RF-10.4 (`AgenteIAClient`): `TicketingGateway.finalizarTicket(derivacion.identificadorExterno)` para cerrar el ticket original, seguido de `TicketingGateway.crearTicket(nuevaDerivacion)` para abrir uno nuevo en la cola correcta. La nueva `Derivacion` se crea con `Comunicacion.registrarDerivacion(...)` (Creator, ya establecido desde RF-09), marcada con `esReclasificacion = true` y `ticketRelacionadoId` apuntando al ticket original — los mismos dos campos que ya estaban en el ER (`ER_Explicacion.md`) precisamente para cubrir este caso, confirmado con Dani, y que hasta ahora solo se usaban desde RF-09.6/RF-10.4.
+
+**Se diagrama como propuesta de alto nivel, no como diseño técnico cerrado** — misma cautela que ya declaraba la nota de diseño de RF-11 en `Especificacion_Requisitos.md`: sigue condicionada a que se confirme la disponibilidad real de la API "audiencia back" de Ticketing y sus capacidades exactas (ver `Especificacion_Requisitos.md`, sección 6, tabla de riesgos). Deliberadamente **no** se introduce todavía un colaborador compartido que unifique los tres sitios que reconstruyen este mismo mecanismo (RF-09.6, RF-10.4, RF-11.5) — sigue siendo, como ya se apuntaba antes de diagramar esta rebanada, un candidato razonable pero no forzado mientras sean solo tres usos concretos y no haya señal de que vaya a crecer (YAGNI).
 
 ---
 
@@ -54,7 +60,7 @@ Cada clase tiene un único motivo de cambio: `AceptarClasificacionService` solo 
 
 ### I — Interface Segregation Principle
 
-Interfaces pequeñas y separadas por propósito: `NotificacionGateway` (2 métodos), `AgenteIAGateway` (1 método), igual de acotadas que `TicketingGateway`/`LemaGateway`/`ComunicacionRepository`. Ningún Service depende de métodos que no usa — `ModificarDerivacionService` solo necesita `modificarTicket()`, pero la interfaz sigue siendo una sola porque las tres operaciones pertenecen al mismo concepto (gestión de un ticket).
+Interfaces pequeñas y separadas por propósito: `NotificacionGateway` (2 métodos), `AgenteIAGateway` (1 método), igual de acotadas que `TicketingGateway`/`LemaGateway`/`ComunicacionRepository`. Ningún Service depende de métodos que no usa — `ModificarDerivacionService` usa `modificarTicket()` en la rama RF-11.4 y `finalizarTicket()`/`crearTicket()` en la rama RF-11.5, pero la interfaz sigue siendo una sola porque las tres operaciones pertenecen al mismo concepto (gestión de un ticket) y ya las usa también `ReclasificarComunicacionService` (RF-09.6) sin que eso obligue a partir `TicketingGateway`.
 
 ### D — Dependency Inversion Principle
 
@@ -90,6 +96,42 @@ Bajo acoplamiento vía `TicketingGateway`/`LemaGateway`/`NotificacionGateway`/`A
 
 ---
 
+## Patrones de diseño aplicados (GoF / PoEAA)
+
+*Distinto del análisis SOLID/GRASP anterior: SOLID son principios, GRASP son responsabilidades; esta sección nombra los patrones de diseño concretos (catálogo GoF y patrones de arquitectura empresarial de Fowler) que esas decisiones terminan realizando. Se documentan también los patrones que a primera vista podrían parecer aplicados pero no lo están, para dejar explícita la decisión de simplicidad (KISS/YAGNI).*
+
+### Aplicados
+
+**Strategy** — `NotificacionGateway` define un comportamiento intercambiable (`ejecutar()`), con una implementación distinta por canal (`TicketingNotificacionGateway`, `EmailNotificacionGateway`) seleccionada en tiempo de ejecución por `NotificacionGatewayResolver` según `Clasificacion.canalAsignado`. Es la misma decisión de diseño que demuestra OCP y Polymorphism en el análisis GRASP — Strategy es el nombre del patrón catálogo; OCP/Polymorphism son los principios que ese patrón satisface.
+
+**Adapter** — `TicketingNotificacionGateway` (ya etiquetada `<<Adaptador>>` en el diagrama) adapta la interfaz específica de Ticketing (`TicketingGateway`: crear/finalizar/modificar un ticket concreto) a la interfaz genérica de canal (`NotificacionGateway`: `ejecutar()`), sin modificar `TicketingGateway`.
+
+**Gateway** *(patrón de arquitectura empresarial, Fowler — PoEAA, no GoF)* — `TicketingGateway`, `LemaGateway` y `AgenteIAGateway` encapsulan el acceso a cada sistema externo (Ticketing, LEMA/DEHú, Agente IA vía MCP) tras una interfaz mínima que oculta el protocolo real (REST, SOAP+WS-Security, MCP) al resto del sistema.
+
+**Repository** *(patrón de arquitectura empresarial, Fowler — PoEAA, no GoF)* — `ComunicacionRepository` abstrae la persistencia tras una interfaz orientada al dominio (`save`, `query`, `siguienteId`), sin exponer detalles de SQL Server ni de `JdbcTemplate`.
+
+### Evaluados y descartados (documentado explícitamente, no es una omisión)
+
+**Observer** — el sistema es dirigido por eventos a **nivel de arquitectura** (Bus de Eventos Corporativo, ver `Diagrama_Componentes.md`), pero esto no se traduce en un patrón Observador a **nivel de diagrama de clases**: no existe una clase Sujeto/Observable con una lista de observadores ni un método `notify()`. La publicación y el consumo de eventos ocurren a través de infraestructura externa (n8n + bus), no de una relación de clases dentro de este diagrama. Se documenta la distinción para no confundir "arquitectura orientada a eventos" con "patrón Observador aplicado".
+
+**State** — los campos `estado` de `Comunicacion` y `Derivacion` son cadenas de texto simples (`pendiente`, `en_proceso`, `en_revision`, `procesada`, etc.), no una jerarquía de clases por estado con comportamiento polimórfico. Aplicar State habría significado una clase por cada valor de estado, cada una redefiniendo el comportamiento correspondiente — deliberadamente descartado por KISS/YAGNI: el número de estados es pequeño y estable, y no hay comportamiento complejo asociado a cada transición que justifique el coste añadido.
+
+**Factory Method** — `NotificacionGatewayResolver` podría confundirse con una fábrica, pero no instancia objetos: selecciona entre instancias ya creadas e inyectadas por CDI (`@Inject @Any Instance<NotificacionGateway>`). Es la mitad "selectora" del patrón Strategy, no una Fábrica.
+
+### Tabla resumen
+
+| Patrón | Catálogo | ¿Aplicado? | Dónde / por qué no |
+|---|---|---|---|
+| Strategy | GoF | Sí | `NotificacionGateway` + implementaciones, seleccionadas por `NotificacionGatewayResolver` |
+| Adapter | GoF | Sí | `TicketingNotificacionGateway` adapta `TicketingGateway` a `NotificacionGateway` |
+| Gateway | PoEAA (Fowler) | Sí | `TicketingGateway`, `LemaGateway`, `AgenteIAGateway` |
+| Repository | PoEAA (Fowler) | Sí | `ComunicacionRepository` |
+| Observer | GoF | No | Event-driven a nivel de arquitectura (bus de eventos), no modelado como relación de clases |
+| State | GoF | No | Estado modelado como `String`, no como jerarquía de clases — KISS/YAGNI |
+| Factory Method | GoF | No | `NotificacionGatewayResolver` selecciona, no instancia — es Strategy, no Factory |
+
+---
+
 ## Resumen
 
 | Principio | ¿Demostrado? | Dónde |
@@ -110,7 +152,7 @@ Bajo acoplamiento vía `TicketingGateway`/`LemaGateway`/`NotificacionGateway`/`A
 
 ## Pendiente (traspasado a `TODO.md`)
 
-- RF-11.5 (cambio de departamento vía RF-11) no está diagramada — reutiliza el mecanismo ya cerrado en RF-09.6/RF-10.4; candidato a extraer como colaborador compartido si se cierra la API "audiencia back" de Ticketing.
+- RF-11.5 ya está diagramada (finalizar+crear, reutilizando el mecanismo de RF-09.6/RF-10.4) pero como propuesta de alto nivel — pendiente de cerrar el diseño técnico cuando se confirme la API "audiencia back" de Ticketing; candidato a extraer como colaborador compartido si el número de sitios que reconstruyen el mecanismo crece más allá de los tres actuales (RF-09.6, RF-10.4, RF-11.5).
 - Evaluar si hace falta un diagrama de secuencia específico para RF-10, dado que el reparto de responsabilidades entre `AgenteReclasificacionService` y `AgenteIAGateway`/MCP no es evidente solo con el diagrama de clases.
 - La decisión de que sea `AgenteIAClient` (no `AgenteReclasificacionService`) quien invoque `TicketingGateway` vía MCP es razonamiento propio a partir de la literalidad de RF-10.4, no algo confirmado con nadie del equipo — revisar si se sostiene cuando se aborde la implementación real del agente.
 
@@ -277,6 +319,9 @@ package "modelo" {
     Usuario "1" -- "0..*" Revision : resuelve >
     Departamento "1" -- "0..*" Clasificacion : < referenciado por
     Departamento "1" -- "0..*" Derivacion : < referenciado por
+    Derivacion ..> CambiosDerivacion : usa >
+    ResultadoAutocorreccion ..> Clasificacion : contiene >
+    AgenteIAGateway ..> ResultadoAutocorreccion : retorna >
 }
 
 package "aplicacion" {
@@ -324,6 +369,8 @@ package "aplicacion" {
     }
 
     EjecutarDerivacionService --> NotificacionGatewayResolver : usa >
+    ModificarDerivacionService ..> CambiosDerivacion : usa >
+    AgenteReclasificacionService ..> ResultadoAutocorreccion : usa >
 }
 
 package "infraestructura" {
@@ -403,6 +450,7 @@ package "api" {
 RevisionController --> AceptarClasificacionService : usa >
 RevisionController --> ReclasificarComunicacionService : usa >
 RegistroController --> ModificarDerivacionService : usa >
+RegistroController ..> CambiosDerivacion : usa >
 
 AceptarClasificacionService --> ComunicacionRepository : usa >
 ReclasificarComunicacionService --> ComunicacionRepository : usa >
@@ -419,6 +467,8 @@ AgenteReclasificacionService --> AgenteIAGateway : usa >
 AceptarClasificacionService ..> Revision : invoca resolver() >
 ReclasificarComunicacionService ..> Revision : invoca resolver() >
 AgenteReclasificacionService ..> Revision : invoca escalarARevision() >
+ModificarDerivacionService ..> Derivacion : invoca esModificableInPlace()/actualizar() >
+ModificarDerivacionService ..> Comunicacion : invoca registrarDerivacion() (RF-11.5) >
 ModificarDerivacionService ..> Usuario : registra autor >
 
 @enduml
