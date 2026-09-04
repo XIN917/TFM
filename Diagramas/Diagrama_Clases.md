@@ -8,8 +8,6 @@
 
 ![Diagrama de clases](img/diagrama_clases.png)
 
-*Nota: la imagen debe estar en `img/diagrama_clases.png`, relativa a este `.md` — si mueves el `.md`, mueve también la carpeta `img/`.*
-
 ---
 
 ## Qué cubre cada flujo

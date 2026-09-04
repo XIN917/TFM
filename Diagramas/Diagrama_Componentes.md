@@ -8,11 +8,7 @@
 
 ![Diagrama de arquitectura de componentes](img/diagrama_componentes.png)
 
-*Nota: la imagen debe estar en `img/diagrama_componentes.png`, relativa a este `.md` — si mueves el `.md`, mueve también la carpeta `img/`.*
-
 ---
-
-**Nota sobre el propio diagrama**: no incluye numeración RF-XX ni anotaciones de proceso (justificaciones de por qué se decidió tal o cual cosa) — solo componentes, protocolos y el flujo real de dependencias, para que la imagen sea usable directamente en la memoria sin edición posterior. La trazabilidad a requisitos y el razonamiento de diseño quedan documentados en esta página, no en la imagen.
 
 ## Criterio de agrupación
 
