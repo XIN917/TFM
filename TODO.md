@@ -31,7 +31,7 @@ ER del sistema propio revisado a fondo y aprobado por la tutora de empresa en su
 - [ ] Confirmar el campo `motivoResolucion` en `POST /tickets/{id}/estado` — ¿contradice lo de "sin motivo en frontend"?
 - [x] ~~Mecanismo de detección de cancelación de ticket (RF-10.1)~~ — **Resuelto mediante análisis interno del sistema de Ticketing** (documento no publicable, información propietaria de MGS): no expone webhook saliente ni cola de mensajes; el cambio de estado de un ticket se propaga mediante un mecanismo de persistencia interno (patrón outbox), no una notificación de red directa. **Sigue pendiente confirmar con el responsable de Ticketing** quién consume esa información y cómo llega al ecosistema de eventos corporativo/n8n. No bloqueante para el diseño de alto nivel; si acaban implementando RF-10 antes de tener esta respuesta, la alternativa de fallback sería un proceso propio que haga poll directo a la fuente de persistencia interna.
 - [ ] ¿El endpoint de creación de tickets permite deduplicar por un identificador externo (el `identificador` DEHú)? Relevante para RF-08.5: si una llamada tiene éxito en Ticketing pero el sistema falla antes de registrar la `DERIVACION` localmente, hace falta poder detectar el duplicado del lado de Ticketing, no solo consultando la base de datos propia.
-- [ ] Condiciones exactas del canal email (RF-08.2)
+- [ ] Condiciones exactas del canal email (RF-08.2) — **no bloqueante**: el director de empresa confirmó que el canal ticket es el prioritario y el email queda como deseable, no obligatorio para el cierre del MVP (ver `Especificacion_Requisitos.md`, nota de diseño en RF-08)
 - [ ] Confirmar si el propio equipo de Ticketing tiene alguna preferencia/restricción sobre replicar su patrón de arquitectura (CDI, Repository/Gateway a medida) en un sistema nuevo, o si prefieren otra convención para el proyecto del TFM
 
 **Para el responsable de IT/Seguridad:**
@@ -48,8 +48,8 @@ Lo que sigue aquí es únicamente el historial de cambios del ER, que no está c
 
 **Historial de revisión completa del ER (sesión anterior):**
 - Campos `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre` añadidos a `COMUNICACION` — vienen de `localiza()`, no de `peticionAcceso()` (verificado contra la guía DEHú)
-- `csvResguardo` añadido a `DOCUMENTO` (antes `DOCUMENTO_ADJUNTO`)
-- `tipoAsignado` añadido a `CLASIFICACION` (antes `REGISTRO_CLASIFICACION`) — cubre que RF-09.6 permite reclasificar departamento y/o tipo
+- `csvResguardo` añadido a `DOCUMENTO`
+- `tipoAsignado` añadido a `CLASIFICACION` — cubre que RF-09.6 permite reclasificar departamento y/o tipo
 - Tabla `EVENTO` eliminada del diseño: idempotencia cubierta por `DERIVACION`, trazabilidad por `CLASIFICACION`+`DERIVACION`, contador de reintentos de RF-10.2 derivado de `CLASIFICACION` (`COUNT(*) WHERE origen='ia_reclasificacion'`) — sin campo contador aparte
 - Renombrado general de tablas (simplificación): `DOCUMENTO_ADJUNTO`→`DOCUMENTO`, `INTERPRETACION_IA`→`INTERPRETACION`, `REGISTRO_CLASIFICACION`→`CLASIFICACION`, `REVISION_PENDIENTE`→`REVISION`, `DEPARTAMENTO_DESTINO`→`DEPARTAMENTO`
 - `ACCION_NOTIFICACION` renombrada a `DERIVACION` (no a `NOTIFICACION`) — evita colisión con "notificación" como tipo de envío oficial de DEHú (`tipoEnvio=1`)

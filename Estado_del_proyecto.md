@@ -30,7 +30,7 @@ Ver `Especificacion_Requisitos.md`, sección 0 (Notas de anclaje técnico) — p
 
 - Actores del caso de uso: solo entidades externas (DEHú/LEMA, Usuario/Operador, Departamento).
 - Certificado electrónico: arquitectura/autenticación, no caso de uso.
-- Ticket como canal principal; email como alternativa configurable (RF-08.2).
+- Ticket como único canal obligatorio del MVP; email (RF-08.2) confirmado por el director de empresa como deseable, no bloqueante para el cierre del MVP — independientemente de si el ticket es alcanzable o no en un caso concreto. Ver `Especificacion_Requisitos.md`, nota de diseño en RF-08.
 - Reclasificación: el Ticketing no soporta transferir de cola → finalizar ticket + crear uno nuevo (RF-08.5). Confirmado con el OpenAPI real: `PATCH /tickets/{id}` no permite modificar `cola`.
 - RF-11: edición in-place si no cambia el departamento; finalizar+crear si cambia. Se usa el campo nativo `ticketRelacionado` de la API para enlazar tickets.
 - "Asignar a departamento" no requiere la misma separación ticket/email que "Modificar" (es un mecanismo automático, no una decisión activa del actor).

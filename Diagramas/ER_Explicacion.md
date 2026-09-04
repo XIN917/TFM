@@ -176,7 +176,7 @@ Catálogo/diccionario, no cuelga directamente de `COMUNICACION` — se referenci
 |---|---|
 | `id`, `nombre` | Identidad del departamento |
 | `colaDestino` | Cola de Ticketing asociada, cuando el canal es ticket |
-| `permiteEmail` | Si el email está habilitado como canal (normal o de contingencia) para este departamento — RF-08.2 |
+| `permiteEmail` | Si el email está habilitado como canal (alternativa configurable o contingencia) para este departamento — RF-08.2 |
 | `activo` | Si el departamento sigue operativo |
 
 ### `USUARIO`
