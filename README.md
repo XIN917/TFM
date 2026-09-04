@@ -25,7 +25,7 @@ final.
 
 | Documento | Descripción |
 |---|---|
-| [Diagrama_Contexto.md](Diagramas/Diagrama_Contexto.md) | Diagrama de contexto de alto nivel (Mi Carpeta Ciudadana, Sistema/IA, Empresa MGS, Operador) |
+| [Diagrama_Contexto.md](Diagramas/Diagrama_Contexto.md) | Diagrama de contexto de alto nivel. |
 | [Casos_de_Uso.md](Diagramas/Casos_de_Uso.md) | Diagrama y descripciones textuales de casos de uso |
 | [ER_Explicacion.md](Diagramas/ER_Explicacion.md) | Modelo entidad-relación y explicación de cada tabla |
 | [Diagrama_Clases.md](Diagramas/Diagrama_Clases.md) | Diagrama de clases (capas modelo/aplicación/infraestructura/api) |
