@@ -13,7 +13,7 @@ Esta especificación se ha construido sobre la base real de la **Guía de integr
   - *Servicios ConsultaRealizadas (ya comparecidas/leídas)*: `localizaRealizadas()`, `consultaRealizadas()`.
 - **Restricción temporal crítica**: `consultaAnexos()` y `consultaAcusePdf()` no permiten consultar anexos ni acuses de notificaciones con más de **1 día** de antigüedad. Esto obliga a que el almacenamiento (RF-02) sea **inmediato y no diferible** tras la comparecencia — no es una tarea que se pueda posponer o reintentar días después.
 - **Límite de peticiones**: máximo 1000 peticiones por operación, sin límite de peticiones continuas. Condiciona el diseño del *scheduler* de sondeo (RF-01).
-- **Onboarding previo obligatorio**: el alta como Gran Destinatario requiere autoregistro en el portal DEHú, firma de una Declaración Responsable, y validación en entorno de pruebas (SE) antes de producción (PRO). Esto es una dependencia de proyecto, no un requisito funcional del sistema, pero condiciona el calendario.
+- **Onboarding previo obligatorio**: el alta como Gran Destinatario requiere autoregistro en el portal DEHú, firma de una Declaración Responsable, y validación en entorno de pruebas (**SE — Servicios Estables**, nombre oficial que usa la Administración para el entorno de pruebas de DEHú/LEMA) antes de producción (PRO). Esto es una dependencia de proyecto, no un requisito funcional del sistema, pero condiciona el calendario.
 - Los anexos pueden ser **por URL directa** o **por referencia** (identificador que hay que resolver con `consultaAnexos()`); solo los segundos requieren descarga activa por parte del Gran Destinatario.
 
 Estas particularidades se reflejan como notas técnicas dentro de cada requisito funcional relevante.
@@ -181,7 +181,7 @@ Siguiendo la definición estricta de actor UML (entidad externa a la frontera de
 | **Rendimiento** | Respetar el límite de 1000 peticiones por operación de LEMA; diseño de sondeo que evite saturar dicho límite en picos de volumen. |
 | **Auditabilidad** | Registro (log) de cada llamada SOAP realizada, su resultado, y de cada decisión de clasificación tomada por la IA, con su score de confianza, para poder auditar decisiones automáticas. |
 | **Escalabilidad y extensibilidad (principio de diseño, no solo objetivo deseable)** | El desacople entre generación de evento (RF-07) y ejecución de la acción (RF-08) no es incidental: es la decisión de arquitectura que permite (a) añadir un canal de salida nuevo sin tocar el pipeline de detección/IA, y (b) incorporar en el futuro nuevas fuentes de comunicaciones además de DEHú, publicando al mismo bus de eventos desde un adaptador de entrada distinto. El MVP debe demostrar este principio con al menos dos canales de salida reales (ticket + email), no solo documentarlo como intención. |
-| **Entornos** | Soporte de los dos entornos de LEMA (SE - pruebas, PRO - producción) con configuración diferenciada, alineado con el proceso de alta como Gran Destinatario. |
+| **Entornos** | Soporte de los dos entornos de LEMA (SE - Servicios Estables, entorno de pruebas; PRO - producción) con configuración diferenciada, alineado con el proceso de alta como Gran Destinatario. |
 
 ---
 
