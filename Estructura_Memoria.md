@@ -46,9 +46,11 @@ del trabajo**. Se recomienda la estructura siguiente:
   - Evaluación de riesgos
 - Especificación y diseño de la solución
   - Actores y componentes del sistema
+  - Requisitos
+    - Requisitos funcionales
+    - Requisitos no funcionales
   - Casos de uso
-  - Requisitos funcionales
-  - Requisitos no funcionales
+  - Diagramas de flujo
   - Modelo de datos
   - Arquitectura de componentes
   - Diseño de clases y patrones aplicados
