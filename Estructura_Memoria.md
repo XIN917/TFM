@@ -25,3 +25,52 @@ del trabajo**. Se recomienda la estructura siguiente:
 - Informe de sostenibilidad
 - Viabilidad, análisis económico global y comparación con otras alternativas
 - Evaluación de riesgos
+
+---
+
+## Estructura propia definida
+
+- Introducción, motivación y objetivos
+  - Contexto y motivación
+  - Objetivos del proyecto
+  - Alcance del proyecto
+- Estado de la cuestión
+  - Gestión actual de comunicaciones con la administración
+  - DEHú/LEMA como infraestructura de administración electrónica
+  - Soluciones y enfoques existentes
+  - Posicionamiento del proyecto
+- Gestión del proyecto y planificación del trabajo
+  - Planificación
+  - Informe de sostenibilidad
+  - Viabilidad, análisis económico global y comparación con otras alternativas
+  - Evaluación de riesgos
+- Especificación y diseño de la solución
+  - Actores y componentes del sistema
+  - Casos de uso
+  - Requisitos funcionales
+  - Requisitos no funcionales
+  - Modelo de datos
+  - Arquitectura de componentes
+  - Diseño de clases y patrones aplicados
+  - Diagramas de flujo
+  - Alcance y límites del diseño
+- Desarrollo de la solución
+  - Stack tecnológico
+  - Integración con DEHú/LEMA
+  - Pipeline de IA (OCR y clasificación)
+  - Integración con el sistema de Ticketing
+  - Módulo de revisión y gestión del Operador
+  - Decisiones técnicas y problemas encontrados
+- Experimentación y evaluación de la solución
+  - Metodología de pruebas
+  - Casos de prueba y resultados
+  - Validación funcional con la empresa
+  - Limitaciones observadas
+- Análisis de sostenibilidad e implicaciones éticas
+  - Implicaciones éticas del uso de IA en clasificación de comunicaciones
+  - Privacidad y protección de datos
+  - Impacto en el puesto de trabajo
+- Conclusiones
+  - Cumplimiento de los objetivos del proyecto
+  - Lecciones aprendidas
+  - Trabajo futuro
