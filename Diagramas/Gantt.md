@@ -5,8 +5,7 @@
 ## Diagrama
 
 ![Diagrama de Gantt Inicial](img/gantt_init.png)
-
-*Nota: la imagen debe estar en `img/gantt_init.png`, relativa a este `.md` — si mueves el `.md`, mueve también la carpeta `img/`.*
+![Diagrama de Gantt Inicial Detallado](img/gantt_init_detailed.png)
 
 ---
 
