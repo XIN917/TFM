@@ -30,10 +30,10 @@ del trabajo**. Se recomienda la estructura siguiente:
 
 ## Estructura propia definida
 
-- Introducción, motivación y objetivos
-  - Contexto y motivación
-  - Objetivos del proyecto
-  - Alcance del proyecto
+- Introducción
+  - Contexto
+  - Motivación
+  - Objetivos
 - Estado de la cuestión
   - Gestión actual de comunicaciones con la administración
   - DEHú/LEMA como infraestructura de administración electrónica
