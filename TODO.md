@@ -16,6 +16,7 @@ ER del sistema propio revisado a fondo y aprobado por la tutora de empresa en su
 - [ ] **Revisar con alguien del equipo (no confirmado)**: la decisión de que sea `AgenteIAClient` (infraestructura), y no `AgenteReclasificacionService` (aplicación), quien invoque `TicketingGateway` vía MCP — es una lectura literal de RF-10.4 ("el agente invoca"), razonamiento propio de esta sesión, no algo cerrado con nadie
 - [ ] Valorar extraer a un colaborador compartido el mecanismo "finalizar ticket original + crear uno nuevo en la cola correcta", que ahora se reconstruye por separado en tres sitios (RF-09.6, RF-10.4, RF-11.5) — deliberadamente no forzado todavía (YAGNI): son solo tres usos y RF-11.5 sigue sin cerrar como diseño técnico
 - [x] ~~Inconsistencia pendiente entre documentos (buzón)~~ — **Resuelto**: `Especificacion_Requisitos.md` y `Diagrama_Componentes.md` actualizados para quitar el buzón del alcance activo, coherente con `Diagrama_Clases.md`. RF-08.3 se retira dejando hueco en la numeración (RF-08.1, RF-08.2, RF-08.4, RF-08.5) en vez de renumerar, porque RF-08.4/RF-08.5 ya están referenciados por número desde RF-09.6, RF-10.4, RF-11.5 y varios documentos del proyecto — ver nota de numeración en RF-08 de `Especificacion_Requisitos.md`. Si se retoma el buzón, se reincorpora como RF-08.3 y como tercer destino de `Ejecutor / Selector de Canal` en `Diagrama_Componentes.md`, sin afectar al resto.
+- [ ] Estructura completa de la memoria (capítulos y subapartados) propuesta — ver `Estructura_Memoria.md`. Ficheros `.tex` por capítulo ya creados a partir de `main.tex`. **Pendiente de mostrarla al ponente y revisarla con él** (solo confirmó la eliminación de "Análisis de antecedentes" y el enfoque de "Estado de la cuestión", no el resto de la organización).
 - [ ] Diseño de interfaz RF-09.2 (documento como vista principal, texto extraído como panel auxiliar)
 - [ ] Decidir alcance del diagnóstico sistemático de errores de clasificación
 - [ ] Definir rol de "consulta" en `USUARIO` (departamento consultando sus propios tickets desde el frontal propio) — bloqueado hasta hablar con el responsable de IT/Seguridad (ver preguntas pendientes)
@@ -25,6 +26,10 @@ ER del sistema propio revisado a fondo y aprobado por la tutora de empresa en su
 - [ ] **Antes de hacer público el repo del TFM**: revisar que `Estado_Tecnico_Ticketing.md` (y cualquier fragmento de código real de Ticketing) no esté incluido — es información propietaria de MGS, no publicable sin autorización
 
 ## Preguntas pendientes para compañeros
+
+**Para el ponente:**
+- [ ] ¿"Informe de sostenibilidad" (capítulo "Gestión del proyecto y planificación del trabajo") se solapa o debe fusionarse con "Análisis de sostenibilidad e implicaciones éticas" (capítulo propio)? El primero es un requisito normativo de la FIB basado en una matriz de sostenibilidad (ambiental/económica/social, con preguntas ya respondidas parcialmente en GEP); el segundo es más abierto (ética del uso de IA, privacidad, impacto laboral). Hay solape parcial porque la matriz FIB también toca cuestiones éticas dentro de la dimensión social.
+- [ ] (no bloqueante) Desarrollo exacto de las siglas "SE"/"PRO" de los entornos de LEMA — no confirmado contra ninguna fuente encontrada; se puede usar tal cual ("entorno de pruebas (SE)", "producción (PRO)") en la memoria sin expandir la sigla si no se confirma.
 
 **Para el responsable de Ticketing:**
 - [ ] Capacidades reales de audiencia back (API de modificación de tickets, RF-11.4/11.5)
