@@ -14,7 +14,7 @@
 
 ## 1.1 Aclaración: Mi Carpeta Ciudadana vs. LEMA
 
-Actualmente los usuarios de MGS acceden **manualmente** a las notificaciones a través de la interfaz web de **Mi Carpeta Ciudadana** (la vía de acceso para persona física/jurídica dentro del Punto Único DEHú). El proyecto automatiza ese acceso manual sustituyéndolo por los **servicios web LEMA** (la vía para Grandes Destinatarios del mismo Punto Único). No son sistemas distintos: son dos formas de acceso al mismo DEHú. Todo el diseño ya realizado (especificación, diagramas, casos de uso, certificado solicitado al responsable de IT/Seguridad) sigue siendo correcto y aplica sobre LEMA.
+Actualmente los usuarios de MGS acceden **manualmente** a las notificaciones a través de la interfaz web de **Mi Carpeta Ciudadana** (la vía de acceso para persona física/jurídica dentro del Punto Único DEHú). El proyecto automatiza ese acceso manual sustituyéndolo por los **servicios web LEMA** (la vía para Grandes Destinatarios del mismo Punto Único). No son sistemas distintos: son dos formas de acceso al mismo DEHú. Todo el diseño ya realizado (especificación, diagramas, casos de uso, certificado solicitado al responsable de IT/Seguridad) sigue siendo correcto y aplica sobre LEMA. Confirmado por Seguridad Informática: certificado de producción ya existe; el de pruebas lo generará Sistemas; gestión (contratación/custodia/renovación) es competencia de Seguridad Informática.
 
 ## 1.2 Nombre del proyecto
 
