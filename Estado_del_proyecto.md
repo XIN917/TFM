@@ -25,7 +25,8 @@ Actualmente los usuarios de MGS acceden **manualmente** a las notificaciones a t
 
 - **Repositorio GIT**: Nombre `HV/HVOrganismosPublicos`. Permisos: Lectura/Escritura para todo Desarrollo.
 - **Base de datos**: Nombre `HV_OrganismosPublicos`. Entorno: DESA y PROD. Usuario Predeterminado: SQLPortal. ¿Requiere tamaño extra?: Sí (la aplicación va a almacenar documentos).
-- **Pendiente**: Grupos de Acceso (`GGBD_<Servidor>_HV_OrganismosPublicos_(r, r/w)`) — falta confirmar el nombre del servidor. Ver `TODO.md`.
+- **Estado**: repositorio GIT y BBDD ya creados — confirmado por Nico Lago (Soporte Datacenter, Altia), 10/09/2026.
+
 
 ## 2. Documentos del proyecto
 
