@@ -6,7 +6,7 @@ Cinco flujos independientes (cada uno con su propio inicio/fin, sin referencias 
 
 ## 1. Sistema (automático) — Detección, sondeo y clasificación
 
-Sondeo periódico de `localiza()`, iteración sobre la lista, obtención de documento/anexos/acuse, OCR, interpretación y clasificación. Termina registrando la comunicación (cola de revisión pendiente si confianza baja; historial de procesadas si confianza alta).
+Sondeo periódico de `localiza()`, iteración sobre la lista, obtención de documento/anexos/acuse, OCR **del documento principal**, interpretación y clasificación. Termina registrando la comunicación (cola de revisión pendiente si confianza baja; historial de procesadas si confianza alta).
 
 ```mermaid
 %%{init: {"flowchart": {"wrappingWidth": 600}}}%%
@@ -22,7 +22,7 @@ flowchart TD
         aAnexos["Consultar anexos por referencia (consultaAnexos())"]
         aAcuse["Consultar acuse (consultaAcusePdf())"]
         a3["Almacenar documento principal, anexos y acuse"]
-        a4["Extraer texto (OCR)"]
+        a4["Extraer texto del documento principal (OCR)"]
         a5["Interpretar contenido"]
         a6["Clasificar comunicación"]
         decLoop{"¿Quedan más en la lista?"}
