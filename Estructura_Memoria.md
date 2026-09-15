@@ -30,6 +30,8 @@ del trabajo**. Se recomienda la estructura siguiente:
 
 ## Estructura propia definida
 
+Borradores de cada capítulo: carpeta [`memoria/`](memoria/), un fichero por capítulo (no por subapartado). El `.tex` puede esperar a tener la plantilla de la FIB.
+
 - Introducción
   - Contexto
   - Motivación
@@ -54,7 +56,6 @@ del trabajo**. Se recomienda la estructura siguiente:
   - Modelo de datos
   - Arquitectura de componentes
   - Diseño de clases y patrones aplicados
-  - Diagramas de flujo
   - Alcance y límites del diseño
 - Desarrollo de la solución
   - Stack tecnológico

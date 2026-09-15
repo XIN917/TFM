@@ -2,7 +2,7 @@
 
 *Vista de contexto del sistema: qué entidades rodean la plataforma y qué intercambian con ella, sin entrar en componentes internos (para el detalle interno, ver [Diagrama de componentes](Diagrama_Componentes.md)). Se muestran dos situaciones: la actual (acceso manual) y la futura (con el sistema automatizado + IA).*
 
-`Propuesta de proyecto.md` describe la situación actual de forma genérica ("buzones y sedes electrónicas de organismos públicos"); **Mi Carpeta Ciudadana** es la fuente concreta a la que hoy se accede: es el área personal dentro de DEHú (Dirección Electrónica Habilitada única, el punto único del Estado para notificaciones de cualquier organismo), pensada para acceso manual puntual de un particular — la alternativa para grandes destinatarios como MGS son los servicios web LEMA, que sustituirán este acceso manual por uno automatizado (ver `Estado_del_proyecto.md`, sección 1.1).
+`Propuesta de proyecto.md` describe la situación actual de forma genérica ("buzones y sedes electrónicas de organismos públicos"); **Mi Carpeta Ciudadana** es la fuente concreta a la que hoy se accede: es el área personal dentro de DEHú (Dirección Electrónica Habilitada única, el punto único del Estado para notificaciones de cualquier organismo), pensada para acceso manual puntual de un particular — la alternativa para grandes destinatarios como MGS son los servicios web LEMA, que sustituirán este acceso manual por uno automatizado (ver `Estado_del_proyecto.md`, sección 1).
 
 **Objetivo concreto**: sustituir el acceso manual y periódico de cada departamento a Mi Carpeta Ciudadana por un acceso automatizado (LEMA) que clasifica cada comunicación con IA y la deriva directamente al departamento correspondiente vía ticket, sin que nadie tenga que revisar el listado completo.
 
@@ -64,7 +64,7 @@ end note
 
 ![Diagrama de contexto - situación futura](img/diagrama_contexto.png)
 
-El sistema se interpone entre Mi Carpeta Ciudadana y la Empresa MGS: consulta las comunicaciones automáticamente (vía LEMA), las clasifica con IA y deriva a cada departamento solo lo que le corresponde, creando un ticket en el Sistema de Ticketing (canal principal, ver `Estado_del_proyecto.md` sección 4). El Operador gestiona la cola de revisión humana para los casos de baja confianza.
+El sistema se interpone entre Mi Carpeta Ciudadana y la Empresa MGS: consulta las comunicaciones automáticamente (vía LEMA), las clasifica con IA y deriva a cada departamento solo lo que le corresponde, creando un ticket en el Sistema de Ticketing (canal principal, ver `Estado_del_proyecto.md` sección 3). El Operador gestiona la cola de revisión humana para los casos de baja confianza.
 
 ### Elementos
 

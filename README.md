@@ -19,7 +19,15 @@ final.
 | [Estado_del_proyecto.md](Estado_del_proyecto.md) | Estado actual, contexto y decisiones cerradas |
 | [TODO.md](TODO.md) | Tareas pendientes y preguntas abiertas |
 | [Referencias.md](Referencias.md) | Listado de referencias utilizadas |
-| [Estructura_Memoria.md](Estructura_Memoria.md) | Estructura orientativa de la memoria final del TFM |
+| [Estructura_Memoria.md](Estructura_Memoria.md) | Estructura de la memoria final del TFM |
+
+### Memoria ([`memoria/`](memoria/))
+
+Borradores de la memoria, un fichero por capítulo. Los documentos de análisis (requisitos, diagramas, TODO) se quedan en la raíz.
+
+| Documento | Descripción |
+|---|---|
+| [01_Introduccion.md](memoria/01_Introduccion.md) | Capítulo Introducción |
 
 ### Diagramas ([`Diagramas/`](Diagramas/))
 

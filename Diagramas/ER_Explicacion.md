@@ -10,6 +10,7 @@
 erDiagram
   COMUNICACION ||--o{ DOCUMENTO : contiene
   COMUNICACION ||--o| INTERPRETACION : produce
+  INTERPRETACION ||--o| TEXTOEXTRAIDO : almacena_texto_en
   COMUNICACION ||--o{ CLASIFICACION : acumula
   COMUNICACION ||--o{ DERIVACION : dispara
   COMUNICACION ||--o{ REVISION : puede_escalar_a
@@ -41,11 +42,16 @@ erDiagram
   INTERPRETACION {
     uuid id PK
     uuid comunicacion_id FK
-    text textoExtraido
     string tipoDetectado
     json entidadesExtraidas
     float scoreConfianza
     datetime fechaProcesado
+  }
+  TEXTOEXTRAIDO {
+    uuid id PK
+    uuid interpretacion_id FK
+    text textoExtraido
+    datetime fechaCreacion
   }
   CLASIFICACION {
     uuid id PK
@@ -118,6 +124,7 @@ Cada fila representa **un envío recibido de DEHú** (notificación o comunicaci
 ```
 COMUNICACION 1───N DOCUMENTO
 COMUNICACION 1───1 INTERPRETACION    (opcional)
+INTERPRETACION 1───1 TEXTOEXTRAIDO   (opcional)
 COMUNICACION 1───N CLASIFICACION
 COMUNICACION 1───N DERIVACION
 COMUNICACION 1───N REVISION          (opcional)
@@ -126,20 +133,26 @@ DEPARTAMENTO 1───N CLASIFICACION
 DEPARTAMENTO 1───N DERIVACION
 ```
 
-`(opcional)` marca las relaciones donde no toda `COMUNICACION` tiene necesariamente una fila asociada — `INTERPRETACION` solo existe tras el procesamiento IA; `REVISION` solo existe si la comunicación escaló a revisión humana, y puede tener más de una fila si la comunicación escala a revisión en más de una ocasión (p. ej. una reclasificación posterior vuelve a caer por debajo del umbral).
+`(opcional)` marca las relaciones donde no toda `COMUNICACION` tiene necesariamente una fila asociada — `INTERPRETACION` solo existe tras el procesamiento IA; `TEXTOEXTRAIDO` solo existe mientras no haya expirado su periodo de retención (ver más abajo); `REVISION` solo existe si la comunicación escaló a revisión humana, y puede tener más de una fila si la comunicación escala a revisión en más de una ocasión (p. ej. una reclasificación posterior vuelve a caer por debajo del umbral).
 
 ## Relaciones desde `COMUNICACION`
 
 ### `DOCUMENTO` (1:N)
 
-Una comunicación puede tener varios documentos: el principal, cada anexo, y el acuse — todos en la misma tabla, distinguidos por `tipo`.
+Una comunicación puede tener varios documentos: el principal, cada anexo, y el acuse — todos en la misma tabla, distinguidos por `tipo`. Solo el documento principal pasa por el pipeline de IA (RF-03); anexos y acuse se archivan pero no se procesan (ver `INTERPRETACION`).
 
 - `hashSha256` — verifica integridad (RF-02.4), comparando contra el hash que devuelve DEHú
 - `csvResguardo` — código de justificante que devuelve `peticionAcceso()` junto al documento principal; hay que poder reenviarlo si algún día se necesita volver a pedir el acuse por esa vía (`consultaAcusePdf()` con tipo `csvResguardo`)
 
 ### `INTERPRETACION` (1:1 opcional)
 
-Resultado de OCR + LLM (RF-03/RF-04): texto extraído, tipo detectado, entidades, score de confianza. Es opcional porque hasta que no se procesa, la comunicación no tiene interpretación todavía.
+Resultado de OCR + LLM sobre el **documento principal** (RF-03/RF-04): tipo detectado, entidades, score de confianza. Es opcional porque hasta que no se procesa, la comunicación no tiene interpretación todavía. El texto extraído en sí no vive aquí — ver `TEXTOEXTRAIDO`.
+
+### `TEXTOEXTRAIDO` (1:1 opcional, desde `INTERPRETACION`)
+
+Texto extraído del documento principal, separado de `INTERPRETACION` a propósito: es el campo más pesado y el menos consultado en el día a día (listados, dashboard), así que aislarlo evita penalizar esas consultas frecuentes. Se enlaza por `interpretacion_id` (no por `comunicacion_id` directamente) para mantener la jerarquía `COMUNICACION → INTERPRETACION → TEXTOEXTRAIDO` y no duplicar la relación con `COMUNICACION` en dos sitios.
+
+Sujeto a una política de retención: se purga pasado un periodo definido por **parámetro global configurable** (no hardcodeado). El valor concreto se fijará tras contrastarlo con los compañeros.
 
 ### `CLASIFICACION` (1:N)
 
@@ -151,10 +164,10 @@ Historial completo de decisiones de clasificación — no se sobrescribe, se acu
 
 ### `DERIVACION` (1:N)
 
-El resultado de RF-08: cada vez que se ejecuta una acción real hacia un departamento (crear ticket, enviar email), queda una fila aquí.
+El resultado de RF-08: cada vez que se ejecuta una acción real hacia un departamento (crear ticket, enviar email, depositar en buzón), queda una fila aquí.
 
 - `departamento` (FK) — a qué departamento se derivó
-- `esReclasificacion` + `ticketRelacionadoId` — cubren el caso confirmado con el responsable de Ticketing: Ticketing no permite cambiar de cola, así que una reclasificación finaliza el ticket original y crea uno nuevo, enlazados por este campo nativo de la API
+- `esReclasificacion` + `ticketRelacionadoId` — cubren el caso confirmado con Dani: Ticketing no permite cambiar de cola, así que una reclasificación finaliza el ticket original y crea uno nuevo, enlazados por este campo nativo de la API
 
 ### `REVISION` (1:N opcional)
 
@@ -176,7 +189,7 @@ Catálogo/diccionario, no cuelga directamente de `COMUNICACION` — se referenci
 |---|---|
 | `id`, `nombre` | Identidad del departamento |
 | `colaDestino` | Cola de Ticketing asociada, cuando el canal es ticket |
-| `permiteEmail` | Si el email está habilitado como canal (alternativa configurable o contingencia) para este departamento — RF-08.2 |
+| `permiteEmail` | Si el email está habilitado como canal (normal o de contingencia) para este departamento — RF-08.2 |
 | `activo` | Si el departamento sigue operativo |
 
 ### `USUARIO`

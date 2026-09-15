@@ -1,94 +1,74 @@
 # Estado del proyecto — TFM Automatización DEHú (MGS)
 
-*Resumen de contexto y decisiones cerradas. Para tareas pendientes y preguntas abiertas, ver `TODO.md`.*
+Resumen vivo. Pendientes y preguntas: `TODO.md`. Índice de documentos: `README.md`.
 
 ---
 
-## 1. Contexto del proyecto
+## 1. Contexto
 
-- **Proyecto**: automatización de la recepción y procesamiento de comunicaciones de la administración pública (DEHú/LEMA) para MGS Seguros, con IA (OCR + LLM) para interpretar, clasificar y generar tickets/notificaciones, integrado con el sistema interno de Ticketing.
-- **Tutora de empresa (mentora en MGS Seguros)**: revisa el diseño (casos de uso, requisitos, diagramas UML).
-- **Ponente de la universidad**: supervisa el TFM desde el lado académico.
-- **Manager de empresa**: directrices funcionales/negocio.
-- **Responsable de Ticketing**: gestiona el sistema de Ticketing internamente.
+Automatizar la recepción y tramitación de comunicaciones de la administración pública (DEHú/LEMA) en MGS Seguros: IA (OCR + LLM) para interpretar y clasificar, derivación al Ticketing interno.
 
-## 1.1 Aclaración: Mi Carpeta Ciudadana vs. LEMA
+Hoy el acceso es **manual** vía Mi Carpeta Ciudadana. El proyecto lo sustituye por **LEMA** (Grandes Destinatarios). Mismo DEHú, distinta vía. Seguridad Informática confirma: certificado de producción ya existe; el de pruebas lo genera Sistemas; contratación/custodia/renovación es de Seguridad.
 
-Actualmente los usuarios de MGS acceden **manualmente** a las notificaciones a través de la interfaz web de **Mi Carpeta Ciudadana** (la vía de acceso para persona física/jurídica dentro del Punto Único DEHú). El proyecto automatiza ese acceso manual sustituyéndolo por los **servicios web LEMA** (la vía para Grandes Destinatarios del mismo Punto Único). No son sistemas distintos: son dos formas de acceso al mismo DEHú. Todo el diseño ya realizado (especificación, diagramas, casos de uso, certificado solicitado al responsable de IT/Seguridad) sigue siendo correcto y aplica sobre LEMA. Confirmado por Seguridad Informática: certificado de producción ya existe; el de pruebas lo generará Sistemas; gestión (contratación/custodia/renovación) es competencia de Seguridad Informática.
+| Rol | Función |
+|---|---|
+| Tutora de empresa | Revisa diseño (casos de uso, requisitos, UML) |
+| Ponente | Supervisión académica |
+| Manager de empresa | Directrices de negocio |
+| Responsable de Ticketing | Sistema interno de tickets |
 
-## 1.2 Nombre del proyecto
+**Nombre:** `HVOrganismosPublicos`. `HV` es el prefijo del área de aplicativos de Consulta. `OrganismosPublicos` se eligió a propósito más amplio que Carpeta Ciudadana/DEHú: el sistema podría, más adelante, cubrir consultas a otros organismos públicos y avisar al departamento que deba gestionarlas. Es una dirección de naming, no un cambio de alcance: el MVP sigue siendo DEHú/LEMA (ver `Especificacion_Requisitos.md`, sección 5). Para la memoria: justificar el nombre en gestión del proyecto o en decisiones técnicas, dejando claro que no dilata el MVP.
 
-- Nombre confirmado: **HVOrganismosPublicos**. **HV** = prefijo del área de aplicativos de Consulta.
-- **"OrganismosPublicos"**: elegido para no acotar el alcance únicamente a Carpeta Ciudadana/DEHú — potencialmente ampliable a otros organismos públicos donde se realizan consultas de información, para alertar al departamento correspondiente de su gestión. Nota de dirección futura del naming, no cambia el alcance del MVP actual (ver `Especificacion_Requisitos.md`, sección 5).
+**Infraestructura** (Soporte Datacenter / Altia, 10/09/2026): GIT `HV/HVOrganismosPublicos` (R/W Desarrollo); BBDD `HV_OrganismosPublicos` (DESA y PROD, SQLPortal, tamaño extra por documentos). Pendiente de grupos de acceso.
 
-## 1.3 Petición de repositorio GIT y BBDD
+**Confidencialidad:** `Estado_Tecnico_Ticketing.md` y `Analisis_Frontend_AYTicketing.md` son internos de MGS. Fuera del repo; no republicar fragmentos de código real de Ticketing.
 
-- **Repositorio GIT**: Nombre `HV/HVOrganismosPublicos`. Permisos: Lectura/Escritura para todo Desarrollo.
-- **Base de datos**: Nombre `HV_OrganismosPublicos`. Entorno: DESA y PROD. Usuario Predeterminado: SQLPortal. ¿Requiere tamaño extra?: Sí (la aplicación va a almacenar documentos).
-- **Estado**: repositorio GIT y BBDD ya creados — confirmado por Nico Lago (Soporte Datacenter, Altia), 10/09/2026.
+## 2. Dónde está el trabajo
 
+Análisis y diseño del MVP cerrados en lo esencial (ER aprobado por la tutora de empresa). Redacción de memoria empezada: `memoria/01_Introduccion.md`.
 
-## 2. Documentos del proyecto
+| Artefacto | Dónde |
+|---|---|
+| Requisitos RF-01–RF-11 | `Especificacion_Requisitos.md` |
+| Casos de uso | `Diagramas/Casos_de_Uso.md` |
+| Flujos | `Diagramas/Diagramas_de_flujo.md` |
+| ER | `Diagramas/ER_Explicacion.md` |
+| Clases (RF-08, 09, 10, 11.4, 11.5) y patrones | `Diagramas/Diagrama_Clases.md` |
+| Componentes | `Diagramas/Diagrama_Componentes.md` |
+| Gantt | `Diagramas/Gantt.md` |
+| Estructura de la memoria | `Estructura_Memoria.md` |
 
-Índice completo y descripción de cada documento: ver [`README.md`](README.md).
+RF-11.5 (cambio de departamento) está diagramada como propuesta de alto nivel, no como diseño técnico cerrado: depende de la API «audiencia back» de Ticketing. El diagrama de secuencia de RF-10 se descartó: el flujo ya está en `Diagramas_de_flujo.md` y la invocación MCP en `Diagrama_Clases.md`.
 
-⚠️ `Estado_Tecnico_Ticketing.md` (análisis de arquitectura del sistema interno de Ticketing de MGS) y `Analisis_Frontend_AYTicketing.md` (análisis del frontend de ese mismo sistema) son información propietaria de la empresa y **no deben incluirse** ahora que el repositorio del TFM es público — no aparecen en el índice del README por ese motivo; se guardan fuera del repo, junto al resto de notas internas.
+## 3. Decisiones cerradas
 
-## 3. Hechos técnicos clave (guía LEMA)
+- Actores de caso de uso: solo entidades externas (DEHú/LEMA, Operador, Departamento). El certificado es arquitectura, no caso de uso.
+- Canal obligatorio del MVP: ticket. Email (RF-08.2) deseable, no bloqueante (director de empresa). Buzón interno (RF-08.3) fuera del alcance activo; se deja el hueco de numeración.
+- Ticketing no transfiere de cola → reclasificar es finalizar + crear. Confirmado en OpenAPI (`PATCH /tickets/{id}` no toca `cola`). Enlace con `ticketRelacionado`.
+- RF-11: edición in-place si no cambia el departamento; finalizar + crear si cambia.
+- Reclasificación restringida a administrador. No se renombra «Aceptar clasificación propuesta». «Asignar a departamento» no replica la separación ticket/email de «Modificar»: es automático, no una decisión del actor.
+- RF-10 cerrado a nivel de diseño: cancelación → Agente IA (umbral) → autocorrección MCP o escalado humano. MCP acotado a esa acción. Ticketing no expone webhook: el cambio de estado sale por outbox interno. Falta quién lo consume (ver `TODO.md`).
+- RF-11.2/11.3: editable o no según si ya hay `DERIVACION`, no según `tipoEnvio` de DEHú.
+- RF-03: OCR/LLM solo del documento principal. Anexo y acuse se archivan (RF-02) pero no entran al pipeline de IA (KISS; por confirmar con compañeros).
+- `TEXTOEXTRAIDO` tabla 1:1 opcional de `INTERPRETACION` (sugerencia de Judit). Retención por parámetro global; el valor lo decides tú tras hablarlo con los compañeros. Sin retención permanente para entrenamiento en el MVP.
+- ER: tablas renombradas; `USUARIO` con clave compartida a `PERSONA`; sin tabla `EVENTO` (trazabilidad e idempotencia con `CLASIFICACION` + `DERIVACION`).
+- Aprendizaje continuo del Agente IA y diagnóstico sistemático de errores: evolución futura, no diseño cerrado.
 
-Ver `Especificacion_Requisitos.md`, sección 0 (Notas de anclaje técnico) — protocolo SOAP/WS-Security, familias de servicios, restricción de 1 día, límite de peticiones, onboarding.
+## 4. Arquitectura (resumen)
 
-## 4. Decisiones de diseño cerradas
+Detalle en `Diagrama_Clases.md` y `Diagrama_Componentes.md`.
 
-- Actores del caso de uso: solo entidades externas (DEHú/LEMA, Usuario/Operador, Departamento).
-- Certificado electrónico: arquitectura/autenticación, no caso de uso.
-- Ticket como único canal obligatorio del MVP; email (RF-08.2) confirmado por el director de empresa como deseable, no bloqueante para el cierre del MVP — independientemente de si el ticket es alcanzable o no en un caso concreto. Ver `Especificacion_Requisitos.md`, nota de diseño en RF-08.
-- Reclasificación: el Ticketing no soporta transferir de cola → finalizar ticket + crear uno nuevo (RF-08.5). Confirmado con el OpenAPI real: `PATCH /tickets/{id}` no permite modificar `cola`.
-- RF-11: edición in-place si no cambia el departamento; finalizar+crear si cambia. Se usa el campo nativo `ticketRelacionado` de la API para enlazar tickets.
-- "Asignar a departamento" no requiere la misma separación ticket/email que "Modificar" (es un mecanismo automático, no una decisión activa del actor).
-- "Aceptar clasificación propuesta": no se renombra.
-- Reclasificación restringida a rol de administrador: confirmado que aplica.
-- RF-10 (Agente IA de reclasificación automática): diseñado y cerrado — evento de cancelación → Agente IA evalúa con umbral de confianza → autocorrección vía MCP o escalado a revisión humana. MCP acotado a esta única acción.
-- **RF-10.1 (mecanismo de detección de cancelación de ticket) resuelto mediante análisis interno del sistema de Ticketing** (documento no publicable, información propietaria de MGS, ver `Estado_Tecnico_Ticketing.md`): Ticketing no expone webhook saliente ni cola de mensajes; el cambio de estado de un ticket se propaga mediante un mecanismo de persistencia interno (patrón outbox), no una notificación de red directa. Sigue pendiente confirmar con el responsable de Ticketing quién consume esa información y cómo llega al ecosistema de eventos corporativo/n8n — no bloqueante para el diseño de alto nivel (ver `TODO.md`).
-- Aprendizaje continuo del Agente IA a partir del feedback humano: dirección de evolución del proyecto, ya anotada en RF-09; mecanismo técnico por definir.
-- Diagnóstico sistemático de errores de clasificación: idea a explorar; datos ya contemplados en el ER (`CLASIFICACION`, `INTERPRETACION`).
-- RF-11.2/11.3: la distinción editable/no-editable ya no depende de `tipoEnvio` de DEHú (correspondencia 1/2 = notificación/comunicación no verificada contra la guía LEMA), sino de si la comunicación ya tiene una acción de derivación (`DERIVACION`) asociada.
-- ER revisado a fondo esta sesión — renombrado general de tablas, tabla `USUARIO` añadida con clave compartida a `PERSONA`; no se incluye tabla de eventos, la trazabilidad e idempotencia quedan cubiertas por `CLASIFICACION` y `DERIVACION`. Enviado a la tutora de empresa para primera revisión — aprobado.
+- **Stack alineado con Ticketing:** Java 8, Java EE 7/8 (`javax.*`), WAS 9.0, JDBC propio (sin JPA/Spring), CDI, JAX-RS. Misma convención de estereotipos (`@Repositorio`, `@Servicio`, `@Endpoint`, `@Transaccional`), sin `AggregateRoot` ni eventos de dominio CDI (los cubre RF-07 a nivel corporativo).
+- **Estilos:** orientada a eventos entre componentes (bus corporativo desacopla pipeline / ejecución / reclasificación); hexagonal por dentro de cada componente. Justificarlo explícitamente en la memoria, no dejarlo como efecto secundario de SOLID.
+- **Frontal:** subconjunto CRUD + listado + detalle + un flujo de estado, sobre librería de terceros. No replicar el acabado visual de Ticketing (vive en librerías internas, fuera de plazo).
+- **Componentes:** línea discontinua solo para lo no confirmado — modificar ticket (audiencia back) y evento de cancelación (proceso que lee el outbox).
 
-## 5. Planificación (Gantt)
+## 5. Planificación
 
-Planificación completa cerrada — ver `Gantt.md` (código Mermaid + períodos).
+Ver `Gantt.md`. Cinco fases: Análisis y diseño → Desarrollo → Testing → Memoria → Revisión final.
 
-**5 fases:** Análisis y Diseño → Desarrollo → Testing → Memoria → Revisión Final (esta última al final, ya que incluye la revisión de la propia memoria una vez escrita).
+Deadlines de negocio: backend/frontend antes del 25 dic; desarrollo y testing cierran el 31 dic; revisión final 4–15 ene 2027. Festivos pendientes de recalcular (ver `TODO.md`).
 
-**Desarrollo:** Infraestructura → Pipeline → Motor IA (OCR + clasificación) → Integración con Ticketing → Gestión de derivaciones y consultas (Operador) [Backend + Frontend en paralelo] → Despliegue continuo a producción (en paralelo, desde que el Pipeline está listo).
+## 6. Memoria
 
-**Testing:** Pruebas en entorno SE + Validación en entorno PRO (LEMA) — sin subtarea intermedia de "integración e IA" (redundante).
-
-**Memoria (6 bloques, mapeados contra `estructura_memoria_TFM.md`):** Introducción → Gestión del proyecto y planificación → Análisis → Desarrollo → Evaluación → Conclusiones.
-
-**Deadlines de negocio:** Backend/Frontend antes del 25 dic; Desarrollo y Testing cierran ambos el 31 dic; Revisión Final en enero 2027 (4–15 ene).
-
-**Calendario:** semana laboral lunes-viernes, festivos configurados en `Gantt.md` — pendiente de recalcular fechas de tareas que los cruzan.
-
-## 6. Arquitectura de software — capas, patrones y componentes
-
-- **Stack técnico confirmado** (vía análisis del repositorio real de Ticketing, `Estado_Tecnico_Ticketing.md`): Java 8, **Java EE 7/8** (namespace `javax.*`, no Jakarta EE), IBM WebSphere Application Server traditional 9.0. Sin JPA/Hibernate — persistencia por JDBC puro con framework propio (`JdbcTemplate`/`RowMapper`). Sin Spring — inyección de dependencias con **CDI** (`@Inject`, `@Produces`). Endpoints con **JAX-RS**.
-- **Decisión de diseño**: adoptar el mismo patrón arquitectónico ya en producción en Ticketing, para consistencia y mantenibilidad — Repository (interfaz de dominio + implementación de infraestructura), Service de aplicación, Controller JAX-RS, con los mismos estereotipos CDI que usa Ticketing (`@Repositorio`, `@Servicio`, `@Endpoint`, `@Transaccional`).
-- **Versión simplificada respecto al DDD táctico completo de Ticketing**: sin `<<AggregateRoot>>` formal ni eventos de dominio CDI — el rol de estos últimos ya lo cubre RF-07 (evento de comunicación clasificada) a nivel de arquitectura de eventos corporativa, así que añadirlos aquí sería redundante. Decisión tomada explícitamente para evitar sobre-ingeniería dado el alcance y calendario del TFM.
-- **Diagrama de clases en capas** (`modelo`/`aplicacion`/`infraestructura`/`api`) — ya extendido a cinco rebanadas verticales: RF-09 (aceptar/reclasificar, cerrada con revisión previa), RF-08 (ejecución de la acción resultante), RF-10 (reclasificación automática vía Agente IA), RF-11.4 (modificación in-place) y RF-11.5 (cambio de departamento, finalizar+crear) — ver `Diagrama_Clases.md`. RF-11.5 se diagrama como propuesta de alto nivel, no como diseño técnico cerrado, condicionada a la API "audiencia back" de Ticketing. El diagrama incluye también una sección de patrones de diseño aplicados (GoF/PoEAA: Strategy, Adapter, Gateway, Repository).
-- **Corrección DIP aplicada**: `TicketingGateway` y `LemaGateway` añadidas como interfaces de dominio (junto a `ComunicacionRepository`), implementadas por `TicketingClient`/`LemaClient` en infraestructura — antes los Services dependían directamente de las clases concretas, inconsistente con el tratamiento ya dado al Repository.
-- **Análisis de cumplimiento SOLID/GRASP actualizado y consolidado** en `Diagrama_Clases.md`, con ejemplos concretos del propio dominio en las cuatro rebanadas. OCP y Polymorphism, marcados como pendientes tras la rebanada RF-09 (sin caso real que los demostrara), quedan **demostrados en la rebanada RF-08**: `NotificacionGateway` (interfaz común para los canales soportados — ticket y email) con selección de implementación en tiempo de ejecución vía `NotificacionGatewayResolver` (GRASP Pure Fabrication) — añadir un canal de notificación nuevo no requiere tocar el Service ni el Resolver.
-- **Diagrama de arquitectura de componentes cerrado** (`Diagrama_Componentes.md`, código PlantUML) — vista de sistema completo en cuatro bloques: Pipeline de Ingesta y Clasificación (RF-01–RF-07, orquestado por n8n), Ejecución de Acciones (RF-08), Reclasificación Automática (RF-10, Agente IA), y Gestión y Revisión (RF-09/RF-11, frontal + API REST + BD). Decisión clave reflejada: el desacople Pipeline/Ejecución vía el Bus de Eventos Corporativo es un principio de diseño explícito (RNF escalabilidad), no un detalle incidental. El diagrama usa línea discontinua exclusivamente para las dos dependencias aún no confirmadas del lado externo: la modificación de tickets desde la API (RF-11.4/11.5, pendiente de la API "audiencia back" de Ticketing) y el evento de cancelación de Ticketing hacia el Bus de Eventos Corporativo (RF-10.1, pendiente de identificar el proceso intermedio que lee el outbox de Ticketing — ver punto anterior).
-- **Aclaración sobre el tipo de arquitectura**: no fue una arquitectura elegida a priori, sino el resultado de aplicar principios de diseño (SOLID, especialmente DIP) sobre el patrón ya usado en Ticketing. En retrospectiva, el resultado se corresponde con una combinación de dos estilos en niveles distintos de granularidad: a nivel de componentes/sistema es **arquitectura orientada a eventos** (Bus de Eventos Corporativo desacoplando Pipeline/Ejecución/Reclasificación automática); a nivel interno de cada componente (el cubierto por `Diagrama_Clases.md`) el resultado equivale a **arquitectura hexagonal / Ports and Adapters** (modelo = dominio + puertos, infraestructura = adaptadores secundarios, api = adaptadores primarios). Discutido con un compañero (feedback: elegir la arquitectura conscientemente es importante porque cada una tiene ventajas/inconvenientes propios) — pendiente de formalizar esta justificación explícitamente en la memoria en vez de dejarla como una consecuencia implícita de aplicar SOLID.
-- **Nota de confidencialidad**: `Estado_Tecnico_Ticketing.md` contiene fragmentos de código real y detalles de arquitectura del sistema de Ticketing de MGS — información propietaria de la empresa. No debe publicarse si el repositorio del TFM se hace público (ver `TODO.md`). El repositorio del TFM ya es público; se revisó que `TODO.md` no contuviera identificadores propios del código de Ticketing (nombres de clases/tablas reales) y se sanitizó la entrada correspondiente a RF-10.1 dejando solo la conclusión general.
-- **Análisis del frontend real de Ticketing** (documento no publicable, información propietaria de MGS, ver `Analisis_Frontend_AYTicketing.md`, fuera del repo): SPA moderna con TypeScript, servida como estáticos dentro del mismo WAR/EAR de WebSphere; el backend Java solo autentica y sirve ficheros. La mayor parte del acabado visual y funcional avanzado (listados con múltiples vistas, filtros con plantillas guardadas, panel contextual, sistema de diseño y accesibilidad) no vive en esa app, sino en librerías de componentes internas de la compañía — no es replicable en el plazo del TFM y no debe usarse como referencia de esfuerzo. **Decisión**: el frontal del TFM apunta a un subconjunto funcional (CRUD + listado + detalle + un flujo de estado tipo workflow) sobre una librería de componentes de terceros ya existente, no a igualar el acabado visual completo de Ticketing.
-
-## 7. Estructura de la memoria
-
-- Estructura completa de capítulos y subapartados propuesta — ver `Estructura_Memoria.md`, sección "Estructura propia definida". **Pendiente de revisión por el ponente**: solo se ha confirmado con él la eliminación de "Análisis de antecedentes" y el enfoque de "Estado de la cuestión" (ver puntos siguientes); el resto de la organización (orden de capítulos, subapartados concretos) es una propuesta propia todavía sin mostrar.
-- Confirmado con el ponente: se elimina "Análisis de antecedentes" como apartado propio de "Gestión del proyecto" (se solapa con "Estado de la cuestión"; su contenido queda absorbido ahí).
-- Confirmado con el ponente: "Estado de la cuestión" debe cubrir explícitamente la búsqueda de soluciones existentes y, si no las hay, soluciones análogas.
-- Propuesta propia (sin revisar aún): capítulo "Especificación y diseño de la solución" reordenado — Requisitos (dividido en subapartados de funcionales/no funcionales) antes de Casos de uso, y Diagramas de flujo justo después de Casos de uso; alcance del MVP en dos niveles de detalle (resumen en Objetivos dentro del capítulo de Introducción, desarrollo completo en "Alcance y límites del diseño").
-- Capítulo "Introducción" (antes "Introducción, motivación y objetivos") redefinido con tres subapartados paralelos — Contexto, Motivación, Objetivos — sin subapartado propio de Alcance; el resumen del alcance del MVP se integra como cierre del subapartado de Objetivos. Decisión propia, todavía sin revisar con el ponente, igual que el resto de la estructura.
-- Ficheros `.tex` creados por capítulo (carpeta `chapters/`), a partir de la plantilla base en `main.tex` — sujetos a ajuste si el ponente pide cambios en la estructura al revisarla.
+Estructura definida en `Estructura_Memoria.md` (sin «Análisis de antecedentes»; «Estado de la cuestión» cubre soluciones existentes o análogas). Lo que falta es enseñársela al ponente.
