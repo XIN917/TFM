@@ -58,7 +58,8 @@ RF-11.5 (cambio de departamento) está diagramada como propuesta de alto nivel, 
 
 Detalle en `Diagrama_Clases.md` y `Diagrama_Componentes.md`.
 
-- **Stack alineado con Ticketing:** Java 8, Java EE 7/8 (`javax.*`), WAS 9.0, JDBC propio (sin JPA/Spring), CDI, JAX-RS. Misma convención de estereotipos (`@Repositorio`, `@Servicio`, `@Endpoint`, `@Transaccional`), sin `AggregateRoot` ni eventos de dominio CDI (los cubre RF-07 a nivel corporativo).
+- **Módulos Eclipse:** ver `Estructura_Repositorio.md` (familia Ticketing; sin DAO/EJB). Incluye `Test` (JUnit para el TFM) y `FT` (Playwright).
+- **Stack alineado con Ticketing:** Java 8, **Java EE 7** (`javax.*`), **WAS 9.0**, JDBC propio (sin JPA/Spring), CDI, JAX-RS. Jakarta EE (`jakarta.*`) pendiente de confirmar con compañeros; mientras tanto no se asume. Detalle de módulos y CDI por constructor: `Estructura_Repositorio.md`. Misma convención de estereotipos (`@Repositorio`, `@Servicio`, `@Endpoint`, `@Transaccional`), sin `AggregateRoot` ni eventos de dominio CDI (los cubre RF-07 a nivel corporativo).
 - **Estilos:** orientada a eventos entre componentes (bus corporativo desacopla pipeline / ejecución / reclasificación); hexagonal por dentro de cada componente. Justificarlo explícitamente en la memoria, no dejarlo como efecto secundario de SOLID.
 - **Frontal:** subconjunto CRUD + listado + detalle + un flujo de estado, sobre librería de terceros. No replicar el acabado visual de Ticketing (vive en librerías internas, fuera de plazo).
 - **Componentes:** línea discontinua solo para lo no confirmado — modificar ticket (audiencia back) y evento de cancelación (proceso que lee el outbox).

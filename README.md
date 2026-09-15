@@ -20,6 +20,7 @@ final.
 | [TODO.md](TODO.md) | Tareas pendientes y preguntas abiertas |
 | [Referencias.md](Referencias.md) | Listado de referencias utilizadas |
 | [Estructura_Memoria.md](Estructura_Memoria.md) | Estructura de la memoria final del TFM |
+| [Estructura_Repositorio.md](Estructura_Repositorio.md) | Módulos Eclipse/WAS de HVOrganismosPublicos |
 
 ### Memoria ([`memoria/`](memoria/))
 
