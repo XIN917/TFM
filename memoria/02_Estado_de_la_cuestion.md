@@ -8,7 +8,7 @@ Este capítulo revisa el contexto en el que se inserta el proyecto: cómo se ges
 
 ## Gestión actual de comunicaciones con la administración
 
-La obligación de relacionarse electrónicamente con la Administración Pública, ya introducida en el capítulo anterior, sitúa a empresas como MGS Seguros ante una tarea recurrente y con plazos legales estrictos. El acceso manual a través de Mi Carpeta Ciudadana descrito en la Introducción no es una peculiaridad de MGS: es el punto de partida habitual de cualquier organización que empieza a recibir un volumen no trivial de notificaciones electrónicas, y sus limitaciones —carga operativa, riesgo de plazos no atendidos, dependencia de certificados digitales instalados localmente— son las mismas independientemente del sector.
+La obligación de relacionarse electrónicamente con la Administración Pública, ya introducida en el capítulo anterior, sitúa a empresas como MGS Seguros ante una tarea recurrente y con plazos legales estrictos. El acceso manual a través de Mi Carpeta Ciudadana, descrito en la Introducción, no es una peculiaridad de MGS: es el punto de partida habitual de cualquier organización que empieza a recibir un volumen no trivial de notificaciones electrónicas, y sus limitaciones —carga operativa, riesgo de plazos no atendidos, dependencia de certificados digitales instalados localmente— son las mismas independientemente del sector.
 
 **中文：** 前一章已经提到过，企业有义务与行政机关进行电子化沟通，这使得像MGS Seguros这样的企业面临一项周期性、且带有严格法律时限的任务。Introducción中描述的通过Mi Carpeta Ciudadana进行的人工访问，并非MGS独有的现象：这是任何一家开始收到一定量电子通知的企业的普遍起点，其局限性——运营负担、时限漏接的风险、依赖本地安装的数字证书——在各个行业中都是相同的。
 
