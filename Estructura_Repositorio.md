@@ -8,7 +8,7 @@ Alineado con `Estado_del_proyecto.md` §4 y `Diagramas/Diagrama_Clases.md` (`mod
 
 ## Stack (plataforma MGS)
 
-Hasta que Infra/compañeros confirmen otra cosa, el aplicativo **nace en Java EE 7 sobre WAS 9**, como Ticketing: Java 8, `javax.*`, CDI, JAX-RS, JDBC (sin JPA/Spring). **Jakarta EE** (`jakarta.*`) es más reciente; en los repos clonados no hay WAR así. Preguntado a compañeros; si no hay servidor nuevo, no se cambia este documento.
+Confirmado por Judit (sept. 2026): el aplicativo **se queda en Java EE 7 sobre WAS 9**, como Ticketing: Java 8, `javax.*`, CDI, JAX-RS, JDBC (sin JPA/Spring). **Jakarta EE** (`jakarta.*`) es más reciente; en los repos clonados no hay WAR así. Desde Desarrollo les gustaría pasar a Jakarta EE con un servidor más moderno, pero depende de Sistemas y no hay fecha. Si eso cambia, se actualiza este documento.
 
 El Agente IA / MCP **no** se implementa como servidor dentro de WAS. En Java solo hay un `AgenteIAGateway`; el agente vive fuera (n8n u otro proceso).
 
