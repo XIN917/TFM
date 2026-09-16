@@ -49,7 +49,7 @@ Estos objetivos se persiguen dentro del alcance de un Producto Mínimo Viable (M
 
 ---
 
-**Referencias citadas en este capítulo** (ver [`../Referencias.md`](../Referencias.md) para el detalle completo):
+**Referencias citadas en este capítulo** (ver [`Referencias.md`](./Referencias.md) para el detalle completo):
 
 1. Mi Carpeta Ciudadana: Mis Notificaciones (carpetaciudadana.gob.es)
 2. Guía de integración para Grandes Destinatarios (AEAD, 2026, v3.0)
