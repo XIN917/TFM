@@ -8,7 +8,9 @@ El sistema implementado aporta valor en tres pasos manuales: la detección y des
 
 ## Contexto
 
-La relación entre las empresas y la Administración Pública española se canaliza, cada vez de forma más generalizada, a través de medios electrónicos. El artículo 14.2 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas [3], obliga a las personas jurídicas a relacionarse electrónicamente con las Administraciones Públicas, y el Real Decreto 203/2021, de 30 de marzo, por el que se aprueba el Reglamento de actuación y funcionamiento del sector público por medios electrónicos [4], regula el sistema de notificaciones y comunicaciones electrónicas del que forma parte la Dirección Electrónica Habilitada única (DEHú): una plataforma que centraliza en un único buzón, por destinatario, las notificaciones de los organismos públicos que se han ido adhiriendo progresivamente a ella (miles de administraciones y organismos, en crecimiento continuo) [5].
+La relación entre las empresas y la Administración Pública española se canaliza, cada vez de forma más generalizada, a través de medios electrónicos. El artículo 14.2 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas [3], obliga a las personas jurídicas a relacionarse electrónicamente con las Administraciones Públicas.
+
+El Real Decreto 203/2021, de 30 de marzo, por el que se aprueba el Reglamento de actuación y funcionamiento del sector público por medios electrónicos [4], regula el sistema de notificaciones y comunicaciones electrónicas del que forma parte la Dirección Electrónica Habilitada única (DEHú): una plataforma que centraliza en un único buzón, por destinatario, las notificaciones de los organismos públicos que se han ido adhiriendo progresivamente a ella (miles de administraciones y organismos, en crecimiento continuo) [5].
 
 No es, sin embargo, el único canal de notificación electrónica existente en la Administración española: determinados organismos mantienen sistemas de notificación propios, independientes de DEHú.
 
