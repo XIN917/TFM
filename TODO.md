@@ -28,7 +28,6 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado_del_proyect
 - Campo `motivoResolucion` en `POST /tickets/{id}/estado` — ¿contradice lo de «sin motivo en frontend»?
 - Quién consume el outbox de cancelación y cómo llega al bus / n8n
 - ¿La creación de tickets permite deduplicar por identificador externo (el `identificador` DEHú)? Relevante para RF-08.5
-- Preferencia de stack/patrones para un sistema nuevo (replicar CDI + Repository/Gateway de Ticketing, u otra convención)
 - Canal email (RF-08.2): no bloqueante; el director lo dejó como deseable
 
 **IT / Seguridad**

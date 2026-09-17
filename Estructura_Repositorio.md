@@ -49,6 +49,8 @@ HVOrganismosPublicos/
 └── HVOrganismosPublicosFT
 ```
 
+Cada WAR desplegable lleva su EAR (`…WasEAR` o `…WebEAR`). Beans, Comun y Business son módulos utility dentro de esos EAR; Test, Migraciones, Properties, Server y FT no se despliegan.
+
 **Orden de construcción (plazo TFM):** no hace falta desplegar los cuatro EAR el primer mes.
 
 | Fase | Módulos |
