@@ -53,14 +53,14 @@ RF-11.5 (cambio de departamento) está diagramada como propuesta de alto nivel, 
 - `TEXTOEXTRAIDO` tabla 1:1 opcional de `INTERPRETACION` (sugerencia de la tutora de empresa). Retención por parámetro global; el valor se fija tras contrastarlo con las áreas. Sin retención permanente para entrenamiento en el MVP.
 - ER: tablas renombradas; `USUARIO` con clave compartida a `PERSONA`; sin tabla `EVENTO` (trazabilidad e idempotencia con `CLASIFICACION` + `DERIVACION`).
 - Aprendizaje continuo del Agente IA y diagnóstico sistemático de errores: evolución futura, no diseño cerrado.
-- **Plataforma:** Java EE 7 + WAS 9 + `javax.*` (tutora de empresa, sept. 2026). Desarrollo querría Jakarta EE + servidor más moderno; depende de Sistemas, sin fecha. HVOrganismosPublicos no nace en Jakarta. Detalle: `Estructura_Repositorio.md`.
+- **Plataforma:** Java EE 7 + WAS 9 + `javax.*` (tutora de empresa, sept. 2026). Desarrollo querría Jakarta EE + servidor más moderno; depende de Sistemas, sin fecha. HVOrganismosPublicos no nace en Jakarta. Detalle: `PRD.md`.
 
 ## 4. Arquitectura (resumen)
 
 Detalle en `Diagrama_Clases.md` y `Diagrama_Componentes.md`.
 
-- **Módulos Eclipse:** ver `Estructura_Repositorio.md` (familia Ticketing; sin DAO/EJB). Incluye `Test` (JUnit para el TFM) y `FT` (Playwright).
-- **Stack alineado con Ticketing (cerrado):** Java 8, **Java EE 7** (`javax.*`), **WAS 9.0**, JDBC propio (sin JPA/Spring), CDI, JAX-RS. Jakarta EE descartado para este aplicativo hasta que Sistemas mueva de WAS 9. Módulos y CDI por constructor: `Estructura_Repositorio.md`. Misma convención de estereotipos (`@Repositorio`, `@Servicio`, `@Endpoint`, `@Transaccional`), sin `AggregateRoot` ni eventos de dominio CDI (los cubre RF-07 a nivel corporativo).
+- **Módulos Eclipse:** ver `PRD.md` §4 (familia Ticketing; sin DAO/EJB). Incluye `Test` (JUnit para el TFM) y `FT` (Playwright).
+- **Stack alineado con Ticketing (cerrado):** Java 8, **Java EE 7** (`javax.*`), **WAS 9.0**, JDBC propio (sin JPA/Spring), CDI, JAX-RS. Jakarta EE descartado para este aplicativo hasta que Sistemas mueva de WAS 9. Módulos y CDI por constructor: `PRD.md`. Misma convención de estereotipos (`@Repositorio`, `@Servicio`, `@Endpoint`, `@Transaccional`), sin `AggregateRoot` ni eventos de dominio CDI (los cubre RF-07 a nivel corporativo).
 - **Estilos:** orientada a eventos entre componentes (bus corporativo desacopla pipeline / ejecución / reclasificación); hexagonal por dentro de cada componente. Justificarlo explícitamente en la memoria, no dejarlo como efecto secundario de SOLID.
 - **Frontal:** subconjunto CRUD + listado + detalle + un flujo de estado, sobre librería de terceros. No replicar el acabado visual de Ticketing (vive en librerías internas, fuera de plazo).
 - **Componentes:** línea discontinua solo para lo no confirmado — modificar ticket (audiencia back) y evento de cancelación (proceso que lee el outbox).

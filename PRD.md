@@ -11,7 +11,7 @@ Documento de producto e implementación del aplicativo `HVOrganismosPublicos` (M
 | Plataforma | Java 8, Java EE 7 (`javax.*`), WAS traditional 9, CDI, JAX-RS, JDBC (sin JPA/Spring/Jakarta) |
 | Familia de referencia | AYTicketing / AYCalendarios (SQL propio, hexagonal, OpenAPI v1). **No** SISiso/Personas (no hay maestro CICS → no hay módulo DAO ni EJB). |
 
-Fuentes: `Especificacion_Requisitos.md`, `Estado_del_proyecto.md`, `Estructura_Repositorio.md`, `DEHu_Campos_Respuesta_Servicios.md`, `Diagramas/*`.
+Fuentes: `Especificacion_Requisitos.md`, `Estado_del_proyecto.md`, `DEHu_Campos_Respuesta_Servicios.md`, `Diagramas/*`.
 
 ---
 
