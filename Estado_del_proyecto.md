@@ -6,7 +6,7 @@ Resumen vivo. Pendientes y preguntas: `TODO.md`. Índice de documentos: `README.
 
 ## 1. Contexto
 
-Automatizar la recepción y tramitación de comunicaciones de la administración pública (DEHú/LEMA) en MGS Seguros: IA (OCR + LLM) para interpretar y clasificar, derivación al Ticketing interno.
+Automatizar la recepción y tramitación de comunicaciones de la administración pública (DEHú/LEMA) en MGS Seguros: clasificar (metadatos LEMA primero; OCR + LLM solo si hace falta) y derivar al Ticketing interno.
 
 Hoy el acceso es **manual** vía Mi Carpeta Ciudadana. El proyecto lo sustituye por **LEMA** (Grandes Destinatarios). Mismo DEHú, distinta vía. Seguridad Informática confirma: certificado de producción ya existe; el de pruebas lo genera Sistemas; contratación/custodia/renovación es de Seguridad.
 
@@ -25,7 +25,7 @@ Hoy el acceso es **manual** vía Mi Carpeta Ciudadana. El proyecto lo sustituye 
 
 ## 2. Dónde está el trabajo
 
-Análisis y diseño del MVP cerrados en lo esencial (ER aprobado por la tutora de empresa). Redacción de memoria empezada: `memoria/01_Introduccion.md`.
+Análisis y diseño del MVP cerrados en lo esencial (ER aprobado por la tutora de empresa), salvo RF-03 (cascada de clasificación) y la política de comparecencia, pendientes del resto de áreas. Redacción de memoria empezada: `memoria/01_Introduccion.md`.
 
 | Artefacto | Dónde |
 |---|---|
@@ -49,11 +49,11 @@ RF-11.5 (cambio de departamento) está diagramada como propuesta de alto nivel, 
 - Reclasificación restringida a administrador. No se renombra «Aceptar clasificación propuesta». «Asignar a departamento» no replica la separación ticket/email de «Modificar»: es automático, no una decisión del actor.
 - RF-10 cerrado a nivel de diseño: cancelación → Agente IA (umbral) → autocorrección MCP o escalado humano. MCP acotado a esa acción. Ticketing no expone webhook: el cambio de estado sale por outbox interno. Falta quién lo consume (ver `TODO.md`).
 - RF-11.2/11.3: editable o no según si ya hay `DERIVACION`, no según `tipoEnvio` de DEHú.
-- RF-03: OCR/LLM solo del documento principal. Anexo y acuse se archivan (RF-02) pero no entran al pipeline de IA (KISS; por confirmar con compañeros).
-- `TEXTOEXTRAIDO` tabla 1:1 opcional de `INTERPRETACION` (sugerencia de Judit). Retención por parámetro global; el valor lo decides tú tras hablarlo con los compañeros. Sin retención permanente para entrenamiento en el MVP.
+- RF-03 (hipótesis de trabajo; requisitos y diagramas aún no reescritos): clasificar primero con metadatos de `localiza()` (organismo emisor + concepto). OCR/LLM del documento principal **solo si eso no basta**; anexo solo si el principal sigue ambiguo. El acuse se archiva (RF-02) y no entra al pipeline. Fiscal y DGS: con emisor + concepto cubren ~99 %; el anexo casi nunca sirve para clasificar. Confirmar con el resto de áreas (`TODO.md`). El contrato escrito sigue siendo «OCR siempre del principal».
+- `TEXTOEXTRAIDO` tabla 1:1 opcional de `INTERPRETACION` (sugerencia de la tutora de empresa). Retención por parámetro global; el valor se fija tras contrastarlo con las áreas. Sin retención permanente para entrenamiento en el MVP.
 - ER: tablas renombradas; `USUARIO` con clave compartida a `PERSONA`; sin tabla `EVENTO` (trazabilidad e idempotencia con `CLASIFICACION` + `DERIVACION`).
 - Aprendizaje continuo del Agente IA y diagnóstico sistemático de errores: evolución futura, no diseño cerrado.
-- **Plataforma:** Java EE 7 + WAS 9 + `javax.*` (Judit, sept. 2026). Desarrollo querría Jakarta EE + servidor más moderno; depende de Sistemas, sin fecha. HVOrganismosPublicos no nace en Jakarta. Detalle: `Estructura_Repositorio.md`.
+- **Plataforma:** Java EE 7 + WAS 9 + `javax.*` (tutora de empresa, sept. 2026). Desarrollo querría Jakarta EE + servidor más moderno; depende de Sistemas, sin fecha. HVOrganismosPublicos no nace en Jakarta. Detalle: `Estructura_Repositorio.md`.
 
 ## 4. Arquitectura (resumen)
 

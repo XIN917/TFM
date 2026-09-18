@@ -4,7 +4,8 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado_del_proyect
 
 ## Próximos pasos
 
-- [ ] Enseñar al ponente la estructura de la memoria (`Estructura_Memoria.md`)
+- [x] Enseñar al ponente la estructura de la memoria (`Estructura_Memoria.md`)
+- [ ] Esperar respuestas de departamentos (correos ya enviados). Guion: `_local/Preguntas_departamentos.md`
 - [ ] Decidir el periodo de retención de `TEXTOEXTRAIDO` (tras hablarlo con los compañeros)
 - [ ] Diseño de interfaz RF-09.2 (documento como vista principal, texto extraído como panel auxiliar)
 - [ ] Decidir alcance del diagnóstico sistemático de errores de clasificación
@@ -16,14 +17,18 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado_del_proyect
 
 ## Preguntas pendientes
 
-**Compañeros del departamento**
-- ¿El anexo suele aportar información para clasificar, o RF-03 puede quedarse solo con el documento principal?
+**Áreas de negocio** (Fiscal y DGS hechos; resto en espera de respuesta)
+
+- RF-03: texto de `localiza()` primero; PDF solo residual. Anexo casi nunca para clasificar (entrevista Fiscal). Confirmar con el resto de áreas.
+- Comparecencia eager (batch madrugada) vs lazy (ellas / botón HV): pendiente de que el resto de áreas confirmen si les perjudica arrancar el plazo de respuesta al comparecer.
 
 **Ponente**
-- ¿«Informe de sostenibilidad» (gestión del proyecto, matriz FIB) se fusiona o convive con «Análisis de sostenibilidad e implicaciones éticas»?
+
+- [x] «Informe de sostenibilidad» (gestión FIB) vs «Análisis de sostenibilidad e implicaciones éticas» — se omite el Informe de gestión por ahora; el capítulo ético se queda.
 - (no bloqueante) Expansión de las siglas SE/PRO de los entornos LEMA
 
 **Responsable de Ticketing**
+
 - Capacidades reales de audiencia back (RF-11.4 / RF-11.5)
 - Campo `motivoResolucion` en `POST /tickets/{id}/estado` — ¿contradice lo de «sin motivo en frontend»?
 - Quién consume el outbox de cancelación y cómo llega al bus / n8n
@@ -31,4 +36,5 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado_del_proyect
 - Canal email (RF-08.2): no bloqueante; el director lo dejó como deseable
 
 **IT / Seguridad**
+
 - ¿El Departamento consulta sus tickets desde el frontal propio? Alcance del rol `consulta` (¿limitado al propio departamento? ¿cómo se modela en `USUARIO`?)

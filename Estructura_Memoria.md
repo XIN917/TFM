@@ -43,7 +43,6 @@ Borradores de cada capítulo: carpeta [`memoria/`](memoria/), un fichero por cap
   - Posicionamiento del proyecto
 - Gestión del proyecto y planificación del trabajo
   - Planificación
-  - Informe de sostenibilidad
   - Viabilidad, análisis económico global y comparación con otras alternativas
   - Evaluación de riesgos
 - Especificación y diseño de la solución

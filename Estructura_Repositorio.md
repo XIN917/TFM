@@ -8,7 +8,7 @@ Alineado con `Estado_del_proyecto.md` §4 y `Diagramas/Diagrama_Clases.md` (`mod
 
 ## Stack (plataforma MGS)
 
-Confirmado por Judit (sept. 2026): el aplicativo **se queda en Java EE 7 sobre WAS 9**, como Ticketing: Java 8, `javax.*`, CDI, JAX-RS, JDBC (sin JPA/Spring). **Jakarta EE** (`jakarta.*`) es más reciente; en los repos clonados no hay WAR así. Desde Desarrollo les gustaría pasar a Jakarta EE con un servidor más moderno, pero depende de Sistemas y no hay fecha. Si eso cambia, se actualiza este documento.
+Confirmado por la tutora de empresa (sept. 2026): el aplicativo **se queda en Java EE 7 sobre WAS 9**, como Ticketing: Java 8, `javax.*`, CDI, JAX-RS, JDBC (sin JPA/Spring). **Jakarta EE** (`jakarta.*`) es más reciente; en los repos clonados no hay WAR así. Desde Desarrollo les gustaría pasar a Jakarta EE con un servidor más moderno, pero depende de Sistemas y no hay fecha. Si eso cambia, se actualiza este documento.
 
 El Agente IA / MCP **no** se implementa como servidor dentro de WAS. En Java solo hay un `AgenteIAGateway`; el agente vive fuera (n8n u otro proceso).
 
@@ -75,7 +75,7 @@ Cada WAR desplegable lleva su EAR (`…WasEAR` o `…WebEAR`). Beans, Comun y Bu
 | **Migraciones** | SQL | Scripts del esquema `HV_OrganismosPublicos` (ER ya cerrado). No es COBOL ni CICS. |
 | **Properties** | ficheros | `{desa\|local\|prod\|usua}#…properties` y log4j2. Van al servidor (`PATH_PROPERTIES_SERVIDOR`), no al EAR. |
 | **Server** | Jython | `wsadmin`: datasource SQLPortal, certificado LEMA. |
-| **Test** | JUnit 4 / Java 8 | Unitarios de `*Service` con Gateways mockeados. Evidencia de evaluación del TFM. |
+| **Test** | JUnit 5 (Java 8) | Unitarios de `*Service` con Gateways mockeados. Evidencia de evaluación del TFM. |
 | **FT** | Playwright | Prueba funcional E2E del Operador contra desa/usua. No sustituye a Test. |
 
 ### Tests (no confundir)
