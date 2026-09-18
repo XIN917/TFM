@@ -2,17 +2,17 @@
 
 Numeración alineada con el orden de aparición en la memoria: primero las citadas y luego las que no.
 
-1. **Más Información — Mi Carpeta Ciudadana: Mis Notificaciones** (portal oficial carpetaciudadana.gob.es; consultado el 14 de septiembre de 2026) — confirma que Mi Carpeta Ciudadana es el portal ciudadano integral (datos personales, expedientes, notificaciones, etc.) y que su sección "Mis Notificaciones" da acceso directo a DEHú; es decir, DEHú es un servicio al que se accede desde Mi Carpeta Ciudadana, y no al revés:
-   https://masinformacioncarpeta.carpetaciudadana.gob.es/infocc/en/masInformacion/mis-notificaciones
-2. **Guía de integración para Grandes Destinatarios** (documento base del análisis de servicios web LEMA):
+1. **Guía de integración para Grandes Destinatarios** (documento base del análisis de servicios web LEMA):
    https://administracionelectronica.gob.es/ctt/resources/Soluciones/2311/Descargas/DEHu-Guia%20Integracion%20para%20Gran%20Destinatario.pdf?idIniciativa=2311&idElemento=26313
    > Nota de versión: el análisis de este proyecto se basó en la **v2.1** (autor SGAD, 21/07/2025), consultada el 24 de agosto de 2026. El portal sirve actualmente la **v3.0** (autor AEAD, 11/06/2026), consultada el 9 de septiembre de 2026, que añade contenido operativo (tipologías de Gran Destinatario, ejemplos de alta, obtención de certificado en formato PEM) pero mantiene sin cambios el contrato de los servicios web (`localiza`, `peticionAcceso`, `consultaAnexos`, `consultaAcusePdf`, `localizaRealizadas`, `consultaRealizadas`) en los que se basa el diseño.
-3. **Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas** (BOE-A-2015-10565) — texto consolidado, vigente a fecha de redacción de este trabajo (consultado el 14 de septiembre de 2026). Citada por dos artículos distintos: el **artículo 14.2**, en la Introducción, sobre la obligación de las personas jurídicas, entidades sin personalidad jurídica y determinados profesionales de relacionarse electrónicamente con las Administraciones Públicas; y el **artículo 43.2**, en el Estado de la cuestión, sobre el rechazo tácito de la notificación electrónica transcurridos diez días naturales sin acceder a su contenido:
+2. **Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas** (BOE-A-2015-10565) — texto consolidado, vigente a fecha de redacción de este trabajo (consultado el 14 de septiembre de 2026). Citada por dos artículos distintos: el **artículo 14.2**, en la Introducción, sobre la obligación de las personas jurídicas, entidades sin personalidad jurídica y determinados profesionales de relacionarse electrónicamente con las Administraciones Públicas; y el **artículo 43.2**, en el Estado de la cuestión, sobre el rechazo tácito de la notificación electrónica transcurridos diez días naturales sin acceder a su contenido:
    https://www.boe.es/eli/es/l/2015/10/01/39/con
-4. **Real Decreto 203/2021, de 30 de marzo, por el que se aprueba el Reglamento de actuación y funcionamiento del sector público por medios electrónicos** (BOE-A-2021-5032) — regula el sistema de notificaciones y comunicaciones electrónicas y el Punto de Acceso General/DEHú como acceso unificado; texto consolidado (consultado el 14 de septiembre de 2026):
+3. **Real Decreto 203/2021, de 30 de marzo, por el que se aprueba el Reglamento de actuación y funcionamiento del sector público por medios electrónicos** (BOE-A-2021-5032) — regula el sistema de notificaciones y comunicaciones electrónicas y el Punto de Acceso General/DEHú como acceso unificado; texto consolidado (consultado el 14 de septiembre de 2026):
    https://www.boe.es/eli/es/rd/2021/03/30/203/con
-5. **DEHú continúa su crecimiento con la inclusión de las notificaciones de la Junta de Castilla y León** (IT User, 2023; consultado el 14 de septiembre de 2026) — evidencia de que la adhesión de Administraciones Públicas a DEHú es progresiva (13 comunidades autónomas y más de 8.500 administraciones/organismos adheridos a la fecha del artículo, con incorporación continua de las restantes), no universal desde su creación:
+4. **DEHú continúa su crecimiento con la inclusión de las notificaciones de la Junta de Castilla y León** (IT User, 2023; consultado el 14 de septiembre de 2026) — evidencia de que la adhesión de Administraciones Públicas a DEHú es progresiva (13 comunidades autónomas y más de 8.500 administraciones/organismos adheridos a la fecha del artículo, con incorporación continua de las restantes), no universal desde su creación:
    https://www.ituser.es/sociedad-digital/2023/03/dehu-continua-su-crecimiento-con-la-inclusion-de-las-notificaciones-de-la-junta-de-castilla-y-leon
+5. **Más Información — Mi Carpeta Ciudadana: Mis Notificaciones** (portal oficial carpetaciudadana.gob.es; consultado el 14 de septiembre de 2026) — confirma que Mi Carpeta Ciudadana es un portal ciudadano integral (datos personales, expedientes, notificaciones, etc.) y que su sección "Mis Notificaciones" puede abrir el buzón de DEHú. Es **otra puerta**, no la sede de DEHú ni la que usa MGS para este proceso (esa es dehu.redsara.es; ver [26]):
+   https://masinformacioncarpeta.carpetaciudadana.gob.es/infocc/en/masInformacion/mis-notificaciones
 6. **PAe — CTT — Servicio Compartido de Gestión de Notificaciones (Notifica)** — confirma que el Sistema de Notificaciones Electrónicas – Dirección Electrónica Habilitada (SNE-DEH), operado por la Fábrica Nacional de Moneda y Timbre — Real Casa de la Moneda (FNMT-RCM) al amparo de la Ley 11/2007, fue retirado el 26 de junio de 2023 en favor de la actual DEHú (página dinámica, consultada el 16 de septiembre de 2026):
    https://administracionelectronica.gob.es/ctt/notifica
 7. **Club de Innovación: Dirección Electrónica Habilitada única (DEHú)** — puesta en marcha en julio de 2020, integrando inicialmente las notificaciones del PUC Notifica, e incorporación progresiva de PUC de otras Administraciones (Canarias, Generalitat Valenciana, Xunta de Galicia, AEAT, etc.):
@@ -53,11 +53,11 @@ Numeración alineada con el orden de aparición en la memoria: primero las citad
 
 ---
 
-*Referencias todavía sin citar en la memoria:*
+*Referencias todavía sin citar en la memoria (salvo [26], citada en la Introducción):*
 
 25. **Notificaciones Telemáticas — Sede Electrónica de la Seguridad Social** — confirma que, además de DEHú y de Mi Carpeta Ciudadana, la Seguridad Social ofrece un canal adicional propio (basado en servicios web, para grandes volúmenes) independiente de DEHú, como ejemplo de organismo con canal de notificación propio fuera de DEHú:
     https://sede.seg-social.gob.es/wps/portal/sede/sede/Inicio/NotificacionesTelematicas/
 26. **Mi Carpeta Ciudadana y DEHú: simplifica tus trámites en España** (AMS Abogados) — describe Mi Carpeta Ciudadana y DEHú como dos portales independientes y complementarios (con sitios web propios, carpetaciudadana.gob.es y dehu.redsara.es) que comparten sistemas de autenticación:
     https://amsabogados.org/carpeta-ciudadana-dehu-espana/
-27. **Portal oficial de descargas** (PAe — Centro de Transferencia de Tecnología, sección "Grandes destinatarios"), origen de la guía de [2]:
+27. **Portal oficial de descargas** (PAe — Centro de Transferencia de Tecnología, sección "Grandes destinatarios"), origen de la guía de [1]:
     https://administracionelectronica.gob.es/ctt/lema/descargas
