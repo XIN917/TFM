@@ -17,7 +17,7 @@ Fuentes: `Especificacion_Requisitos.md`, `Estado_del_proyecto.md`, `Estructura_R
 
 ## 1. Overview
 
-Hoy cada departamento entra a **Mi Carpeta Ciudadana** (DEHú) con certificado local, mira el listado entero y decide si algo es suyo. El producto sustituye eso por **LEMA** (servicios web de Gran Destinatario): sondeo automático, persistencia inmediata de documentos, OCR+LLM sobre el documento principal, clasificación, evento corporativo y derivación al **Ticketing** interno (canal obligatorio). Si la IA no alcanza el umbral, un **Operador** revisa. Si el departamento cancela por mala cola, un **Agente IA** (fuera de WAS, vía MCP) intenta autocorregir como máximo dos veces.
+Hoy cada departamento entra a **DEHú** con certificado local (habitualmente por el enlace del correo de aviso), mira el listado entero y decide si algo es suyo. Mi Carpeta Ciudadana es otro portal; también puede abrir el mismo buzón. El producto sustituye la consulta en pantalla por **LEMA** (servicios web de Gran Destinatario): sondeo automático, persistencia inmediata de documentos, clasificación (metadatos de `localiza()` primero; OCR+LLM del documento solo si hace falta), evento corporativo y derivación al **Ticketing** interno (canal obligatorio). Si la IA no alcanza el umbral, un **Operador** revisa. Si el departamento cancela por mala cola, un **Agente IA** (fuera de WAS, vía MCP) intenta autocorregir como máximo dos veces.
 
 El nombre `OrganismosPublicos` es más amplio que DEHú a propósito (otras fuentes en el futuro). El **MVP es solo DEHú/LEMA**. No dilata el alcance.
 

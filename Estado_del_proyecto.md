@@ -8,7 +8,7 @@ Resumen vivo. Pendientes y preguntas: `TODO.md`. Índice de documentos: `README.
 
 Automatizar la recepción y tramitación de comunicaciones de la administración pública (DEHú/LEMA) en MGS Seguros: clasificar (metadatos LEMA primero; OCR + LLM solo si hace falta) y derivar al Ticketing interno.
 
-Hoy el acceso es **manual** vía Mi Carpeta Ciudadana. El proyecto lo sustituye por **LEMA** (Grandes Destinatarios). Mismo DEHú, distinta vía. Seguridad Informática confirma: certificado de producción ya existe; el de pruebas lo genera Sistemas; contratación/custodia/renovación es de Seguridad.
+Hoy el acceso es **manual** a **DEHú** (habitualmente por el enlace del correo de aviso). Mi Carpeta Ciudadana es otro portal, también puede abrir el mismo buzón. El proyecto sustituye esa consulta en pantalla por **LEMA** (Grandes Destinatarios): mismo buzón, servicios web. Seguridad Informática confirma: certificado de producción ya existe; el de pruebas lo genera Sistemas; contratación/custodia/renovación es de Seguridad.
 
 | Rol | Función |
 |---|---|
@@ -25,7 +25,7 @@ Hoy el acceso es **manual** vía Mi Carpeta Ciudadana. El proyecto lo sustituye 
 
 ## 2. Dónde está el trabajo
 
-Análisis y diseño del MVP cerrados en lo esencial (ER aprobado por la tutora de empresa), salvo RF-03 (cascada de clasificación) y la política de comparecencia, pendientes del resto de áreas. Redacción de memoria empezada: `memoria/01_Introduccion.md`.
+Análisis y diseño del MVP cerrados en lo esencial (ER aprobado por la tutora de empresa), salvo RF-03 (cascada de clasificación) y la política de comparecencia, pendientes del resto de áreas. Introducción de la memoria cerrada (18/09/2026): `memoria/01_Introduccion.md`.
 
 | Artefacto | Dónde |
 |---|---|
@@ -73,4 +73,4 @@ Deadlines de negocio: backend/frontend antes del 25 dic; desarrollo y testing ci
 
 ## 6. Memoria
 
-Estructura definida en `Estructura_Memoria.md` (sin «Análisis de antecedentes»; «Estado de la cuestión» cubre soluciones existentes o análogas). Lo que falta es enseñársela al ponente.
+Estructura definida en `Estructura_Memoria.md` (sin «Análisis de antecedentes»; «Estado de la cuestión» cubre soluciones existentes o análogas). Introducción cerrada. Siguiente capítulo de calendario: gestión del proyecto (desde el 21/09).
