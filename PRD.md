@@ -459,7 +459,7 @@ Métodos UML:
 | `NotificacionGateway` | `soportaCanal`, `ejecutar` |
 | `AgenteIAGateway` | `intentarAutocorreccion` |
 
-`ConstantesDominio`: estados `pendiente\|en_proceso\|en_revision\|procesada`; origen `ia_inicial\|ia_reclasificacion\|operador`; canal `ticket\|email`; tipo documento `principal\|anexo\|acuse`; rol `operador\|administrador`.
+`ConstantesDominio`: estados `pendiente\|en_proceso\|en_revision\|procesada`; `origen` `ia\|operador`; canal `ticket\|email`; tipo documento `principal\|anexo\|acuse`; rol `operador\|administrador`.
 
 Colaboradores de aplicación:
 
@@ -536,7 +536,7 @@ Exactamente un evento por comunicación que complete RF-06. Payload: contenido R
 ### RF-10 Agente IA
 
 - Entrada: evento de cancelación (fuera de HV; Ticketing outbox).
-- Contador = filas `CLASIFICACION` con `origen=ia_reclasificacion` (no campo suelto). Límite **2**. Si ya está en el límite, escalar a RF-09 **sin** llamar al agente.
+- Contador = filas `CLASIFICACION` con `origen=ia` y `nIntentos>1` (no campo suelto en `COMUNICACION`). Límite **2**. Si ya está en el límite, escalar a RF-09 **sin** llamar al agente.
 - Si hay margen: `AgenteIAGateway.intentarAutocorreccion`. El agente (MCP) propone y, si supera umbral, él invoca finalizar+crear (`AgenteIAClient` depende de `TicketingGateway`). Si no supera, escalar a revisión. No hay bucle interno: el siguiente intento es otra cancelación.
 - **Diseño no cerrado con el equipo:** si el client de infra debe llamar a Ticketing o el Service compara el umbral. Hasta confirmación, implementar lo diagramado (MCP actúa).
 
@@ -568,7 +568,7 @@ Motor: SQL Server (`HV_OrganismosPublicos`). Persistencia: `JdbcTemplate` en `Co
 | `DOCUMENTO` | 1:N | principal / anexo / acuse |
 | `INTERPRETACION` | 1:1 opcional | Tras IA |
 | `TEXTOEXTRAIDO` | 1:1 opcional desde interpretación | Texto pesado; retención por **parámetro global** (valor TBD con compañeros). Sin retención permanente para entrenamiento en el MVP. |
-| `CLASIFICACION` | 1:N append-only | `origen`: `ia_inicial` \| `ia_reclasificacion` \| `operador` |
+| `CLASIFICACION` | 1:N append-only | `origen`: `ia` \| `operador`. `nIntentos` `1`, `2`, `3`… solo en `ia` |
 | `DERIVACION` | 1:N | Resultado RF-08. `estado` éxito/fallo. |
 | `REVISION` | 1:N opcional | Una fila por escalada; pendiente = `resuelto=false` |
 | `DEPARTAMENTO` | catálogo | `colaDestino`, `permiteEmail`, `activo` |
@@ -586,7 +586,7 @@ Campos mínimos (alineados al ER):
 
 **TEXTOEXTRAIDO:** `id`, `interpretacion_id`, `textoExtraido`, `fechaCreacion`.
 
-**CLASIFICACION:** `id`, `comunicacion_id`, `origen`, `departamentoAsignado`, `tipoAsignado`, `canalAsignado`, `scoreConfianza`, `resultado`, `fecha`.
+**CLASIFICACION:** `id`, `comunicacion_id`, `origen` (`ia` \| `operador`), `modelo` (nullable; nombre del modelo si hubo LLM), `nIntentos` (nullable; `1`, `2`, `3`… solo si `origen=ia`; vacío si `origen=operador`), `usuario_id` (nullable; `USUARIO.id` solo si `origen=operador`). El tope de 2 reclasificaciones cuenta filas `origen=ia` con `nIntentos>1`. `departamentoAsignado`, `tipoAsignado`, `canalAsignado`, `scoreConfianza`, `resultado`, `fecha`.
 
 **DERIVACION:** `id`, `comunicacion_id`, `canal`, `identificadorExterno`, `titulo`, `resumen`, `departamento` FK, `estado`, `esReclasificacion`, `ticketRelacionadoId`, `fechaEjecucion`.
 
@@ -653,7 +653,7 @@ SMTP corporativo vía `EmailNotificacionGateway` si se implementa RF-08.2. No bl
 
 ## 8. Listado de endpoints
 
-OpenAPI 3, kebab-case plural, `x-area: hv`, `x-subarea: def`, `x-version: v1`. Prefijo gateway: `/api/{front|back|consumer}/hv/def/v1`. En WAS local el context-root Front es `HVOrganismosPublicos/api/front/v1` (los paths de la tabla van **después** de ese prefijo). No exponer SOAP ni el certificado al navegador.
+OpenAPI 3, camelCase plural, `x-area: hv`, `x-subarea: def`, `x-version: v1`. Prefijo gateway: `/api/{front|back|consumer}/hv/def/v1`. En WAS local el context-root Front es `HVOrganismosPublicos/api/front/v1` (los paths de la tabla van **después** de ese prefijo). No exponer SOAP ni el certificado al navegador.
 
 Códigos: `401` no autenticado; `403` sin rol; `404` no existe; `409` regla de negocio (derivación duplicada, revisión ya resuelta, límite RF-10).
 
@@ -680,9 +680,9 @@ Implementación: `IngestaApiImpl`, `InterpretacionesApiImpl`, `DerivacionesApiIm
 
 | Método | Path | RF | Servicio |
 |---|---|---|---|
-| `POST` | `/ciclos-ingesta` | 01, 02 | `IngestarComunicacionesService` (`localiza` + persistencia inmediata; lista vacía → `204`) |
+| `POST` | `/ciclosIngesta` | 01, 02 | `IngestarComunicacionesService` (`localiza` + persistencia inmediata; lista vacía → `204`) |
 | `POST` | `/interpretaciones` | 03–06 | `RegistrarInterpretacionService` + `ClasificarComunicacionService` + `GenerarContenidoTicketService` (n8n envía OCR/LLM ya calculado) |
-| `POST` | `/eventos/comunicacion-clasificada` | 07 | `PublicarComunicacionClasificadaService` (si n8n no publica al bus directamente) |
+| `POST` | `/eventos/comunicacionClasificada` | 07 | `PublicarComunicacionClasificadaService` (si n8n no publica al bus directamente) |
 | `POST` | `/derivaciones` | 08 | `EjecutarDerivacionService` (consumo del evento RF-07) |
 
 `POST /interpretaciones` y el motor OCR en Java (`InterpretarComunicacionService`) son alternativas: n8n usa una de las dos, no las dos en el mismo ciclo.

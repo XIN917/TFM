@@ -26,7 +26,7 @@
 
 ### RF-10 — Reclasificación automática (Agente IA)
 
-`AgenteReclasificacionService` cubre solo la parte determinista de RF-10.1-10.5: consumir el evento de cancelación (Bus de Eventos Corporativo, mismo patrón que RF-08, sin capa `api` propia), comprobar y actualizar el contador de intentos persistido (`Comunicacion.contarIntentosReclasificacion()`, Information Expert — cuenta filas de `Clasificacion` con `origen='ia_reclasificacion'`, sin campo contador aparte, coherente con `ER_Explicacion.md`), decidir si hay margen para intentar autocorrección o escalar directamente, y resolver la escalada (`Comunicacion.escalarARevision()`, Creator) si el agente no resuelve.
+`AgenteReclasificacionService` cubre solo la parte determinista de RF-10.1-10.5: consumir el evento de cancelación (Bus de Eventos Corporativo, mismo patrón que RF-08, sin capa `api` propia), comprobar y actualizar el contador de intentos persistido (`Comunicacion.contarIntentosReclasificacion()`, Information Expert — cuenta filas de `Clasificacion` con `origen='ia'` y `nIntentos>1`, sin campo contador aparte, coherente con `ER_Explicacion.md`), decidir si hay margen para intentar autocorrección o escalar directamente, y resolver la escalada (`Comunicacion.escalarARevision()`, Creator) si el agente no resuelve.
 
 **Quién invoca el MCP**: RF-10.4 dice literalmente que *"el agente invoca — vía MCP — la acción de finalizar el ticket original y crear uno nuevo"*. Se ha modelado de forma literal: `AgenteReclasificacionService` delega en `AgenteIAGateway.intentarAutocorreccion(...)` tanto la generación de la propuesta como, si la confianza supera el umbral, la propia invocación de `TicketingGateway` (finalizar+crear). Por eso es `AgenteIAClient` (infraestructura, `<<MCP>>`) quien depende de `TicketingGateway`, no el Service — modela que es el agente (razonamiento + *tool-calling* autónomo) quien decide y actúa, no código determinista nuestro comparando un score contra un umbral. `ResultadoAutocorreccion` es el *value object* que le permite a `AgenteReclasificacionService` saber qué pasó sin conocer el umbral ni el detalle de la llamada MCP. **Esta es una decisión de diseño razonada pero no confirmada con nadie del equipo** — igual que el resto de RF-10.1 (ver `TODO.md`).
 
@@ -218,6 +218,9 @@ package "modelo" {
     class Clasificacion {
         +id: UUID
         +origen: String
+        +modelo: String
+        +nIntentos: Integer
+        +usuarioId: String
         +departamentoAsignado: String
         +tipoAsignado: String
         +canalAsignado: String

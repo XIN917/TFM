@@ -15,6 +15,7 @@ erDiagram
   COMUNICACION ||--o{ DERIVACION : dispara
   COMUNICACION ||--o{ REVISION : puede_escalar_a
   USUARIO ||--o{ REVISION : resuelve
+  USUARIO ||--o{ CLASIFICACION : clasifica
 
   COMUNICACION {
     uuid id PK
@@ -56,7 +57,10 @@ erDiagram
   CLASIFICACION {
     uuid id PK
     uuid comunicacion_id FK
-    string origen
+    string origen "ia | operador"
+    string modelo "nullable"
+    int nIntentos "nullable; 1, 2, 3… si origen = ia"
+    string usuario_id FK "nullable; USUARIO.id si origen = operador"
     string departamentoAsignado
     string tipoAsignado
     string canalAsignado
@@ -129,6 +133,7 @@ COMUNICACION 1───N CLASIFICACION
 COMUNICACION 1───N DERIVACION
 COMUNICACION 1───N REVISION          (opcional)
 USUARIO      1───N REVISION
+USUARIO      1───N CLASIFICACION
 DEPARTAMENTO 1───N CLASIFICACION
 DEPARTAMENTO 1───N DERIVACION
 ```
@@ -158,9 +163,12 @@ Sujeto a una política de retención: se purga pasado un periodo definido por **
 
 Historial completo de decisiones de clasificación — no se sobrescribe, se acumula. Cada fila es un intento.
 
-- `origen` — distingue quién hizo la clasificación: `ia_inicial`, `ia_reclasificacion`, `operador`
+- `origen` — `ia` u `operador`. No es el tipo de la comunicación (`tipoAsignado`)
+- `modelo` — nombre del modelo si hubo LLM; vacío si la clasificación salió solo de metadatos o si `origen = operador`
+- `nIntentos` — `1`, `2`, `3`… solo en filas `ia`. Vacío si `origen = operador`. La inicial es `1`; el tope de reclasificaciones (RF-10.2) cuenta filas `origen = ia` con `nIntentos > 1`, sin campo contador en `COMUNICACION`
+- `usuario_id` (FK, nullable) — el operador de esa fila. Obligatorio si `origen = operador`; vacío si `origen = ia`. Varias clasificaciones de operadores distintos quedan en filas distintas, cada una con su id. No sustituye a `REVISION.usuario_id`, que es quién resolvió esa escalada
 - `departamentoAsignado`, `tipoAsignado` — dos resultados independientes de la misma clasificación (a qué departamento va, y de qué tipo es la comunicación); RF-09.6 permite al Operador corregir uno, el otro, o ambos
-- Esta tabla es el historial de auditoría, y también la fuente para derivar el contador de reintentos de RF-10.2 (contando filas con `origen = 'ia_reclasificacion'` para esa comunicación), sin necesidad de un campo contador aparte
+- Esta tabla es el historial de auditoría: no se sobrescribe, se acumula
 
 ### `DERIVACION` (1:N)
 
