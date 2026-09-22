@@ -509,7 +509,7 @@ Texto completo: `Especificacion_Requisitos.md`. Aquí: regla que el código no p
 ### RF-03 a RF-06 IA y contenido de ticket
 
 - OCR/LLM **solo del documento principal**. Anexos y acuse se archivan y no entran al pipeline (KISS; pendiente confirmar con compañeros si el anexo aporta a clasificar).
-- Salida: tipo, entidades (organismo, expediente, plazos, importes, partes), score, departamento, canal (`ticket` / `email`).
+- Salida: entidades (organismo, expediente, plazos, importes, partes), score, departamento, canal (`ticket` / `email`). No hay catálogo de tipos: la categorización es el departamento. `tipoAsignado` y `tipoDetectado` no se rellenan en el MVP.
 - Umbral configurable: por debajo → RF-09 (no publicar acción automática).
 - RF-06: título, resumen, campos, adjuntos, trazabilidad `identificador` DEHú.
 - n8n puede orquestar OCR/LLM; Java persiste `INTERPRETACION` + `TEXTOEXTRAIDO` y el historial `CLASIFICACION`.
@@ -582,11 +582,11 @@ Campos mínimos (alineados al ER):
 
 **DOCUMENTO:** `id`, `comunicacion_id`, `tipo`, `nombre`, `mimeType`, `hashSha256`, `csvResguardo`, `rutaAlmacenamiento`, `fechaDescarga`.
 
-**INTERPRETACION:** `id`, `comunicacion_id`, `tipoDetectado`, `entidadesExtraidas` (JSON/nvarchar), `scoreConfianza`, `fechaProcesado`.
+**INTERPRETACION:** `id`, `comunicacion_id`, `tipoDetectado` (no se rellena en el MVP), `entidadesExtraidas` (JSON/nvarchar), `scoreConfianza`, `fechaProcesado`.
 
 **TEXTOEXTRAIDO:** `id`, `interpretacion_id`, `textoExtraido`, `fechaCreacion`.
 
-**CLASIFICACION:** `id`, `comunicacion_id`, `origen` (`ia` \| `operador`), `modelo` (nullable; nombre del modelo si hubo LLM), `nIntentos` (nullable; `1`, `2`, `3`… solo si `origen=ia`; vacío si `origen=operador`), `usuario_id` (nullable; `USUARIO.id` solo si `origen=operador`). El tope de 2 reclasificaciones cuenta filas `origen=ia` con `nIntentos>1`. `departamentoAsignado`, `tipoAsignado`, `canalAsignado`, `scoreConfianza`, `resultado`, `fecha`.
+**CLASIFICACION:** `id`, `comunicacion_id`, `origen` (`ia` \| `operador`), `modelo` (nullable; nombre del modelo si hubo LLM), `nIntentos` (nullable; `1`, `2`, `3`… solo si `origen=ia`; vacío si `origen=operador`), `usuario_id` (nullable; `USUARIO.id` solo si `origen=operador`), `departamentoAsignado` (obligatorio). El tope de 2 reclasificaciones cuenta filas `origen=ia` con `nIntentos>1`. `tipoAsignado` (no se rellena en el MVP: no hay catálogo de tipos), `canalAsignado`, `scoreConfianza`, `resultado`, `fecha`.
 
 **DERIVACION:** `id`, `comunicacion_id`, `canal`, `identificadorExterno`, `titulo`, `resumen`, `departamento` FK, `estado`, `esReclasificacion`, `ticketRelacionadoId`, `fechaEjecucion`.
 
@@ -667,7 +667,7 @@ Implementación: `RevisionesApiImpl`, `ComunicacionesApiImpl`. Autenticación: d
 | `GET` | `/revisiones/{id}` | operador, administrador | 09.2 | `ConsultarRevisionService` (documento, texto extraído, propuesta IA) |
 | `GET` | `/revisiones/{id}/documentos/{documentoId}` | operador, administrador | 09.2 | binario del documento (no llama a LEMA) |
 | `POST` | `/revisiones/{id}/aceptacion` | operador, administrador | 09.5 | `AceptarClasificacionService` |
-| `POST` | `/revisiones/{id}/reclasificacion` | **administrador** | 09.6 | `ReclasificarComunicacionService` (body: `departamento`, `tipo`) |
+| `POST` | `/revisiones/{id}/reclasificacion` | **administrador** | 09.6 | `ReclasificarComunicacionService` (body: `departamento`) |
 | `GET` | `/comunicaciones` | operador, administrador | 11.1 | `ConsultarComunicacionesService` (query: estado, texto; cada ítem trae `editable`) |
 | `GET` | `/comunicaciones/{id}` | operador, administrador | 11.1–11.3 | detalle; `editable` ⇔ existe `DERIVACION` |
 | `GET` | `/comunicaciones/{id}/documentos/{documentoId}` | operador, administrador | 11 | binario local |

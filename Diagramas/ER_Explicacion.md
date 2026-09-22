@@ -117,7 +117,7 @@ Cada fila representa **un envío recibido de DEHú** (notificación o comunicaci
 |---|---|---|
 | `identificador`, `codigoOrigen` | `localiza()` | Identificadores propios de DEHú; se usan para deduplicar (RF-01.3) y para encadenar las siguientes llamadas a LEMA |
 | `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre` | `localiza()` | Solo existen en `localiza()`, no en `peticionAcceso()` — hay que capturarlos en el primer paso del flujo (detección), no esperar a la descarga del documento |
-| `tipoEnvio` | `localiza()` | Distingue notificación/comunicación según DEHú |
+| `tipoEnvio` | `localiza()` | `1` comunicación, `2` notificación (plan de pruebas GD v2.0, §2.1.2–2.1.3) |
 | `estado` | Interno | Ciclo de vida propio del sistema: `pendiente → en_proceso → en_revision / procesada` — no es un estado de DEHú |
 | `fechaEvento`, `fechaIngesta` | Mixto | `fechaEvento` viene de DEHú; `fechaIngesta` es el timestamp interno de cuándo se procesó |
 
@@ -169,7 +169,7 @@ Historial completo de decisiones de clasificación — no se sobrescribe, se acu
 - `modelo` — nombre del modelo si hubo LLM; vacío si la clasificación salió solo de metadatos o si `origen = operador`
 - `nIntentos` — `1`, `2`, `3`… solo en filas `ia`. Vacío si `origen = operador`. La inicial es `1`; el tope de reclasificaciones (RF-10.2) cuenta filas `origen = ia` con `nIntentos > 1`, sin campo contador en `COMUNICACION`
 - `usuario_id` (FK, nullable) — el operador de esa fila. Obligatorio si `origen = operador`; vacío si `origen = ia`. Varias clasificaciones de operadores distintos quedan en filas distintas, cada una con su id. No sustituye a `REVISION.usuario_id`, que es quién resolvió esa escalada
-- `departamentoAsignado`, `tipoAsignado` — dos resultados independientes de la misma clasificación (a qué departamento va, y de qué tipo es la comunicación); RF-09.6 permite al Operador corregir uno, el otro, o ambos
+- `departamentoAsignado` (FK, obligatorio) — a qué departamento va la comunicación. Es la categorización del MVP: no hay catálogo de tipos. `tipoAsignado` queda en la tabla y no se rellena. RF-09.6 corrige el departamento. Toda fila tiene departamento.
 - Esta tabla es el historial de auditoría: no se sobrescribe, se acumula
 
 ### `DERIVACION` (1:N)

@@ -1,6 +1,6 @@
 # DEHú/LEMA — Campos de respuesta por servicio
 
-*Extraído y verificado contra el Anexo I (ejemplos de petición/respuesta) de la Guía de Integración para Gran Destinatario. Solo se listan campos confirmados en los ejemplos reales del PDF — no se han inferido ni completado con supuestos.*
+*Extraído y verificado contra el Anexo I (ejemplos de petición/respuesta) de la Guía de Integración para Gran Destinatario. Solo se listan campos confirmados en los ejemplos reales del PDF — no se han inferido ni completado con supuestos. La leyenda de `tipoEnvio` y `vinculo` sale del plan de pruebas funcionales GD v2.0, no de esa guía. Especificación de servicios web (Punto Único / Sedes), aún no contrastada: `memoria/Referencias.md` [28].*
 
 ---
 
@@ -20,8 +20,8 @@ Por cada `item` dentro de `envios`:
 | `organismoEmisorRaiz.codigoOrganismo` | string | |
 | `organismoEmisorRaiz.nombreOrganismo` | string | Organismo "padre" (ej. Ministerio) |
 | `fechaPuestaDisposicion` | datetime ISO | |
-| `tipoEnvio` | int | |
-| `vinculo` | int | Tipo de relación (representación/apoderamiento) |
+| `tipoEnvio` | int | `1` comunicación, `2` notificación. Plan de pruebas funcionales para Gran Destinatario v2.0 (SGAD, 18/03/2024), §2.1.2 y §2.1.3. Un valor distinto de 1 o 2 es error (§2.1.9). La guía de integración solo ejemplifica el `2`. |
+| `vinculo` | int | `1` titular, `2` destinatario (mismo plan de pruebas, §2.1.4–2.1.7). Si aparece como ambos, se entiende titular. |
 | `titular.nombreTitular` | string | |
 | `titular.nifTitular` | string | |
 | `metadatosPublicos` | base64 (blob opaco) | Contenido no documentado en la guía |

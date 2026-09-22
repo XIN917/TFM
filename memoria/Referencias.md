@@ -61,3 +61,5 @@ Numeración alineada con el orden de aparición en la memoria: primero las citad
     https://amsabogados.org/carpeta-ciudadana-dehu-espana/
 27. **Portal oficial de descargas** (PAe — Centro de Transferencia de Tecnología, sección "Grandes destinatarios"), origen de la guía de [1]:
     https://administracionelectronica.gob.es/ctt/lema/descargas
+28. **Especificación de Servicios Web (Punto Único / Sedes)** (CTT, iniciativa 2311, elemento 11689). La guía de integración remite aquí el detalle del contrato que sus ejemplos no tabulan. Aún no contrastada campo a campo con `DEHu_Campos_Respuesta_Servicios.md` (22/09/2026):
+    https://administracionelectronica.gob.es/ctt/resources/Soluciones/2311/Descargas/Especificacion%20de%20servicios%20web.pdf?idIniciativa=2311&idElemento=11689
