@@ -25,7 +25,7 @@ Hoy el acceso es **manual** a **DEHú** (habitualmente por el enlace del correo 
 
 ## 2. Dónde está el trabajo
 
-Análisis y diseño del MVP cerrados en lo esencial (ER aprobado por la tutora de empresa), salvo RF-03 (cascada de clasificación) y la política de comparecencia, pendientes del resto de áreas. Introducción de la memoria cerrada (18/09/2026): `memoria/01_Introduccion.md`.
+Análisis y diseño del MVP cerrados en lo esencial (ER aprobado por la tutora de empresa), salvo RF-03 (cascada de clasificación) y la política de comparecencia, pendientes del resto de áreas. El 23/09 se mira si la comunicación (`tipoEnvio` `1`) no tiene plazo y se puede descargar al momento; detalle en `TODO.md`. Introducción de la memoria cerrada (18/09/2026): `memoria/01_Introduccion.md`.
 
 | Artefacto | Dónde |
 |---|---|
@@ -48,10 +48,11 @@ RF-11.5 (cambio de departamento) está diagramada como propuesta de alto nivel, 
 - RF-11: edición in-place si no cambia el departamento; finalizar + crear si cambia.
 - Reclasificación restringida a administrador. No se renombra «Aceptar clasificación propuesta». «Asignar a departamento» no replica la separación ticket/email de «Modificar»: es automático, no una decisión del actor.
 - RF-10 cerrado a nivel de diseño: cancelación → Agente IA (umbral) → autocorrección MCP o escalado humano. MCP acotado a esa acción. Ticketing no expone webhook: el cambio de estado sale por outbox interno. Falta quién lo consume (ver `TODO.md`).
-- RF-11.2/11.3: editable o no según si ya hay `DERIVACION`, no según `tipoEnvio` de DEHú.
+- `tipoEnvio` (22/09/2026): `1` comunicación, `2` notificación. Plan de pruebas funcionales para Gran Destinatario v2.0 (SGAD, 18/03/2024), §2.1.2 y §2.1.3. `vinculo`: `1` titular, `2` destinatario. RF-11.2/11.3 sigue siendo editable o no según si ya hay `DERIVACION`, no según `tipoEnvio`.
 - RF-03 (hipótesis de trabajo; requisitos y diagramas aún no reescritos): clasificar primero con metadatos de `localiza()` (organismo emisor + concepto). OCR/LLM del documento principal **solo si eso no basta**; anexo solo si el principal sigue ambiguo. El acuse se archiva (RF-02) y no entra al pipeline. Fiscal y DGS: con emisor + concepto cubren ~99 %; el anexo casi nunca sirve para clasificar. Confirmar con el resto de áreas (`TODO.md`). El contrato escrito sigue siendo «OCR siempre del principal».
 - `TEXTOEXTRAIDO` tabla 1:1 opcional de `INTERPRETACION` (sugerencia de la tutora de empresa). Retención por parámetro global; el valor se fija tras contrastarlo con las áreas. Sin retención permanente para entrenamiento en el MVP.
 - ER: tablas renombradas; `USUARIO` con clave compartida a `PERSONA`; sin tabla `EVENTO` (trazabilidad e idempotencia con `CLASIFICACION` + `DERIVACION`).
+- `CLASIFICACION` (22/09/2026): una fila por clasificación. `origen` `ia` | `operador`; `modelo` si hubo LLM; `nIntentos` solo en filas `ia` (el tope de reclasificaciones cuenta `nIntentos > 1`); `usuario_id` solo en filas `operador`. `departamentoAsignado` obligatorio. No hay catálogo de tipos: `tipoAsignado` y `tipoDetectado` no se rellenan en el MVP. La categorización es el departamento.
 - Aprendizaje continuo del Agente IA y diagnóstico sistemático de errores: evolución futura, no diseño cerrado.
 - **Plataforma:** Java EE 7 + WAS 9 + `javax.*` (tutora de empresa, sept. 2026). Desarrollo querría Jakarta EE + servidor más moderno; depende de Sistemas, sin fecha. HVOrganismosPublicos no nace en Jakarta. Detalle: `PRD.md`.
 

@@ -14,13 +14,14 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado_del_proyect
 - [ ] Recalcular el Gantt: duración real de «Infraestructura» (depende del acceso) y festivos que cruzan tareas
 - [ ] Revisar con el equipo si `AgenteIAClient` (infra) debe invocar `TicketingGateway` — lectura literal de RF-10.4, no cerrado con nadie
 - [ ] Valorar extraer el colaborador «finalizar ticket + crear uno nuevo» (hoy en RF-09.6, RF-10.4 y RF-11.5) — YAGNI de momento
+- [ ] **23/09.** Ajustar requisitos con `tipoEnvio`. Investigar si la comunicación (`1`) no tiene fecha límite de respuesta: en ese caso se puede descargar al momento sin perjudicar al destinatario. La notificación (`2`) sí tiene plazo y comparecencia; no tratar los dos envíos igual.
 
 ## Preguntas pendientes
 
 **Áreas de negocio** (Fiscal y DGS hechos; resto en espera de respuesta)
 
 - RF-03: texto de `localiza()` primero; PDF solo residual. Anexo casi nunca para clasificar (entrevista Fiscal). Confirmar con el resto de áreas.
-- Comparecencia eager (batch madrugada) vs lazy (ellas / botón HV): pendiente de que el resto de áreas confirmen si les perjudica arrancar el plazo de respuesta al comparecer.
+- Comparecencia eager (batch madrugada) vs lazy (ellas / botón HV): pendiente de que el resto de áreas confirmen si les perjudica arrancar el plazo de respuesta al comparecer. Antes, ver el paso del 23/09: puede que solo la notificación tenga ese plazo.
 
 **Ponente**
 
