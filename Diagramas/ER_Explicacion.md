@@ -14,8 +14,8 @@ erDiagram
   COMUNICACION ||--o{ CLASIFICACION : acumula
   COMUNICACION ||--o{ DERIVACION : dispara
   COMUNICACION ||--o{ REVISION : puede_escalar_a
-  USUARIO ||--o{ REVISION : resuelve
-  USUARIO ||--o{ CLASIFICACION : clasifica
+  USUARIO |o--o{ REVISION : resuelve
+  USUARIO |o--o{ CLASIFICACION : clasifica
 
   COMUNICACION {
     uuid id PK
@@ -132,13 +132,15 @@ INTERPRETACION 1───1 TEXTOEXTRAIDO   (opcional)
 COMUNICACION 1───N CLASIFICACION
 COMUNICACION 1───N DERIVACION
 COMUNICACION 1───N REVISION          (opcional)
-USUARIO      1───N REVISION
-USUARIO      1───N CLASIFICACION
+USUARIO      0..1───N REVISION
+USUARIO      0..1───N CLASIFICACION
 DEPARTAMENTO 1───N CLASIFICACION
 DEPARTAMENTO 1───N DERIVACION
 ```
 
 `(opcional)` marca las relaciones donde no toda `COMUNICACION` tiene necesariamente una fila asociada — `INTERPRETACION` solo existe tras el procesamiento IA; `TEXTOEXTRAIDO` solo existe mientras no haya expirado su periodo de retención (ver más abajo); `REVISION` solo existe si la comunicación escaló a revisión humana, y puede tener más de una fila si la comunicación escala a revisión en más de una ocasión (p. ej. una reclasificación posterior vuelve a caer por debajo del umbral).
+
+`0..1` en `USUARIO` significa que la fila puede no tener usuario. En `CLASIFICACION`, `usuario_id` va vacío si `origen = ia` y es obligatorio si `origen = operador`. En `REVISION`, va vacío mientras `resuelto = false` y se rellena al resolverla.
 
 ## Relaciones desde `COMUNICACION`
 
