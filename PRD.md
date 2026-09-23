@@ -11,7 +11,7 @@ Documento de producto e implementación del aplicativo `HVOrganismosPublicos` (M
 | Plataforma | Java 8, Java EE 7 (`javax.*`), WAS traditional 9, CDI, JAX-RS, JDBC (sin JPA/Spring/Jakarta) |
 | Familia de referencia | AYTicketing / AYCalendarios (SQL propio, hexagonal, OpenAPI v1). **No** SISiso/Personas (no hay maestro CICS → no hay módulo DAO ni EJB). |
 
-Fuentes: `Especificacion_Requisitos.md`, `Estado_del_proyecto.md`, `DEHu_Campos_Respuesta_Servicios.md`, `Diagramas/*`.
+Fuentes: `Especificacion_Requisitos.md`, `Estado.md`, `DEHu_Campos_Respuesta_Servicios.md`, `Diagramas/*`.
 
 ---
 
@@ -491,7 +491,8 @@ Texto completo: `Especificacion_Requisitos.md`. Aquí: regla que el código no p
 ### RF-01 Detección
 
 - n8n (o timer) llama a Back; Java `localiza()`. Lista vacía → no hacer nada.
-- Por cada item: `peticionAcceso(identificador, codigoOrigen)`.
+- `tipoEnvio` `1` (comunicación): `peticionAcceso(identificador, codigoOrigen)` en el mismo ciclo. Sin acuse. Acceder no tiene efectos jurídicos (FAQ DEHú).
+- `tipoEnvio` `2` (notificación): `peticionAcceso` es la comparecencia y puede arrancar el plazo de respuesta. El momento no está cerrado (áreas). Si se comparece, el acuse va en el mismo ciclo (ventana 24 h).
 - Idempotencia por `identificador` DEHú (no reprocesar).
 - Reintentos con backoff ante SOAP/certificado/red; no perder el pendiente.
 - Lotes pequeños y frecuentes (máx. 1000 peticiones/operación LEMA).
@@ -499,9 +500,9 @@ Texto completo: `Especificacion_Requisitos.md`. Aquí: regla que el código no p
 
 ### RF-02 Almacenamiento — crítico
 
-- Persistir documento principal + **todos** los anexos + acuse **en el mismo ciclo** que la comparecencia.
+- Persistir documento principal + **todos** los anexos en el mismo ciclo que el acceso. El acuse, solo si `tipoEnvio` es `2`, en el mismo ciclo que la comparecencia.
 - Anexo URL directa: HTTP, sin LEMA. Anexo referencia: `consultaAnexos()`.
-- Acuse: `consultaAcusePdf()` con `csvResguardo` de `peticionAcceso()`.
+- Acuse (`tipoEnvio` `2`): `consultaAcusePdf()` con `csvResguardo` de `peticionAcceso()`. En una comunicación no se llama.
 - Hash SHA-256 del principal vs el de DEHú (`Documento.verificarIntegridad()`).
 - **Ventana 24 h:** `consultaAnexos` / `consultaAcusePdf` no sirven para notificaciones de más de 1 día. Fallo de descarga = alerta de alta prioridad, no reintento silencioso a 48 h.
 - Tipos de `DOCUMENTO`: `principal` | `anexo` | `acuse`. Ficheros en almacenamiento (campo `rutaAlmacenamiento`); BBDD con metadatos y hash.
@@ -608,7 +609,7 @@ Dominio (Information Expert / Creator): `Comunicacion` crea `Documento`, `Clasif
 
 No REST. Certificado = identidad de la compañía. Prod: Seguridad confirma que existe. Pruebas: lo genera Sistemas. Custodia/renovación: Seguridad. Caducidad = corte total de ingesta.
 
-Entornos LEMA: **SE** (Servicios Estables, pruebas) y **PRO**. Properties distintas.
+Entornos LEMA: **SE** (Servicios Estables, pruebas) y **PRO** (Producción). Properties distintas.
 
 Orden de llamadas:
 

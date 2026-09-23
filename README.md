@@ -16,9 +16,8 @@ final.
 | [Propuesta de proyecto.md](Propuesta%20de%20proyecto.md) | Propuesta inicial: motivación, objetivos y alcance |
 | [Especificacion_Requisitos.md](Especificacion_Requisitos.md) | Especificación funcional completa (requisitos RF-01 a RF-11) |
 | [DEHu_Campos_Respuesta_Servicios.md](DEHu_Campos_Respuesta_Servicios.md) | Referencia de campos y servicios web LEMA/DEHú |
-| [Estado_del_proyecto.md](Estado_del_proyecto.md) | Estado actual, contexto y decisiones cerradas |
+| [Estado.md](Estado.md) | Estado actual, contexto y decisiones cerradas |
 | [TODO.md](TODO.md) | Tareas pendientes y preguntas abiertas |
-| [Referencias.md](Referencias.md) | Listado de referencias utilizadas |
 | [Estructura_Memoria.md](Estructura_Memoria.md) | Estructura de la memoria final del TFM |
 | [PRD.md](PRD.md) | Producto e implementación: módulos WAS, arquitectura, RFs, datos, endpoints |
 
@@ -29,6 +28,7 @@ Borradores de la memoria, un fichero por capítulo. Los documentos de análisis 
 | Documento | Descripción |
 |---|---|
 | [01_Introduccion.md](memoria/01_Introduccion.md) | Capítulo Introducción |
+| [Referencias.md](memoria/Referencias.md) | Listado de referencias, numeradas por orden de mención en la memoria |
 
 ### Diagramas ([`Diagramas/`](Diagramas/))
 
@@ -51,5 +51,5 @@ están en [`Diagramas/img/`](Diagramas/img/).
 
 ## Estado
 
-Documento vivo, en desarrollo activo. Ver [Estado_del_proyecto.md](Estado_del_proyecto.md)
+Documento vivo, en desarrollo activo. Ver [Estado.md](Estado.md)
 para el contexto y las decisiones más recientes, y [TODO.md](TODO.md) para lo pendiente.

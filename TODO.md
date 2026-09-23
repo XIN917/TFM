@@ -1,10 +1,9 @@
 # TODO
 
-Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado_del_proyecto.md`.
+Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 
 ## Próximos pasos
 
-- [x] Enseñar al ponente la estructura de la memoria (`Estructura_Memoria.md`)
 - [ ] Esperar respuestas de departamentos (correos ya enviados). Guion: `_local/Preguntas_departamentos.md`
 - [ ] Decidir el periodo de retención de `TEXTOEXTRAIDO` (tras hablarlo con los compañeros)
 - [ ] Diseño de interfaz RF-09.2 (documento como vista principal, texto extraído como panel auxiliar)
@@ -14,19 +13,20 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado_del_proyect
 - [ ] Recalcular el Gantt: duración real de «Infraestructura» (depende del acceso) y festivos que cruzan tareas
 - [ ] Revisar con el equipo si `AgenteIAClient` (infra) debe invocar `TicketingGateway` — lectura literal de RF-10.4, no cerrado con nadie
 - [ ] Valorar extraer el colaborador «finalizar ticket + crear uno nuevo» (hoy en RF-09.6, RF-10.4 y RF-11.5) — YAGNI de momento
-- [ ] **23/09.** Ajustar requisitos con `tipoEnvio`. Investigar si la comunicación (`1`) no tiene fecha límite de respuesta: en ese caso se puede descargar al momento sin perjudicar al destinatario. La notificación (`2`) sí tiene plazo y comparecencia; no tratar los dos envíos igual.
 
 ## Preguntas pendientes
 
 **Áreas de negocio** (Fiscal y DGS hechos; resto en espera de respuesta)
 
 - RF-03: texto de `localiza()` primero; PDF solo residual. Anexo casi nunca para clasificar (entrevista Fiscal). Confirmar con el resto de áreas.
-- Comparecencia eager (batch madrugada) vs lazy (ellas / botón HV): pendiente de que el resto de áreas confirmen si les perjudica arrancar el plazo de respuesta al comparecer. Antes, ver el paso del 23/09: puede que solo la notificación tenga ese plazo.
+- Comparecencia eager (batch madrugada) vs lazy (ellas / botón HV), **solo notificaciones** (`tipoEnvio` `2`): pendiente de que el resto de áreas confirmen si les perjudica arrancar el plazo de respuesta al comparecer. Las comunicaciones (`1`) no tienen ese plazo (FAQ DEHú, 23/09) y se descargan en el mismo ciclo.
 
 **Ponente**
 
-- [x] «Informe de sostenibilidad» (gestión FIB) vs «Análisis de sostenibilidad e implicaciones éticas» — se omite el Informe de gestión por ahora; el capítulo ético se queda.
-- (no bloqueante) Expansión de las siglas SE/PRO de los entornos LEMA
+- Término genérico: DEHú llama *envío* a ambos tipos (notificación y comunicación; `envios`/`tipoEnvio` en la API [1]). Propuesta: adoptar «envío» como término genérico y reservar «notificación»/«comunicación» para cada tipo. Consultar antes de tocar nada:
+  - **Título**: ¿se puede cambiar sin trámite formal? Opción preferida: «Automatización de la recepción de notificaciones y comunicaciones electrónicas de la Administración Pública» (pareja que usa el propio portal); si no, se mantiene el actual.
+  - **Modelo**: renombrar `COMUNICACION` → `ENVIO` (arrastra `Comunicacion`, `ComunicacionRepository`, ER, diagrama de clases, requisitos y flujos).
+  - **Introducción**: si se adopta «envío», adaptar el párrafo de terminología del Contexto (hoy dice que se usa «comunicación» en sentido amplio). No tocar hasta hablarlo.
 
 **Responsable de Ticketing**
 
@@ -38,4 +38,5 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado_del_proyect
 
 **IT / Seguridad**
 
+- Certificados del acceso manual actual a DEHú: ¿qué certificado(s) usan hoy las áreas (representante de persona jurídica, o certificado personal + apoderamiento)? ¿A quién están emitidos y en cuántos puestos están instalados? La Propuesta afirma «certificados en equipos de usuarios concretos, asociados a personas apoderadas», sin confirmar. Mientras tanto, la Introducción usa redacción neutra («mediante certificado digital»).
 - ¿El Departamento consulta sus tickets desde el frontal propio? Alcance del rol `consulta` (¿limitado al propio departamento? ¿cómo se modela en `USUARIO`?)

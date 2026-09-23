@@ -43,7 +43,7 @@ erDiagram
   INTERPRETACION {
     uuid id PK
     uuid comunicacion_id FK
-    string tipoDetectado
+    string tipoDetectado "no se rellena en el MVP"
     json entidadesExtraidas
     float scoreConfianza
     datetime fechaProcesado
@@ -61,8 +61,8 @@ erDiagram
     string modelo "nullable"
     int nIntentos "nullable; 1, 2, 3… si origen = ia"
     string usuario_id FK "nullable; USUARIO.id si origen = operador"
-    string departamentoAsignado
-    string tipoAsignado
+    string departamentoAsignado FK
+    string tipoAsignado "no se rellena en el MVP"
     string canalAsignado
     float scoreConfianza
     string resultado
@@ -117,7 +117,7 @@ Cada fila representa **un envío recibido de DEHú** (notificación o comunicaci
 |---|---|---|
 | `identificador`, `codigoOrigen` | `localiza()` | Identificadores propios de DEHú; se usan para deduplicar (RF-01.3) y para encadenar las siguientes llamadas a LEMA |
 | `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre` | `localiza()` | Solo existen en `localiza()`, no en `peticionAcceso()` — hay que capturarlos en el primer paso del flujo (detección), no esperar a la descarga del documento |
-| `tipoEnvio` | `localiza()` | `1` comunicación, `2` notificación (plan de pruebas GD v2.0, §2.1.2–2.1.3) |
+| `tipoEnvio` | `localiza()` | `1` comunicación, `2` notificación (plan de pruebas GD v2.0, §2.1.2–2.1.3). La comunicación se descarga al momento y no tiene acuse; la notificación sí, y comparecerla puede arrancar plazo (FAQ DEHú) |
 | `estado` | Interno | Ciclo de vida propio del sistema: `pendiente → en_proceso → en_revision / procesada` — no es un estado de DEHú |
 | `fechaEvento`, `fechaIngesta` | Mixto | `fechaEvento` viene de DEHú; `fechaIngesta` es el timestamp interno de cuándo se procesó |
 
@@ -146,14 +146,14 @@ DEPARTAMENTO 1───N DERIVACION
 
 ### `DOCUMENTO` (1:N)
 
-Una comunicación puede tener varios documentos: el principal, cada anexo, y el acuse — todos en la misma tabla, distinguidos por `tipo`. Solo el documento principal pasa por el pipeline de IA (RF-03); anexos y acuse se archivan pero no se procesan (ver `INTERPRETACION`).
+Una comunicación puede tener varios documentos: el principal, cada anexo y, si es notificación (`tipoEnvio` `2`), el acuse — todos en la misma tabla, distinguidos por `tipo`. La comunicación (`1`) no genera acuse (FAQ DEHú). Solo el documento principal pasa por el pipeline de IA (RF-03); anexos y acuse se archivan pero no se procesan (ver `INTERPRETACION`).
 
 - `hashSha256` — verifica integridad (RF-02.4), comparando contra el hash que devuelve DEHú
 - `csvResguardo` — código de justificante que devuelve `peticionAcceso()` junto al documento principal; hay que poder reenviarlo si algún día se necesita volver a pedir el acuse por esa vía (`consultaAcusePdf()` con tipo `csvResguardo`)
 
 ### `INTERPRETACION` (1:1 opcional)
 
-Resultado de OCR + LLM sobre el **documento principal** (RF-03/RF-04): tipo detectado, entidades, score de confianza. Es opcional porque hasta que no se procesa, la comunicación no tiene interpretación todavía. El texto extraído en sí no vive aquí — ver `TEXTOEXTRAIDO`.
+Resultado de OCR + LLM sobre el **documento principal** (RF-03/RF-04): entidades y score de confianza. `tipoDetectado` queda en la tabla pero no se rellena en el MVP, igual que `tipoAsignado` en `CLASIFICACION`: no hay catálogo de tipos, la categorización es el departamento. Es opcional porque hasta que no se procesa, la comunicación no tiene interpretación todavía. El texto extraído en sí no vive aquí — ver `TEXTOEXTRAIDO`.
 
 ### `TEXTOEXTRAIDO` (1:1 opcional, desde `INTERPRETACION`)
 
@@ -174,7 +174,7 @@ Historial completo de decisiones de clasificación — no se sobrescribe, se acu
 
 ### `DERIVACION` (1:N)
 
-El resultado de RF-08: cada vez que se ejecuta una acción real hacia un departamento (crear ticket, enviar email, depositar en buzón), queda una fila aquí.
+El resultado de RF-08: cada vez que se ejecuta una acción real hacia un departamento (crear ticket o, si se implementa RF-08.2, enviar email), queda una fila aquí.
 
 - `departamento` (FK) — a qué departamento se derivó
 - `esReclasificacion` + `ticketRelacionadoId` — cubren el caso confirmado con Dani: Ticketing no permite cambiar de cola, así que una reclasificación finaliza el ticket original y crea uno nuevo, enlazados por este campo nativo de la API

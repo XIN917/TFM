@@ -20,7 +20,7 @@ Por cada `item` dentro de `envios`:
 | `organismoEmisorRaiz.codigoOrganismo` | string | |
 | `organismoEmisorRaiz.nombreOrganismo` | string | Organismo "padre" (ej. Ministerio) |
 | `fechaPuestaDisposicion` | datetime ISO | |
-| `tipoEnvio` | int | `1` comunicación, `2` notificación. Plan de pruebas funcionales para Gran Destinatario v2.0 (SGAD, 18/03/2024), §2.1.2 y §2.1.3. Un valor distinto de 1 o 2 es error (§2.1.9). La guía de integración solo ejemplifica el `2`. |
+| `tipoEnvio` | int | `1` comunicación, `2` notificación. Plan de pruebas funcionales para Gran Destinatario v2.0 (SGAD, 18/03/2024), §2.1.2 y §2.1.3. Un valor distinto de 1 o 2 es error (§2.1.9). La guía de integración solo ejemplifica el `2`. Efecto (FAQ DEHú, `memoria/Referencias.md` [29], 23/09/2026): la comunicación no tiene plazo de lectura ni acuse; la notificación tiene plazo de comparecencia, fijado por el emisor y gestionado por el PUC. |
 | `vinculo` | int | `1` titular, `2` destinatario (mismo plan de pruebas, §2.1.4–2.1.7). Si aparece como ambos, se entiende titular. |
 | `titular.nombreTitular` | string | |
 | `titular.nifTitular` | string | |

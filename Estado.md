@@ -25,7 +25,7 @@ Hoy el acceso es **manual** a **DEHú** (habitualmente por el enlace del correo 
 
 ## 2. Dónde está el trabajo
 
-Análisis y diseño del MVP cerrados en lo esencial (ER aprobado por la tutora de empresa), salvo RF-03 (cascada de clasificación) y la política de comparecencia, pendientes del resto de áreas. El 23/09 se mira si la comunicación (`tipoEnvio` `1`) no tiene plazo y se puede descargar al momento; detalle en `TODO.md`. Introducción de la memoria cerrada (18/09/2026): `memoria/01_Introduccion.md`.
+Análisis y diseño del MVP cerrados en lo esencial (ER aprobado por la tutora de empresa), salvo RF-03 (cascada de clasificación) y la política de comparecencia de las notificaciones, pendientes del resto de áreas. La comunicación (`tipoEnvio` `1`) se descarga al momento: no tiene plazo de lectura ni efectos jurídicos (FAQ DEHú, 23/09/2026). Introducción de la memoria cerrada (18/09/2026) y retocada el 23/09/2026 para distinguir notificación y comunicación: `memoria/01_Introduccion.md`.
 
 | Artefacto | Dónde |
 |---|---|
@@ -49,6 +49,7 @@ RF-11.5 (cambio de departamento) está diagramada como propuesta de alto nivel, 
 - Reclasificación restringida a administrador. No se renombra «Aceptar clasificación propuesta». «Asignar a departamento» no replica la separación ticket/email de «Modificar»: es automático, no una decisión del actor.
 - RF-10 cerrado a nivel de diseño: cancelación → Agente IA (umbral) → autocorrección MCP o escalado humano. MCP acotado a esa acción. Ticketing no expone webhook: el cambio de estado sale por outbox interno. Falta quién lo consume (ver `TODO.md`).
 - `tipoEnvio` (22/09/2026): `1` comunicación, `2` notificación. Plan de pruebas funcionales para Gran Destinatario v2.0 (SGAD, 18/03/2024), §2.1.2 y §2.1.3. `vinculo`: `1` titular, `2` destinatario. RF-11.2/11.3 sigue siendo editable o no según si ya hay `DERIVACION`, no según `tipoEnvio`.
+- Descarga según `tipoEnvio` (23/09/2026, FAQ DEHú): la comunicación (`1`) no tiene plazo de lectura ni efectos jurídicos por acceder a ella, y DEHú no genera acuse. Se descarga en el mismo ciclo que `localiza()`. La notificación (`2`) sí: `peticionAcceso()` es la comparecencia y puede abrir el plazo de alegaciones o recursos. Ese plazo lo fija el organismo emisor (puesta a disposición → caducidad) y lo gestiona el PUC, no DEHú. Los diez días naturales son el rechazo tácito de la Ley 39/2015, art. 43.2, no una cifra de la FAQ. Cuándo comparecer la notificación sigue pendiente de las áreas (`TODO.md`).
 - RF-03 (hipótesis de trabajo; requisitos y diagramas aún no reescritos): clasificar primero con metadatos de `localiza()` (organismo emisor + concepto). OCR/LLM del documento principal **solo si eso no basta**; anexo solo si el principal sigue ambiguo. El acuse se archiva (RF-02) y no entra al pipeline. Fiscal y DGS: con emisor + concepto cubren ~99 %; el anexo casi nunca sirve para clasificar. Confirmar con el resto de áreas (`TODO.md`). El contrato escrito sigue siendo «OCR siempre del principal».
 - `TEXTOEXTRAIDO` tabla 1:1 opcional de `INTERPRETACION` (sugerencia de la tutora de empresa). Retención por parámetro global; el valor se fija tras contrastarlo con las áreas. Sin retención permanente para entrenamiento en el MVP.
 - ER: tablas renombradas; `USUARIO` con clave compartida a `PERSONA`; sin tabla `EVENTO` (trazabilidad e idempotencia con `CLASIFICACION` + `DERIVACION`).
@@ -74,4 +75,4 @@ Deadlines de negocio: backend/frontend antes del 25 dic; desarrollo y testing ci
 
 ## 6. Memoria
 
-Estructura definida en `Estructura_Memoria.md` (sin «Análisis de antecedentes»; «Estado de la cuestión» cubre soluciones existentes o análogas). Introducción cerrada. Siguiente capítulo de calendario: gestión del proyecto (desde el 21/09).
+Estructura definida en `Estructura_Memoria.md` (sin «Análisis de antecedentes»; «Estado de la cuestión» cubre soluciones existentes o análogas). Introducción cerrada (retoque del 23/09: párrafo de terminología notificación/comunicación y plazos con la Ley 39/2015, art. 43.2). Referencias numeradas por orden de mención: desde el 23/09 la FAQ DEHú es la [5] y las antiguas [5]–[28] pasan a [6]–[29]. Siguiente capítulo de calendario: gestión del proyecto (desde el 21/09).
