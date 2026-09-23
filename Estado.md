@@ -6,7 +6,7 @@ Resumen vivo. Pendientes y preguntas: `TODO.md`. Índice de documentos: `README.
 
 ## 1. Contexto
 
-Automatizar la recepción y tramitación de comunicaciones de la administración pública (DEHú/LEMA) en MGS Seguros: clasificar (metadatos LEMA primero; OCR + LLM solo si hace falta) y derivar al Ticketing interno.
+Automatizar la recepción y tramitación de comunicaciones de la administración pública (DEHú/LEMA) en MGS Seguros: clasificar (cascada de RF-03 en hipótesis, ver §3) y derivar al Ticketing interno.
 
 Hoy el acceso es **manual** a **DEHú** (habitualmente por el enlace del correo de aviso). Mi Carpeta Ciudadana es otro portal, también puede abrir el mismo buzón. El proyecto sustituye esa consulta en pantalla por **LEMA** (Grandes Destinatarios): mismo buzón, servicios web. Seguridad Informática confirma: certificado de producción ya existe; el de pruebas lo genera Sistemas; contratación/custodia/renovación es de Seguridad.
 
@@ -25,7 +25,7 @@ Hoy el acceso es **manual** a **DEHú** (habitualmente por el enlace del correo 
 
 ## 2. Dónde está el trabajo
 
-Análisis y diseño del MVP cerrados en lo esencial (ER aprobado por la tutora de empresa), salvo RF-03 (cascada de clasificación) y la política de comparecencia de las notificaciones, pendientes del resto de áreas. La comunicación (`tipoEnvio` `1`) se descarga al momento: no tiene plazo de lectura ni efectos jurídicos (FAQ DEHú, 23/09/2026). Introducción de la memoria cerrada (18/09/2026) y retocada el 23/09/2026 para distinguir notificación y comunicación: `memoria/01_Introduccion.md`.
+Análisis y diseño del MVP cerrados en lo esencial (ER aprobado por la tutora de empresa), salvo RF-03 (cascada de clasificación) y la política de comparecencia de las notificaciones, pendientes del resto de áreas.
 
 | Artefacto | Dónde |
 |---|---|
@@ -55,14 +55,13 @@ RF-11.5 (cambio de departamento) está diagramada como propuesta de alto nivel, 
 - ER: tablas renombradas; `USUARIO` con clave compartida a `PERSONA`; sin tabla `EVENTO` (trazabilidad e idempotencia con `CLASIFICACION` + `DERIVACION`).
 - `CLASIFICACION` (22/09/2026): una fila por clasificación. `origen` `ia` | `operador`; `modelo` si hubo LLM; `nIntentos` solo en filas `ia` (el tope de reclasificaciones cuenta `nIntentos > 1`); `usuario_id` solo en filas `operador`. `departamentoAsignado` obligatorio. No hay catálogo de tipos: `tipoAsignado` y `tipoDetectado` no se rellenan en el MVP. La categorización es el departamento.
 - Aprendizaje continuo del Agente IA y diagnóstico sistemático de errores: evolución futura, no diseño cerrado.
-- **Plataforma:** Java EE 7 + WAS 9 + `javax.*` (tutora de empresa, sept. 2026). Desarrollo querría Jakarta EE + servidor más moderno; depende de Sistemas, sin fecha. HVOrganismosPublicos no nace en Jakarta. Detalle: `PRD.md`.
 
 ## 4. Arquitectura (resumen)
 
 Detalle en `Diagrama_Clases.md` y `Diagrama_Componentes.md`.
 
 - **Módulos Eclipse:** ver `PRD.md` §4 (familia Ticketing; sin DAO/EJB). Incluye `Test` (JUnit para el TFM) y `FT` (Playwright).
-- **Stack alineado con Ticketing (cerrado):** Java 8, **Java EE 7** (`javax.*`), **WAS 9.0**, JDBC propio (sin JPA/Spring), CDI, JAX-RS. Jakarta EE descartado para este aplicativo hasta que Sistemas mueva de WAS 9. Módulos y CDI por constructor: `PRD.md`. Misma convención de estereotipos (`@Repositorio`, `@Servicio`, `@Endpoint`, `@Transaccional`), sin `AggregateRoot` ni eventos de dominio CDI (los cubre RF-07 a nivel corporativo).
+- **Stack alineado con Ticketing (cerrado; tutora de empresa, sept. 2026):** Java 8, **Java EE 7** (`javax.*`), **WAS 9.0**, JDBC propio (sin JPA/Spring), CDI, JAX-RS. Jakarta EE descartado para este aplicativo hasta que Sistemas mueva de WAS 9. Módulos y CDI por constructor: `PRD.md`. Misma convención de estereotipos (`@Repositorio`, `@Servicio`, `@Endpoint`, `@Transaccional`), sin `AggregateRoot` ni eventos de dominio CDI (los cubre RF-07 a nivel corporativo).
 - **Estilos:** orientada a eventos entre componentes (bus corporativo desacopla pipeline / ejecución / reclasificación); hexagonal por dentro de cada componente. Justificarlo explícitamente en la memoria, no dejarlo como efecto secundario de SOLID.
 - **Frontal:** subconjunto CRUD + listado + detalle + un flujo de estado, sobre librería de terceros. No replicar el acabado visual de Ticketing (vive en librerías internas, fuera de plazo).
 - **Componentes:** línea discontinua solo para lo no confirmado — modificar ticket (audiencia back) y evento de cancelación (proceso que lee el outbox).
@@ -75,4 +74,4 @@ Deadlines de negocio: backend/frontend antes del 25 dic; desarrollo y testing ci
 
 ## 6. Memoria
 
-Estructura definida en `Estructura_Memoria.md` (sin «Análisis de antecedentes»; «Estado de la cuestión» cubre soluciones existentes o análogas). Introducción cerrada (retoque del 23/09: párrafo de terminología notificación/comunicación y plazos con la Ley 39/2015, art. 43.2). Referencias numeradas por orden de mención: desde el 23/09 la FAQ DEHú es la [5] y las antiguas [5]–[28] pasan a [6]–[29]. Siguiente capítulo de calendario: gestión del proyecto (desde el 21/09).
+Estructura: `Estructura_Memoria.md`. Introducción cerrada (revisada el 23/09; `memoria/01_Introduccion.md` sincronizado con Overleaf). Gestión del proyecto: iniciada el 01/09 (Gantt en `Diagramas/Gantt.md`).

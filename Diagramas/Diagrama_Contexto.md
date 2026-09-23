@@ -2,7 +2,7 @@
 
 *Vista de contexto del sistema: qué entidades rodean la plataforma y qué intercambian con ella, sin entrar en componentes internos (para el detalle interno, ver [Diagrama de componentes](Diagrama_Componentes.md)). Se muestran dos situaciones: la actual (acceso manual) y la futura (con el sistema automatizado + IA).*
 
-`Propuesta de proyecto.md` describe la situación actual de forma genérica ("buzones y sedes electrónicas de organismos públicos"). La puerta concreta es la **sede web de DEHú** (Dirección Electrónica Habilitada única). **Mi Carpeta Ciudadana** es otro portal (ciudadano); no es la que usan las áreas para este proceso. LEMA es la misma DEHú por servicios web, para Grandes Destinatarios (ver `Estado_del_proyecto.md`, sección 1).
+`Propuesta de proyecto.md` describe la situación actual de forma genérica ("buzones y sedes electrónicas de organismos públicos"). La puerta concreta es la **sede web de DEHú** (Dirección Electrónica Habilitada única). **Mi Carpeta Ciudadana** es otro portal (ciudadano); no es la que usan las áreas para este proceso. LEMA es la misma DEHú por servicios web, para Grandes Destinatarios (ver `Estado.md`, sección 1).
 
 **Objetivo concreto**: sustituir el acceso manual y periódico de cada departamento a la sede web de DEHú por LEMA, clasificar cada comunicación (metadatos primero; OCR/LLM si hace falta) y derivarla al departamento vía ticket, sin que nadie recorra el listado completo.
 
@@ -64,7 +64,7 @@ end note
 
 ![Diagrama de contexto - situación futura](img/diagrama_contexto.png)
 
-El sistema se interpone entre DEHú y la Empresa MGS: consulta las comunicaciones automáticamente (vía LEMA), las clasifica y deriva a cada departamento solo lo que le corresponde, creando un ticket en el Sistema de Ticketing (canal principal, ver `Estado_del_proyecto.md` sección 3). El Operador gestiona la cola de revisión humana para los casos de baja confianza.
+El sistema se interpone entre DEHú y la Empresa MGS: consulta las comunicaciones automáticamente (vía LEMA), las clasifica y deriva a cada departamento solo lo que le corresponde, creando un ticket en el Sistema de Ticketing (canal principal, ver `Estado.md` sección 3). El Operador gestiona la cola de revisión humana para los casos de baja confianza.
 
 ### Elementos
 

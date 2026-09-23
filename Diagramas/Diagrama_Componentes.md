@@ -12,7 +12,7 @@
 
 ## Criterio de agrupación
 
-Los componentes se agrupan en cuatro bloques, cada uno correspondiente a un tramo de requisitos funcionales, siguiendo la misma frontera que ya separa el `Especificacion_Requisitos.md` (sección 1: "generar el evento" vs. "ejecutar la acción") y el `Estado_del_proyecto.md` (sección 4, decisión de capas/patrones):
+Los componentes se agrupan en cuatro bloques, cada uno correspondiente a un tramo de requisitos funcionales, siguiendo la misma frontera que ya separa el `Especificacion_Requisitos.md` (sección 1: "generar el evento" vs. "ejecutar la acción") y el `Estado.md` (sección 4, decisión de capas/patrones):
 
 - **Pipeline de Ingesta y Clasificación (RF-01–RF-07)**: sondeo LEMA, almacenamiento documental, OCR/interpretación, clasificación, generación del contenido del ticket y publicación del evento.
 - **Ejecución de Acciones (RF-08)**: un único componente (Ejecutor/Selector de Canal) que consume el evento y decide el canal de salida (ticket o email) por configuración, no por código específico (RF-08.4).
