@@ -1,12 +1,12 @@
 # Diagramas de flujo — Automatización DEHú (MGS)
 
-Cinco flujos independientes (cada uno con su propio inicio/fin, sin referencias cruzadas entre ellos). Código Mermaid listo para pegar en [Mermaid Live Editor](https://mermaid.live) o renderizar directamente.
+Seis flujos independientes (cada uno con su propio inicio/fin, sin referencias cruzadas entre ellos). Código Mermaid listo para pegar en [Mermaid Live Editor](https://mermaid.live) o renderizar directamente.
 
 ---
 
 ## 1. Sistema (automático) — Detección, sondeo y clasificación
 
-Sondeo periódico de `localiza()`, iteración sobre la lista, obtención de documento/anexos/acuse, OCR **del documento principal**, interpretación y clasificación. Termina registrando la comunicación (cola de revisión pendiente si confianza baja; historial de procesadas si confianza alta).
+Sondeo periódico de `localiza()`. Los dos tipos se clasifican antes de abrir el documento, con organismo emisor y concepto. Si la confianza no basta, van a revisión y no se abre. **Comunicación (`1`)**, ya clasificada: `peticionAcceso()` en el mismo ciclo, anexos solo si la respuesta trae `anexosReferencia`, sin `consultaAcusePdf()`. Se extrae y resume el documento principal y se genera el ticket del departamento ya asignado. No se clasifica otra vez. **Notificación (`2`)**: queda pendiente de comparecencia para esa área. No hay `peticionAcceso()`, anexo, acuse, resumen ni ticket.
 
 ```mermaid
 %%{init: {"flowchart": {"wrappingWidth": 600}}}%%
@@ -15,39 +15,47 @@ flowchart TD
 
     subgraph SIS1["Sistema (automático) — Detección y sondeo"]
         direction TB
-        a1["Consultar listado de comunicaciones pendientes (localiza())"]
-        decHasItems{"¿Hay comunicaciones en la lista?"}
-        loopNext["Tomar siguiente comunicación de la lista"]
-        a2["Obtener documento y metadatos (peticionAcceso())"]
-        aAnexos["Consultar anexos por referencia (consultaAnexos())"]
-        aAcuse["Consultar acuse (consultaAcusePdf())"]
-        a3["Almacenar documento principal, anexos y acuse"]
-        a4["Extraer texto del documento principal (OCR)"]
-        a5["Interpretar contenido"]
-        a6["Clasificar comunicación"]
+        a1["Consultar listado de envíos pendientes (localiza())"]
+        decHasItems{"¿Hay envíos en la lista?"}
+        loopNext["Tomar siguiente envío"]
+        aClasif["Clasificar por organismo y concepto"]
+        decN{"¿Confianza >= umbral?"}
+        decTipo{"¿tipoEnvio?"}
+        a2["Obtener documento (peticionAcceso())"]
+        decAnexos{"¿Hay anexos por referencia?"}
+        aAnexos["Descargar anexos (consultaAnexos())"]
+        a3["Almacenar documento principal y anexos"]
+        a4["Extraer texto del documento principal"]
+        a5["Resumir contenido"]
+        aNotif["Registrar notificación pendiente de comparecencia en su área"]
         decLoop{"¿Quedan más en la lista?"}
         pollWait["Fin del ciclo de sondeo (esperar frecuencia configurable)"]
 
         a1 --> decHasItems
-        decHasItems -->|sí| loopNext --> a2 --> aAnexos --> aAcuse --> a3 --> a4 --> a5 --> a6 --> decLoop
+        decHasItems -->|sí| loopNext --> aClasif --> decN
+        decN -->|no| pendReview["Registrar en cola de revisión pendiente"]
+        decN -->|sí| decTipo
+        decTipo -->|1 comunicación| a2 --> decAnexos
+        decAnexos -->|sí| aAnexos --> a3
+        decAnexos -->|no| a3
+        a3 --> a4 --> a5 --> b1
+        decTipo -->|2 notificación| aNotif --> decLoop
         decHasItems -->|no| pollWait
         decLoop -->|sí, quedan mas| loopNext
         decLoop -->|no, lista vacia| pollWait
         pollWait -.->|vuelve a sondear| a1
     end
 
-    a6 -->|"comunicación clasificada"| dec1{"¿Confianza >= umbral?"}
-    dec1 -->|sí| b1
-    dec1 -->|no| pendReview["Registrar en cola de revisión pendiente"] --> stop2(("Fin"))
+    pendReview --> stop2(("Fin"))
 
     subgraph SIS2["Sistema (automático)"]
         direction TB
-        b1["Generar contenido de la notificación"]
+        b1["Generar contenido del ticket del departamento ya asignado"]
         b2["Generar y publicar evento"]
         b1 --> b2
     end
 
-    b2 --> procReg["Registrar en historial de comunicaciones procesadas"] --> stop1(("Fin"))
+    b2 --> procReg["Registrar en historial de envíos procesados"] --> decLoop
 
     style SIS1 fill:#E3F2FD,stroke:#90CAF9,color:#000000,font-weight:bold,font-size:14px
     style SIS2 fill:#E3F2FD,stroke:#90CAF9,color:#000000,font-weight:bold,font-size:14px
@@ -56,9 +64,9 @@ flowchart TD
     classDef decision fill:#FFE0B2,stroke:#FFB74D,color:#000000;
     classDef terminal fill:#37474F,stroke:#263238,color:#ffffff;
 
-    class a1,a2,aAnexos,aAcuse,a3,a4,a5,a6,loopNext,pollWait,b1,b2,pendReview,procReg process
-    class dec1,decHasItems,decLoop decision
-    class start,stop1,stop2 terminal
+    class a1,a2,aAnexos,a3,a4,a5,aClasif,aNotif,loopNext,pollWait,b1,b2,pendReview,procReg process
+    class decN,decHasItems,decTipo,decAnexos,decLoop decision
+    class start,stop2 terminal
 ```
 
 ---
@@ -119,7 +127,66 @@ flowchart TD
 
 ---
 
-## 3. Usuario/Operador
+## 3. Responsable de área — Comparecencia de una notificación
+
+El responsable consulta en el frontal las notificaciones de su área que siguen pendientes. Ya están clasificadas: el departamento salió de organismo y concepto en el sondeo, y aquí no se clasifica otra vez. La lista muestra organismo, concepto, titular, `fechaPuestaDisposicion` y el día 10 calculado desde esa fecha. Confirmar es la comparecencia: `peticionAcceso()` practica la notificación y el plazo de respuesta del documento empieza al día siguiente. Los anexos por referencia se piden solo si la respuesta trae `referenciaDocumento`. El acuse se descarga en el mismo ciclo. No se extrae ni se resume el documento: el resumen solo se hace si la descarga es inmediata, y en la notificación no lo es hasta que lo confirmen el resto de departamentos. Se genera el ticket del departamento ya asignado, sin ese resumen. El vencimiento del correo de aviso no entra: `localiza()` no lo devuelve.
+
+```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 600}}}%%
+flowchart TD
+    start(("Inicio")) --> n1
+
+    subgraph RESP["Responsable de área"]
+        direction TB
+        n1["Consultar notificaciones pendientes de su área"]
+        decConf{"¿Confirma la comparecencia?"}
+        n1 --> decConf
+    end
+
+    decConf -->|no| stopNo(("Fin"))
+    decConf -->|sí| n2
+
+    subgraph SIS["Sistema (automático)"]
+        direction TB
+        n2["Comparecer (peticionAcceso())"]
+        decAnexos{"¿La respuesta trae anexos por referencia?"}
+        nAnexos["Descargar cada anexo (consultaAnexos())"]
+        nAcuse["Descargar acuse (consultaAcusePdf())"]
+        n3["Almacenar documento principal, anexos y acuse"]
+
+        n2 --> decAnexos
+        decAnexos -->|sí| nAnexos --> nAcuse
+        decAnexos -->|no| nAcuse
+        nAcuse --> n3
+    end
+
+    n3 --> b1
+
+    subgraph SIS2["Sistema (automático)"]
+        direction TB
+        b1["Generar el ticket del departamento ya asignado, sin resumen del documento"]
+        b2["Generar y publicar evento"]
+        b1 --> b2
+    end
+
+    b2 --> procReg["Registrar en historial de envíos procesados"] --> stop1(("Fin"))
+
+    style RESP fill:#E8F5E9,stroke:#A5D6A7,color:#000000,font-weight:bold,font-size:14px
+    style SIS fill:#E3F2FD,stroke:#90CAF9,color:#000000,font-weight:bold,font-size:14px
+    style SIS2 fill:#E3F2FD,stroke:#90CAF9,color:#000000,font-weight:bold,font-size:14px
+
+    classDef process fill:#FFFFFF,stroke:#B0BEC5,color:#000000;
+    classDef decision fill:#FFE0B2,stroke:#FFB74D,color:#000000;
+    classDef terminal fill:#37474F,stroke:#263238,color:#ffffff;
+
+    class n1,n2,nAnexos,nAcuse,n3,b1,b2,procReg process
+    class decConf,decAnexos decision
+    class start,stopNo,stop1 terminal
+```
+
+---
+
+## 4. Usuario/Operador
 
 Gestión manual de comunicaciones de baja confianza: aceptar la propuesta de la IA o reclasificar. Ambas rutas generan un evento que, en paralelo (sin bloquear el cierre del caso), retroalimenta al modelo IA.
 
@@ -156,7 +223,7 @@ flowchart TD
 
 ---
 
-## 4. Consulta local (Operador)
+## 5. Consulta local (Operador)
 
 Consulta bajo demanda de registros ya guardados, sin invocar a DEHú. Las comunicaciones son de solo lectura; las notificaciones (tickets) permiten modificación.
 
@@ -203,7 +270,7 @@ flowchart TD
 
 ---
 
-## 5. Reconciliación periódica *(condicionado a tiempo disponible)*
+## 6. Reconciliación periódica *(condicionado a tiempo disponible)*
 
 Proceso batch independiente que compara `localizaRealizadas()` contra el repositorio local, para detectar posibles fallos silenciosos del flujo principal. No forma parte del alcance comprometido del MVP.
 

@@ -17,7 +17,7 @@ Fuentes: `Especificacion_Requisitos.md`, `Estado.md`, `DEHu_Campos_Respuesta_Ser
 
 ## 1. Overview
 
-Hoy cada departamento entra a **DEHú** con certificado local (habitualmente por el enlace del correo de aviso), mira el listado entero y decide si algo es suyo. Mi Carpeta Ciudadana es otro portal; también puede abrir el mismo buzón. El producto sustituye la consulta en pantalla por **LEMA** (servicios web de Gran Destinatario): sondeo automático, persistencia inmediata de documentos, clasificación (metadatos de `localiza()` primero; OCR+LLM del documento solo si hace falta), evento corporativo y derivación al **Ticketing** interno (canal obligatorio). Si la IA no alcanza el umbral, un **Operador** revisa. Si el departamento cancela por mala cola, un **Agente IA** (fuera de WAS, vía MCP) intenta autocorregir como máximo dos veces.
+Hoy cada departamento entra a **DEHú** con certificado local (habitualmente por el enlace del correo de aviso), mira el listado entero y decide si algo es suyo. Mi Carpeta Ciudadana es otro portal; también puede abrir el mismo buzón. El producto sustituye la consulta en pantalla por **LEMA** (servicios web de Gran Destinatario): sondeo automático, persistencia inmediata de documentos, clasificación del departamento con organismo y concepto de `localiza()`, sin leer el documento; el OCR+LLM del principal es solo el resumen de la comunicación, que se descarga en el mismo ciclo. En la notificación no hay resumen mientras la descarga no sea inmediata, evento corporativo y derivación al **Ticketing** interno (canal obligatorio). Si la IA no alcanza el umbral, un **Operador** revisa. Si el departamento cancela por mala cola, un **Agente IA** (fuera de WAS, vía MCP) intenta autocorregir como máximo dos veces.
 
 El nombre `OrganismosPublicos` es más amplio que DEHú a propósito (otras fuentes en el futuro). El **MVP es solo DEHú/LEMA**. No dilata el alcance.
 
@@ -27,7 +27,7 @@ El nombre `OrganismosPublicos` es más amplio que DEHú a propósito (otras fuen
 
 ### 1.1 Objetivo del MVP
 
-Ciclo de **recepción**: detectar en DEHú → almacenar documento/anexos/acuse → interpretar y clasificar → publicar evento → ejecutar notificación (ticket; email deseable) → permitir revisión humana y reclasificación (operador o agente).
+Ciclo de **recepción**: detectar en DEHú → clasificar con organismo y concepto, sin leer el documento → la comunicación se descarga y se resume en el mismo ciclo; la notificación no se resume mientras la descarga no sea inmediata → publicar evento → ejecutar notificación (ticket; email deseable) → permitir revisión humana y reclasificación (operador o agente). El acuse solo entra si la notificación se comparece.
 
 Hay que separar siempre:
 
@@ -509,9 +509,10 @@ Texto completo: `Especificacion_Requisitos.md`. Aquí: regla que el código no p
 
 ### RF-03 a RF-06 IA y contenido de ticket
 
-- OCR/LLM **solo del documento principal**. Anexos y acuse se archivan y no entran al pipeline (KISS; pendiente confirmar con compañeros si el anexo aporta a clasificar).
-- Salida: entidades (organismo, expediente, plazos, importes, partes), score, departamento, canal (`ticket` / `email`). No hay catálogo de tipos: la categorización es el departamento. `tipoAsignado` y `tipoDetectado` no se rellenan en el MVP.
-- Umbral configurable: por debajo → RF-09 (no publicar acción automática).
+- Clasificación (RF-05): organismo emisor y concepto de `localiza()`, antes de abrir. No se lee el PDF, ni el anexo, ni el acuse. Por debajo del umbral → RF-09 y no se abre. Pendiente de confirmar con el resto de departamentos.
+- OCR/LLM **solo del documento principal de la comunicación** (`tipoEnvio` `1`), para el resumen de la descarga inmediata. En la notificación no hay extracción ni resumen mientras la descarga no sea inmediata (pendiente de confirmar con el resto de departamentos). Anexos y acuse se archivan y no entran al pipeline.
+- Salida del resumen: entidades (organismo, expediente, plazos, importes, partes). El departamento sale de la clasificación, no del PDF. No hay catálogo de tipos: la categorización es el departamento. `tipoAsignado` y `tipoDetectado` no se rellenan en el MVP.
+- Umbral configurable: por debajo → RF-09 (no publicar acción automática ni abrir el documento).
 - RF-06: título, resumen, campos, adjuntos, trazabilidad `identificador` DEHú.
 - n8n puede orquestar OCR/LLM; Java persiste `INTERPRETACION` + `TEXTOEXTRAIDO` y el historial `CLASIFICACION`.
 
@@ -783,7 +784,7 @@ Hasta que se cierre, implementar el diseño actual y dejar puntos de extensión:
 | Tema | Impacto |
 |---|---|
 | Retención de `TEXTOEXTRAIDO` | Valor del parámetro; no hardcodear años. |
-| ¿El anexo aporta a clasificar? | Si sí, ampliar RF-03; hoy solo principal. |
+| Clasificar sin leer el documento | Escrito en RF-05. Pendiente de confirmar con el resto de departamentos. |
 | Audiencia back Ticketing | Bloquea cierre de RF-11.4/11.5. |
 | Quién lee el outbox de cancelación | Bloquea RF-10 de verdad. |
 | Deduplicado por identificador DEHú en POST tickets | RF-08.5. |
@@ -802,7 +803,7 @@ No republicar código interno de Ticketing (`Estado_Tecnico_Ticketing.md`, `Anal
 2. Constructor `@Inject`; tests con `new Servicio(...)`.
 3. Persistencia LEMA en Java dentro de 24 h.
 4. Metadatos de `localiza()` guardados antes de `peticionAcceso()`.
-5. OCR solo del principal.
+5. Clasificación sin leer el documento (organismo y concepto). OCR solo del principal de la comunicación, para el resumen de la descarga inmediata. La notificación no se resume mientras la descarga no sea inmediata.
 6. `CLASIFICACION` y `DERIVACION` se acumulan, no se pisan.
 7. Editable RF-11 ⇔ existe `DERIVACION`, no `tipoEnvio`.
 8. Reclasificación = finalizar + crear, nunca transferir cola.

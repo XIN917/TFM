@@ -52,7 +52,7 @@ Siguiendo la definición estricta de actor UML (entidad externa a la frontera de
 | Componente | Rol |
 |---|---|
 | Orquestador (n8n u equivalente) | Coordina el flujo completo (RF-01 a RF-08) y publica/consume eventos. |
-| Motor de IA (OCR + LLM) | Extrae texto, interpreta y clasifica el contenido (RF-03 a RF-05); pieza interna, no visible como actor en el diagrama de casos de uso salvo que en el futuro se externalice como un módulo de agentes IA independiente y consumible por otras aplicaciones — decisión de arquitectura pendiente de valorar con la empresa, fuera del alcance de este documento. |
+| Motor de IA (OCR + LLM) | Extrae texto e interpreta el documento principal una vez obtenido (RF-03, RF-04). La clasificación del departamento (RF-05) no lee el documento: usa organismo emisor y concepto de `localiza()`. Pieza interna, no visible como actor en el diagrama de casos de uso salvo que en el futuro se externalice como un módulo de agentes IA independiente y consumible por otras aplicaciones — decisión de arquitectura pendiente de valorar con la empresa, fuera del alcance de este documento. |
 | Repositorio documental interno | Almacena documentos, anexos, acuses y metadatos (RF-02). |
 | Canales de notificación (ticket / email) | Consumidores del evento de RF-07, seleccionados según configuración en RF-08. |
 | Agente IA de reclasificación | Componente distinto del Motor de IA de RF-03/RF-05: se activa por el evento de reclasificación solicitada (RF-10), evalúa su propia confianza de autocorrección, e invoca vía MCP la acción de gestión de ticket cuando la supera. |
@@ -83,10 +83,10 @@ Siguiendo la definición estricta de actor UML (entidad externa a la frontera de
 
 | | |
 |---|---|
-| **Descripción** | El sistema debe extraer texto estructurado del **documento principal** de cada comunicación (PDF, escaneado o nativo) para permitir su interpretación. Anexos y acuse se excluyen del pipeline de IA: se archivan íntegramente conforme a RF-02, pero no se procesan con OCR/LLM en el MVP — el documento principal es, por diseño de DEHú, el que contiene la naturaleza y el contenido decisorio de la comunicación. |
+| **Descripción** | El sistema debe extraer texto estructurado del **documento principal** cuando la descarga es inmediata (`tipoEnvio` `1`, comunicación), para el resumen. En una notificación no se extrae ni se resume mientras la descarga no sea inmediata. Pendiente de confirmar con el resto de departamentos (`TODO.md`). Anexos y acuse se archivan conforme a RF-02 y no se procesan con OCR/LLM. |
 | **Sub-requisitos** | RF-03.1 Aplicar OCR al documento principal cuando no tenga capa de texto (escaneado).<br>RF-03.2 Extraer texto nativo cuando el documento principal ya lo contenga.<br>RF-03.3 Normalizar el resultado en un formato común independientemente del método de extracción (OCR o texto nativo). |
-| **Criterio de aceptación** | El documento principal de toda comunicación procesada tiene una representación textual asociada, con indicador de calidad/confianza del OCR cuando aplique. Anexos y acuse quedan excluidos de este criterio — su alcance de persistencia es el de RF-02. |
-| **Nota** | Acotar la extracción al documento principal sigue el criterio KISS/YAGNI aplicado en el resto del diseño: procesar anexos multiplicaría el coste de OCR/LLM sin evidencia de que aporte valor a la clasificación. Si en una fase posterior se detecta que la información del anexo es necesaria para clasificar correctamente algún tipo de comunicación, se puede ampliar el alcance de este requisito. |
+| **Criterio de aceptación** | El documento principal de toda comunicación descargada en el mismo ciclo tiene una representación textual asociada, con indicador de calidad/confianza del OCR cuando aplique. Una notificación pendiente de comparecencia no entra en este criterio. Anexos y acuse quedan excluidos — su alcance de persistencia es el de RF-02. |
+| **Nota** | Esta extracción no clasifica. El resumen solo acompaña a la descarga inmediata. El departamento se decide en RF-05, antes de abrir, sin leer el PDF. Anexos y acuse siguen fuera. |
 
 ### RF-04 — Interpretación automática del contenido
 
@@ -100,9 +100,9 @@ Siguiendo la definición estricta de actor UML (entidad externa a la frontera de
 
 | | |
 |---|---|
-| **Descripción** | El sistema debe determinar, en base a la interpretación anterior, qué área de negocio debe recibir la comunicación (siniestros, laboral, comercial/concursos públicos, fiscal, etc.). |
-| **Sub-requisitos** | RF-05.1 Aplicar reglas de negocio y/o modelo de clasificación sobre el resultado de RF-04.<br>RF-05.2 Asociar cada clasificación a un departamento/equipo y, de forma independiente, al canal de notificación que le corresponda (ticket o email — ver RF-08).<br>RF-05.3 Marcar como "sin clasificar" cualquier comunicación cuyo score de confianza (RF-04.4 y/o de la propia clasificación) esté por debajo de un umbral configurable, derivándola a RF-09.<br>RF-05.4 Registrar toda comunicación clasificada en un historial trazable, sea cual sea el resultado: si la confianza es baja, en la cola de revisión pendiente (RF-09.1); si es alta, en un historial de comunicaciones procesadas — ninguna comunicación queda sin dejar rastro tras su clasificación. |
-| **Criterio de aceptación** | Toda comunicación queda clasificada con un departamento y una confianza, o marcada explícitamente para revisión humana — nunca queda sin resolución de estado. |
+| **Descripción** | El sistema debe determinar el departamento antes de abrir el documento, con organismo emisor y concepto devueltos por `localiza()`. No se lee el PDF, ni los anexos, ni el acuse. Pendiente de confirmar con el resto de departamentos (`TODO.md`). |
+| **Sub-requisitos** | RF-05.1 Clasificar con organismo emisor y concepto. No usa el texto extraído ni el resultado de RF-04.<br>RF-05.2 Asociar cada clasificación a un departamento/equipo y, de forma independiente, al canal de notificación que le corresponda (ticket o email — ver RF-08).<br>RF-05.3 Si la confianza queda por debajo de un umbral configurable, marcar como "sin clasificar", derivar a RF-09 y no abrir el documento.<br>RF-05.4 Registrar toda comunicación clasificada en un historial trazable, sea cual sea el resultado: si la confianza es baja, en la cola de revisión pendiente (RF-09.1); si es alta, con el departamento ya asignado — ninguna comunicación queda sin dejar rastro tras su clasificación. |
+| **Criterio de aceptación** | Toda comunicación queda clasificada con un departamento y una confianza a partir de organismo y concepto, o marcada para revisión humana sin haber abierto el documento. |
 
 ### RF-06 — Generación automática del contenido estructurado del ticket
 
