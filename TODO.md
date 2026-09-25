@@ -4,7 +4,8 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 
 ## Próximos pasos
 
-- [ ] Esperar respuestas de departamentos (correos ya enviados). Guion: `_local/Preguntas_departamentos.md`
+- [ ] Esperar respuestas del resto de departamentos (correos ya enviados). Hechos: Fiscal, Coordinación DGS y Red de Mediación (25/09). Guion: `_local/Preguntas_departamentos.md`. Resúmenes: `_local/reuniones/`
+- [ ] Ver de dónde sale el área remitente de Red de Mediación y reproducir ese reparto dentro del DIR3 `E00119006` (25/09). No está en el aviso DEHú ni en `localiza()` documentado. El aviso de la sede queda fuera. No preguntar al área. No abrir documentos para buscarlo, de momento. Detalle en `_local/reuniones/`
 - [ ] Alinear casos de uso, RF-09.4, la aceptación de RF-01 y RF-06.1 con el diagrama del 23/09 (descarga y acuse según `tipoEnvio`, comparecencia en flujo propio). La clasificación sin leer el documento ya está en requisitos y PRD. No tocar el flujo 2.
 - [ ] Decidir el periodo de retención de `TEXTOEXTRAIDO` (tras hablarlo con los compañeros)
 - [ ] Diseño de interfaz RF-09.2 (documento como vista principal, texto extraído como panel auxiliar)
@@ -18,9 +19,9 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 
 ## Preguntas pendientes
 
-**Áreas de negocio** (Fiscal y DGS hechos; resto en espera de respuesta)
+**Áreas de negocio** (Fiscal, Coordinación DGS y Red de Mediación hechos; SAC y el resto en espera)
 
-- Clasificación sin leer el documento: ya escrita en RF-05 y en el PRD (organismo y concepto de `localiza()`, antes de abrir). Fiscal y DGS cubren ~99 % con emisor + concepto. Pendiente de confirmar con el resto de departamentos.
+- Clasificación sin leer el documento: ya escrita en RF-05 y en el PRD (organismo y concepto de `localiza()`, antes de abrir). El caso DGSFP está en el paso de arriba. Pendiente de confirmar con el resto de departamentos.
 - Resumen de la notificación: no se hace mientras la descarga no sea inmediata. La comunicación sí, porque se descarga en el mismo ciclo. Pendiente de confirmar con el resto de departamentos.
 - Comparecencia eager (batch madrugada) vs lazy (ellas / botón HV), **solo notificaciones** (`tipoEnvio` `2`): el diagrama ya dibuja el botón en el frontal HV (responsable de área, sin volver a clasificar). Pendiente de que el resto de áreas confirmen si les perjudica arrancar el plazo de respuesta al comparecer. Las comunicaciones (`1`) no tienen ese plazo (FAQ DEHú, 23/09) y se descargan en el mismo ciclo.
 
