@@ -1,50 +1,50 @@
 # PRD — HVOrganismosPublicos
 
-Documento de producto e implementación del aplicativo `HVOrganismosPublicos` (MGS Seguros). Consolida lo necesario para construir el sistema: alcance, arquitectura, módulos, requisitos, modelo de datos, integraciones y convenciones. El detalle académico de cada RF sigue en `Especificacion_Requisitos.md`; este PRD es la brújula de construcción.
+Documento de construcción del aplicativo `HVOrganismosPublicos` (MGS Seguros): alcance, arquitectura, módulos, reglas de implementación, datos, integraciones y endpoints. El texto completo de cada RF está en `Especificacion_Requisitos.md`; campos de LEMA en `DEHu_Campos_Respuesta_Servicios.md`; diagramas en `Diagramas/`.
 
 | | |
 |---|---|
 | Producto | `HVOrganismosPublicos` |
 | Área Eclipse | `HV` (Consulta) |
 | Git | `HV/HVOrganismosPublicos` (workspace local: `Consultas/HVOrganismosPublicos`) |
-| BBDD | `HV_OrganismosPublicos` en SQLPortal (DESA y PROD; extra de tamaño por documentos) |
-| Plataforma | Java 8, Java EE 7 (`javax.*`), WAS traditional 9, CDI, JAX-RS, JDBC (sin JPA/Spring/Jakarta) |
-| Familia de referencia | AYTicketing / AYCalendarios (SQL propio, hexagonal, OpenAPI v1). **No** SISiso/Personas (no hay maestro CICS → no hay módulo DAO ni EJB). |
-
-Fuentes: `Especificacion_Requisitos.md`, `Estado.md`, `DEHu_Campos_Respuesta_Servicios.md`, `Diagramas/*`.
+| BBDD | `HV_OrganismosPublicos` en SQLPortal (DESA y PROD; tamaño extra por documentos) |
+| Plataforma | Java 8, Java EE 7 (`javax.*`), WAS traditional 9, CDI, JAX-RS, JDBC. Sin JPA, Spring ni Jakarta. |
+| Familia de referencia | AYTicketing / AYCalendarios (SQL propio, hexagonal, OpenAPI v1). No SISiso/Personas: no hay maestro CICS, así que no hay DAO ni EJB. |
 
 ---
 
 ## 1. Overview
 
-Hoy cada departamento entra a **DEHú** con certificado local (habitualmente por el enlace del correo de aviso), mira el listado entero y decide si algo es suyo. Mi Carpeta Ciudadana es otro portal; también puede abrir el mismo buzón. El producto sustituye la consulta en pantalla por **LEMA** (servicios web de Gran Destinatario): sondeo automático, persistencia inmediata de documentos, clasificación del departamento con organismo y concepto de `localiza()`, sin leer el documento; el OCR+LLM del principal es solo el resumen de la comunicación, que se descarga en el mismo ciclo. En la notificación no hay resumen mientras la descarga no sea inmediata, evento corporativo y derivación al **Ticketing** interno (canal obligatorio). Si la IA no alcanza el umbral, un **Operador** revisa. Si el departamento cancela por mala cola, un **Agente IA** (fuera de WAS, vía MCP) intenta autocorregir como máximo dos veces.
+**Problema:** cada departamento entra a DEHú con certificado local, revisa el buzón entero y decide qué es suyo. Hay carga manual, certificados en los puestos y comunicaciones que se pierden o llegan tarde.
 
-El nombre `OrganismosPublicos` es más amplio que DEHú a propósito (otras fuentes en el futuro). El **MVP es solo DEHú/LEMA**. No dilata el alcance.
+**Solución:** sustituir la consulta en pantalla por LEMA (servicios web de Gran Destinatario). El sistema sondea DEHú, clasifica cada envío por departamento sin abrir el documento, descarga y persiste los documentos, y crea un ticket en la cola de Ticketing del departamento. Si la clasificación no alcanza el umbral, la revisa un Operador. Si el departamento cancela el ticket por estar en la cola equivocada, un Agente IA intenta corregirlo, como máximo dos veces.
 
-**Problema:** carga manual, certificados en puestos, comunicaciones oficiales que se pierden o llegan tarde.
+El nombre `OrganismosPublicos` deja abierta la puerta a otras fuentes, pero el MVP es solo DEHú/LEMA.
 
-**Propuesta de valor:** una sola ingesta centralizada, trazable, con IA y ticket en la cola correcta (o revisión humana), sin que el departamento recorra el buzón completo.
+### 1.1 Ciclo del MVP
 
-### 1.1 Objetivo del MVP
+1. Detectar el envío con `localiza()`.
+2. Clasificar con organismo emisor y concepto, sin leer el documento.
+3. Según `tipoEnvio`:
+   - Comunicación (`1`): descargar, resumir el documento principal y seguir.
+   - Notificación (`2`): queda pendiente de comparecencia (sección 13). Al comparecer se descargan documentos y acuse; no se resume.
+4. Publicar el evento de comunicación clasificada (RF-07).
+5. Ejecutar la acción del canal: ticket obligatorio, email deseable (RF-08).
+6. Revisión humana (RF-09) y reclasificación por Operador o Agente IA (RF-10).
 
-Ciclo de **recepción**: detectar en DEHú → clasificar con organismo y concepto, sin leer el documento → la comunicación se descarga y se resume en el mismo ciclo; la notificación no se resume mientras la descarga no sea inmediata → publicar evento → ejecutar notificación (ticket; email deseable) → permitir revisión humana y reclasificación (operador o agente). El acuse solo entra si la notificación se comparece.
+Generar el evento (RF-07) y ejecutar la acción (RF-08) son pasos separados, para que Ticketing no sea la única salida posible.
 
-Hay que separar siempre:
+### 1.2 Fuera de alcance
 
-1. **Generar el evento** (comunicación clasificada, RF-07).
-2. **Ejecutar la acción** (RF-08, canal por configuración).
-
-Así Ticketing no es la única salida posible.
-
-### 1.2 Fuera de alcance (MVP)
-
-- Envío de escritos a la administración (LEMA es solo lectura; el envío sería REG/REC / sedes distintas → otro sistema).
-- Automatismos que abran expedientes o toquen más sistemas de negocio que notificar.
-- MCP genérico: solo la acción «finalizar ticket + crear uno nuevo» del Agente IA (RF-10.4).
+- Enviar cualquier cosa a la Administración. LEMA es solo lectura.
+- Usar los correos de aviso (sede de la DGSFP o DEHú) como fuente. La fuente es DEHú.
+- Automatismos que abran expedientes o actúen sobre otros sistemas de negocio.
+- MCP genérico: el Agente IA solo puede finalizar un ticket y crear otro (RF-10).
 - Multi-certificado / multi-razón social.
-- Buzón interno (hueco RF-08.3; no implementar).
-- `localizaRealizadas` / `consultaRealizadas` (RF-12): candidato si hay tiempo, no comprometido.
-- Aprendizaje continuo del modelo a partir del feedback del Operador (evolución; persistir el feedback sí es deseable, RF-09.3).
+- Buzón interno (RF-08.3; se mantiene el hueco de numeración).
+- Rol `consulta` para departamentos en el frontal HV, hasta que decidan IT y Seguridad.
+- Aprendizaje continuo del modelo con el feedback del Operador. Persistir ese feedback sí es deseable (RF-09.3).
+- RF-12 (`localizaRealizadas` / `consultaRealizadas`): solo si sobra tiempo.
 
 ---
 
@@ -53,30 +53,26 @@ Así Ticketing no es la única salida posible.
 | Actor externo | Qué hace |
 |---|---|
 | DEHú/LEMA | Fuente SOAP. El sistema llama; LEMA no empuja. |
-| Operador / Administrador | Frontal propio: cola de revisión y consulta local (RF-09, RF-11). |
-| Departamento | Consume tickets en Ticketing (no el frontal HV). Cancela si la cola es incorrecta → evento RF-10. |
+| Operador / Administrador | Usa el frontal HV: cola de revisión y consulta local (RF-09, RF-11). |
+| Departamento | Trabaja en el frontal de Ticketing, no en HV. Si cancela un ticket, dispara RF-10. |
 
-Roles en `USUARIO` (autenticación contra directorio de personal MGS):
+Roles en `USUARIO` (autenticación contra el directorio de personal MGS):
 
 | Rol | Permisos |
 |---|---|
-| `operador` | Ver cola de revisión, aceptar propuesta IA. |
-| `administrador` | Lo de operador **más** reclasificar (RF-09.6). |
+| `operador` | Ver la cola de revisión y aceptar la propuesta de la IA. |
+| `administrador` | Lo mismo que `operador`, y además reclasificar (RF-09.6). |
 
-Rol `consulta` (departamento en frontal HV): **bloqueado** hasta IT/Seguridad. No implementar hasta que exista decisión.
-
-Toda resolución de revisión queda asociada al `USUARIO` que la ejecutó.
+Cada resolución de `REVISION` guarda el `USUARIO` que la hizo.
 
 ---
 
-## 3. Arquitectura del sistema
+## 3. Arquitectura
 
-Estilos (justificarlos en la memoria, no como efecto secundario de SOLID):
+- **Entre componentes:** orientada a eventos (bus corporativo / n8n). Ingesta, ejecución y reclasificación no se llaman en cadena.
+- **Dentro de Java:** hexagonal: `modelo` / `aplicacion` / `infraestructura` / `api`.
 
-- **Entre componentes:** orientada a eventos (bus corporativo / n8n). Pipeline, ejecución y reclasificación no se llaman en cadena rígida.
-- **Dentro de Java:** hexagonal — `modelo` / `aplicacion` / `infraestructura` / `api`.
-
-n8n **orquesta** (dispara sondeo, OCR/LLM, publica/consume eventos). Java **posee** el estado y la ventana legal: el conector LEMA y la persistencia de anexos/acuse viven en `ApiBack` + `Business`, no solo en un flujo n8n. Si n8n cae a las 25 h, el anexo ya no se puede recuperar por API.
+n8n orquesta: dispara el sondeo y el OCR/LLM, y publica y consume eventos. Java es dueño del estado y de la ventana de 24 h: el conector LEMA y la persistencia de documentos viven en Java, no en un flujo n8n.
 
 ```
 DEHú/LEMA (SOAP 1.1 + WS-Security X.509)
@@ -84,71 +80,50 @@ DEHú/LEMA (SOAP 1.1 + WS-Security X.509)
         ▼
   LemaGateway ──► JDBC ──► HV_OrganismosPublicos
         │                    ▲
-        │                    │
         ▼                    │
-  OCR/LLM (fuera; n8n) ── persistir INTERPRETACION / TEXTOEXTRAIDO
+  OCR/LLM (n8n) ── persiste INTERPRETACION / TEXTOEXTRAIDO
         │
         ▼
   Publicador RF-07 ──► Bus / n8n ──► EjecutarDerivacionService
                                           │
                           TicketingGateway ┴ EmailNotificacionGateway
                                           │
-Departamento cancela ticket ─(outbox, no webhook)─► evento RF-10
+Departamento cancela ticket ─(outbox de Ticketing)─► evento RF-10
                                           │
                               AgenteReclasificacionService
                                           │
                               AgenteIAGateway (MCP, proceso externo)
-                                          │
+
 Operador ──► Vue Web ──► ApiFront (JAX-RS) ──► servicios de revisión/consulta
 ```
 
-### 3.1 Bloques
-
-| Bloque | RF | Quién |
+| Bloque | RF | Dónde |
 |---|---|---|
-| Pipeline ingesta + clasificación | 01–07 | n8n dispara; Java `LemaGateway` + repos + persistencia IA |
+| Ingesta y clasificación | 01–07 | n8n dispara; `LemaGateway`, repositorios y persistencia IA en Java |
 | Ejecución de canal | 08 | `EjecutarDerivacionService` + `NotificacionGateway` |
 | Reclasificación automática | 10 | `ApiConsumer` + `AgenteReclasificacionService` + MCP fuera de WAS |
-| Gestión / revisión | 09, 11 | `ApiFront` + `HVOrganismosPublicosWeb` |
+| Revisión y consulta | 09, 11 | `ApiFront` + `HVOrganismosPublicosWeb` |
 
-Línea discontinua (no cerrada con el equipo):
+### 3.1 Convenciones Java
 
-- Modificar ticket in-place (audiencia **back** de Ticketing, RF-11.4/11.5).
-- Cómo el outbox de cancelación de Ticketing llega al bus / n8n (Ticketing **no** publica webhook).
+- Paquete raíz: `es.mgs.hv.organismosPublicos`.
+- Estereotipos como Ticketing: `@Servicio`, `@Repositorio`, `@Endpoint`, `@Transaccional`. Sin `AggregateRoot` ni eventos de dominio CDI.
+- Cada `*Service` recibe sus dependencias por constructor con `@Inject`. Los tests lo instancian con `new Servicio(gatewayFalso, repoFalso)`, sin servidor.
+- `beans.xml` con `bean-discovery-mode="annotated"` en Business y Comun (`src/META-INF`) y en Front y Web (`WebContent/WEB-INF`).
+- `modelo` solo depende de interfaces; las implementaciones están en `infraestructura`.
+- Patrones: Strategy + Adapter en canales (`NotificacionGateway`), Gateway y Repository (Fowler), `NotificacionGatewayResolver` con `@Inject @Any Instance<NotificacionGateway>`. Canal nuevo = clase nueva, sin `switch` en el servicio.
 
-### 3.2 Capas Java y convenciones
+### 3.2 Qué no crear
 
-Paquete raíz: `es.mgs.hv.organismosPublicos`.
-
-Estereotipos como Ticketing: `@Servicio`, `@Repositorio`, `@Endpoint`, `@Transaccional`. Sin `AggregateRoot` ni eventos de dominio CDI (los cubre RF-07 a nivel corporativo).
-
-**CDI:** `@Inject` en el **constructor** de cada `*Service`, no solo en campos. WAS ensambla implementaciones reales. En `HVOrganismosPublicosTest`: `new Servicio(gatewayFalso, repoFalso)` sin servidor. Sin constructor visible el unitario no es defendible en el TFM.
-
-`beans.xml` con `bean-discovery-mode="annotated"` en Business, Comun (`src/META-INF`) y en Front/Web (`WebContent/WEB-INF`).
-
-Interfaces de `modelo` (el código no depende de clases de `infraestructura`):
-
-| Interfaz | Operaciones |
-|---|---|
-| `ComunicacionRepository` | `save`, `query`, `siguienteId` (+ consultas de listado que hagan falta) |
-| `LemaGateway` | `localiza`, `peticionAcceso`, `consultaAnexos`, `consultaAcusePdf` |
-| `TicketingGateway` | `crearTicket`, `finalizarTicket`, `modificarTicket` |
-| `NotificacionGateway` | `soportaCanal`, `ejecutar` |
-| `AgenteIAGateway` | `intentarAutocorreccion` |
-
-Catálogo completo de carpetas y clases: sección 4. Las de `Diagrama_Clases.md` se marcan **UML**; el resto cierra RF-01–07, OpenAPI, WAS, Vue y tests.
-
-Patrones a respetar: Strategy + Adapter en canales (`NotificacionGateway` / `TicketingNotificacionGateway`); Gateway y Repository (Fowler); `NotificacionGatewayResolver` con `@Inject @Any Instance<NotificacionGateway>`. No Observer/State/Factory Method en el modelo de clases.
-
-### 3.3 Qué no crear
-
-DAO, EJB/EJBClient/Utils, WebService SOAP legacy, BatchV1 EAR aparte. JDBC en `Business/infraestructura`. El sondeo es un endpoint Back (n8n o timer en el mismo WAR).
-
-El Agente IA **no** es un WAR en WAS. Solo `AgenteIAClient` que habla con el proceso externo.
+- DAO, EJB/EJBClient/Utils, WebService SOAP propio ni EAR batch aparte.
+- El sondeo es un endpoint Back, lo dispare n8n o un timer del mismo WAR.
+- El Agente IA no es un WAR en WAS. En Java solo existe `AgenteIAClient`.
 
 ---
 
 ## 4. Estructura de directorios
+
+`# UML` = clase de `Diagramas/Diagrama_Clases.md`.
 
 ```
 HVOrganismosPublicos/
@@ -415,53 +390,43 @@ HVOrganismosPublicos/
 | Módulo | Contenido |
 |---|---|
 | Beans | Ids, excepciones, DTOs de evento. Sin SQL ni SOAP. |
-| Comun | log4j2, carga de properties. |
-| Business | Hexagonal: modelo, aplicación, infraestructura (`*Jdbc`, `LemaClient`, `TicketingClient`, `AgenteIAClient`). |
-| ApiFront + WasEAR | REST Operador. EAR: WAR + Business + Beans + Comun. |
-| Web + WebEAR | SPA Vue (UIBaseProject) + servlets de entrada/seguridad. EAR: WAR + Comun. **Sin Business.** |
-| ApiBack | Hooks n8n: sondeo LEMA, pipeline, derivación. |
+| Comun | log4j2 y carga de properties. |
+| Business | Modelo, aplicación e infraestructura (`*SQLServer`, `LemaClient`, `TicketingClient`, `AgenteIAClient`). |
+| ApiFront + WasEAR | REST del Operador. EAR: WAR + Business + Beans + Comun. |
+| Web + WebEAR | SPA Vue (UIBaseProject) y servlets de seguridad. EAR: WAR + Comun, sin Business. |
+| ApiBack | Endpoints que llama n8n: sondeo, interpretación, derivación. |
 | ApiConsumer | Evento de cancelación (RF-10). |
 | Migraciones | SQL del esquema. |
-| Properties | `{desa\|local\|prod\|usua}#*.properties` y log4j2. En disco del servidor (`PATH_PROPERTIES_SERVIDOR`), no en el EAR. |
-| Server | wsadmin: datasource SQLPortal, certificado LEMA. |
-| Test | JUnit 5, Java 8, Mockito. Sin WAS. |
-| FT | Playwright E2E contra desa/usua. No sustituye a Test. |
+| Properties | `{local\|desa\|usua\|prod}#*.properties`, en el disco del servidor (`PATH_PROPERTIES_SERVIDOR`). |
+| Server | Scripts wsadmin: datasource SQLPortal y certificado LEMA. |
+| Test | JUnit 5 + Mockito, sin WAS. |
+| FT | Playwright E2E contra desa/usua. |
 
-OpenAPI: `x-area: hv`, `x-subarea: def`, `x-version: v1`. Gateway: `/api/{front\|back}/hv/def/v1`. `def` = default; Infra puede asignar otro código de 3 letras si HV crece.
-
-Context root WAS (después, `ibm-web-ext.xml`): Front `HVOrganismosPublicos/api/front/v1`; Web `appt/HVOrganismosPublicosWeb`.
-
-Fases de construcción (plazo TFM; backend/frontend antes del 25 dic 2026):
-
-| Fase | Qué |
-|---|---|
-| 1 | Beans, Comun, Business, Front+Web, Migraciones, Properties, Server, Test |
-| 2 | ApiBack (n8n dispara sondeo y derivación) |
-| 3 | ApiConsumer y FT cuando exista el evento de cancelación y haya desa |
-
-Classpath (ya aplicado en RAD): Business → Beans+Comun; Test → Business; Front → Beans+Comun+Business; Web → Comun. WasEAR `/lib`: Beans, Comun, Business. WebEAR `/lib`: Comun.
+Classpath (ya aplicado en RAD): Business → Beans + Comun; Test → Business; Front → Beans + Comun + Business; Web → Comun. `/lib` de WasEAR: Beans, Comun, Business. `/lib` de WebEAR: Comun.
 
 ### 4.1 Contrato de clases
 
-El árbol de arriba es la única estructura de directorios. Aquí no se repite. Paquete raíz: `es.mgs.hv.organismosPublicos`. **UML** = `Diagramas/Diagrama_Clases.md`. Constructor `@Inject` en cada `*Service`.
-
-Métodos UML:
-
 | Clase | Métodos |
 |---|---|
-| `Comunicacion` | `tieneDerivacionAsociada`, `tieneDerivacionExitosa`, `tieneRevisionActiva`, `derivacionActiva`, `contarIntentosReclasificacion`, `registrarDerivacion`, `registrarClasificacion`, `escalarARevision` |
+| `Comunicacion` | `tieneDerivacionAsociada`, `tieneDerivacionExitosa`, `tieneRevisionActiva`, `derivacionActiva`, `contarIntentosReclasificacion`, `registrarDerivacion`, `registrarClasificacion`, `escalarARevision`. Crea `Documento`, `Clasificacion`, `Derivacion` y `Revision`. |
 | `Documento` | `verificarIntegridad` |
 | `Derivacion` | `esModificableInPlace`, `actualizar` |
 | `Revision` | `resolver(Usuario)` |
-| `ComunicacionRepository` | UML: `save`, `query`, `siguienteId`. Añadir en la misma interfaz: `queryPorIdentificadorDehu`, `queryListado`, `queryRevisionesPendientes` |
-| `LemaGateway` | `localiza`, `peticionAcceso`, `consultaAnexos`, `consultaAcusePdf` |
+| `ComunicacionRepository` | `save`, `query`, `siguienteId`, `queryPorIdentificadorDehu`, `queryListado`, `queryRevisionesPendientes` |
+| `LemaGateway` | `localiza`, `peticionAcceso`, `consultaAnexos`, `consultaAcusePdf` (implementado por `LemaClient`) |
 | `TicketingGateway` | `crearTicket`, `finalizarTicket`, `modificarTicket` |
 | `NotificacionGateway` | `soportaCanal`, `ejecutar` |
 | `AgenteIAGateway` | `intentarAutocorreccion` |
 
-`ConstantesDominio`: estados `pendiente\|en_proceso\|en_revision\|procesada`; `origen` `ia\|operador`; canal `ticket\|email`; tipo documento `principal\|anexo\|acuse`; rol `operador\|administrador`.
+`ConstantesDominio`:
 
-Colaboradores de aplicación:
+- Estado de `COMUNICACION`: `pendiente`, `en_proceso`, `en_revision`, `procesada`.
+- Origen de clasificación: `ia`, `operador`.
+- Canal: `ticket`, `email`.
+- Tipo de documento: `principal`, `anexo`, `acuse`.
+- Rol: `operador`, `administrador`.
+
+Dependencias de cada servicio:
 
 | Servicio | Interfaces |
 |---|---|
@@ -480,269 +445,254 @@ Colaboradores de aplicación:
 | `ModificarDerivacionService` | `ComunicacionRepository`, `TicketingGateway` |
 | `AgenteReclasificacionService` | `ComunicacionRepository`, `AgenteIAGateway` (`LIMITE_INTENTOS = 2`) |
 
-`LemaClient`: un client, cuatro métodos SOAP. Endpoints HTTP: sección 8. RF-12 (`ReconciliarRealizadasService`): no crear hasta que el calendario lo permita.
-
 ---
 
-## 5. Requisitos funcionales (contrato de implementación)
+## 5. Requisitos funcionales
 
-Texto completo: `Especificacion_Requisitos.md`. Aquí: regla que el código no puede violar + dónde cae.
+Solo las reglas que el código no puede violar.
 
 ### RF-01 Detección
 
-- n8n (o timer) llama a Back; Java `localiza()`. Lista vacía → no hacer nada.
-- `tipoEnvio` `1` (comunicación): `peticionAcceso(identificador, codigoOrigen)` en el mismo ciclo. Sin acuse. Acceder no tiene efectos jurídicos (FAQ DEHú).
-- `tipoEnvio` `2` (notificación): `peticionAcceso` es la comparecencia y puede arrancar el plazo de respuesta. El momento no está cerrado (áreas). Si se comparece, el acuse va en el mismo ciclo (ventana 24 h).
-- Idempotencia por `identificador` DEHú (no reprocesar).
-- Reintentos con backoff ante SOAP/certificado/red; no perder el pendiente.
-- Lotes pequeños y frecuentes (máx. 1000 peticiones/operación LEMA).
-- **Capturar en `localiza()`** `concepto`, organismo emisor (y raíz si se guarda), `tipoEnvio`: **no vuelven** en `peticionAcceso()`.
+- n8n o un timer llama al endpoint Back, que ejecuta `localiza()`. Si la lista está vacía, no se hace nada.
+- Guardar `concepto`, organismo emisor y `tipoEnvio` al procesar `localiza()`, antes de `peticionAcceso()`: esa respuesta no los devuelve.
+- Idempotencia por `identificador` DEHú: un envío ya registrado no se reprocesa.
+- Reintentos con backoff ante fallos SOAP, de certificado o de red, sin perder el envío pendiente.
+- Lotes de menos de 1000 peticiones por operación LEMA.
+- Comunicación (`tipoEnvio` `1`): `peticionAcceso(identificador, codigoOrigen)` en el mismo ciclo. Acceder no tiene efectos jurídicos y no hay acuse.
+- Notificación (`tipoEnvio` `2`): no se comparece en el sondeo. `peticionAcceso()` es la comparecencia y puede abrir el plazo de respuesta. El mecanismo está abierto (sección 13).
 
-### RF-02 Almacenamiento — crítico
+### RF-02 Almacenamiento (crítico)
 
-- Persistir documento principal + **todos** los anexos en el mismo ciclo que el acceso. El acuse, solo si `tipoEnvio` es `2`, en el mismo ciclo que la comparecencia.
-- Anexo URL directa: HTTP, sin LEMA. Anexo referencia: `consultaAnexos()`.
-- Acuse (`tipoEnvio` `2`): `consultaAcusePdf()` con `csvResguardo` de `peticionAcceso()`. En una comunicación no se llama.
-- Hash SHA-256 del principal vs el de DEHú (`Documento.verificarIntegridad()`).
-- **Ventana 24 h:** `consultaAnexos` / `consultaAcusePdf` no sirven para notificaciones de más de 1 día. Fallo de descarga = alerta de alta prioridad, no reintento silencioso a 48 h.
-- Tipos de `DOCUMENTO`: `principal` | `anexo` | `acuse`. Ficheros en almacenamiento (campo `rutaAlmacenamiento`); BBDD con metadatos y hash.
+- En el mismo ciclo que `peticionAcceso()`, persistir el documento principal y todos los anexos. En notificaciones, también el acuse.
+- Anexo con URL directa: descarga HTTP, sin LEMA. Anexo por referencia: `consultaAnexos()`, uno a uno.
+- Acuse: `consultaAcusePdf()` con el `csvResguardo` de `peticionAcceso()`. Solo en notificaciones.
+- `consultaAnexos()` y `consultaAcusePdf()` solo funcionan durante 24 h desde `peticionAcceso()`. Pasado ese plazo, el documento no se puede recuperar por API. Si la descarga falla, alerta de alta prioridad; no reintentos silenciosos.
+- `Documento.verificarIntegridad()`: el SHA-256 del principal debe coincidir con el de DEHú.
+- Binarios en almacenamiento de ficheros (`rutaAlmacenamiento`); en BBDD solo metadatos y hash.
 
-### RF-03 a RF-06 IA y contenido de ticket
+### RF-05 Clasificación
 
-- Clasificación (RF-05): organismo emisor y concepto de `localiza()`, antes de abrir. No se lee el PDF, ni el anexo, ni el acuse. Por debajo del umbral → RF-09 y no se abre. Pendiente de confirmar con el resto de departamentos.
-- OCR/LLM **solo del documento principal de la comunicación** (`tipoEnvio` `1`), para el resumen de la descarga inmediata. En la notificación no hay extracción ni resumen mientras la descarga no sea inmediata (pendiente de confirmar con el resto de departamentos). Anexos y acuse se archivan y no entran al pipeline.
-- Salida del resumen: entidades (organismo, expediente, plazos, importes, partes). El departamento sale de la clasificación, no del PDF. No hay catálogo de tipos: la categorización es el departamento. `tipoAsignado` y `tipoDetectado` no se rellenan en el MVP.
-- Umbral configurable: por debajo → RF-09 (no publicar acción automática ni abrir el documento).
-- RF-06: título, resumen, campos, adjuntos, trazabilidad `identificador` DEHú.
-- n8n puede orquestar OCR/LLM; Java persiste `INTERPRETACION` + `TEXTOEXTRAIDO` y el historial `CLASIFICACION`.
+- Se clasifica con organismo emisor y concepto de `localiza()`, antes de abrir nada. No se leen principal, anexos ni acuse.
+- La categoría es el departamento. No hay catálogo de tipos: `tipoAsignado` y `tipoDetectado` no se rellenan.
+- Umbral de confianza configurable. Por debajo: `REVISION` (RF-09); no se abre el envío ni se publica acción automática.
+- Pendiente de confirmar con el resto de departamentos.
+- Dentro de la DGSFP (DIR3 `E00119006`) el emisor no separa departamentos: Red de Mediación se guía por el área remitente, que no aparece en `localiza()` documentado (sección 13).
+
+### RF-03/04 Extracción y resumen
+
+- OCR/LLM solo del documento principal de las comunicaciones, para el resumen. Anexos y acuse se archivan sin procesar.
+- Las notificaciones no se resumen (pendiente de confirmar con el resto de departamentos).
+- Salida: entidades (organismo, expediente, plazos, importes, partes).
+- n8n puede orquestar el OCR/LLM; Java persiste `INTERPRETACION`, `TEXTOEXTRAIDO` y `CLASIFICACION`.
+
+### RF-06 Contenido del ticket
+
+Título, resumen (si lo hay), campos, adjuntos e `identificador` DEHú.
 
 ### RF-07 Evento
 
-Exactamente un evento por comunicación que complete RF-06. Payload: contenido RF-06 + departamento/cola + identificador DEHú. Publicar aunque aún no haya consumidor. Infra: AYEventos / n8n. Trazabilidad en BD via `CLASIFICACION` + `DERIVACION` (no hay tabla `EVENTO`).
+- Exactamente un evento por comunicación con contenido RF-06 completo.
+- Payload: contenido RF-06, departamento/cola e `identificador` DEHú.
+- Se publica aunque no haya consumidor. Infra: AYEventos / n8n.
+- No hay tabla `EVENTO`: la trazabilidad es `CLASIFICACION` + `DERIVACION`.
 
 ### RF-08 Derivación
 
-- Canal por `Clasificacion.canalAsignado` / catálogo `DEPARTAMENTO`, **no** `if` por tipo de comunicación.
-- MVP obligatorio: ticket. Email (RF-08.2) deseable, no bloqueante. Implementar `EmailNotificacionGateway` si hay tiempo; el Resolver ya debe admitirlo.
-- Idempotencia: no repetir acción si ya hay `DERIVACION` con `estado=exito` para ese identificador (`tieneDerivacionExitosa()`). Un `fallo` **sí** se reintenta.
-- **Excepción:** reclasificación (09.6, 10.4, 11.5) = finalizar ticket original + crear uno nuevo. Segundo ticket **no** es duplicado. `esReclasificacion=true`, `ticketRelacionadoId` = ticket original. Ticketing **no** transfiere de cola (`PATCH` no toca `cola`).
+- El canal sale de `Clasificacion.canalAsignado` y del catálogo `DEPARTAMENTO`, no de un `if` por tipo.
+- Ticket obligatorio. Email (RF-08.2) deseable: `EmailNotificacionGateway` solo si hay tiempo, pero el Resolver debe admitirlo.
+- Idempotencia: si ya hay una `DERIVACION` con `estado=exito` (`tieneDerivacionExitosa()`), no se repite. Un `fallo` sí se reintenta.
+- Reclasificación (RF-09.6, RF-10.4, RF-11.5): finalizar el ticket original y crear uno nuevo con `esReclasificacion=true` y `ticketRelacionadoId` = ticket original. No cuenta como duplicado. Ticketing no transfiere de cola (`PATCH` no toca `cola`).
 
 ### RF-09 Revisión humana
 
-- Confianza baja → `REVISION` (`resuelto=false`) y cola específica. Ninguna comunicación se pierde entre pasos.
-- UI: documento como vista principal; texto extraído como panel auxiliar (diseño de interfaz aún abierto).
+- Confianza baja → `REVISION` con `resuelto=false`. Ninguna comunicación se pierde entre pasos.
+- UI: documento como vista principal y texto extraído como panel auxiliar (diseño abierto).
 - Aceptar (09.5) → RF-08 con la clasificación propuesta.
-- Reclasificar (09.6) → solo administrador; finalizar+crear.
-- Feedback (09.3) deseable, asíncrono, no bloquea el cierre.
+- Reclasificar (09.6) → solo `administrador`; finalizar + crear.
+- Feedback (09.3): deseable, asíncrono, no bloquea el cierre.
 
 ### RF-10 Agente IA
 
-- Entrada: evento de cancelación (fuera de HV; Ticketing outbox).
-- Contador = filas `CLASIFICACION` con `origen=ia` y `nIntentos>1` (no campo suelto en `COMUNICACION`). Límite **2**. Si ya está en el límite, escalar a RF-09 **sin** llamar al agente.
-- Si hay margen: `AgenteIAGateway.intentarAutocorreccion`. El agente (MCP) propone y, si supera umbral, él invoca finalizar+crear (`AgenteIAClient` depende de `TicketingGateway`). Si no supera, escalar a revisión. No hay bucle interno: el siguiente intento es otra cancelación.
-- **Diseño no cerrado con el equipo:** si el client de infra debe llamar a Ticketing o el Service compara el umbral. Hasta confirmación, implementar lo diagramado (MCP actúa).
+- Entrada: evento de cancelación del ticket (outbox de Ticketing).
+- Intentos = filas `CLASIFICACION` con `origen=ia` y `nIntentos>1`. Límite: 2.
+- En el límite: escalar a RF-09 sin llamar al agente.
+- Con margen: `AgenteIAGateway.intentarAutocorreccion`. El agente propone; si supera el umbral, él mismo finaliza + crea (`AgenteIAClient` usa `TicketingGateway`). Si no, escala a revisión.
+- No hay bucle interno: el siguiente intento llega con la siguiente cancelación.
 
 ### RF-11 Consulta local
 
 - Nunca llama a DEHú.
-- Editable **solo** si existe al menos una `DERIVACION` (`tieneDerivacionAsociada()`). **No** usar `tipoEnvio`.
-- Comunicación en revisión pendiente (sin derivación) = solo lectura.
-- 11.4: mismo departamento → `modificarTicket` in-place (condicionado a API back de Ticketing).
-- 11.5: cambia departamento → mismo finalizar+crear que 09.6.
+- Editable si y solo si existe al menos una `DERIVACION` (`tieneDerivacionAsociada()`), no según `tipoEnvio`. En revisión pendiente, solo lectura.
+- 11.4, mismo departamento: `modificarTicket` in-place (depende de la audiencia back de Ticketing).
+- 11.5, cambio de departamento: finalizar + crear, como en 09.6.
 
 ### RF-12 Reconciliación (opcional)
 
-`localizaRealizadas` no filtra por fecha. Batch, no consulta interactiva. Fuera del MVP comprometido.
+Batch con `localizaRealizadas`, que no filtra por fecha. No es consulta interactiva.
 
 ---
 
 ## 6. Base de datos
 
-Motor: SQL Server (`HV_OrganismosPublicos`). Persistencia: `JdbcTemplate` en `ComunicacionRepositorySQLServer`. Scripts en `HVOrganismosPublicosMigraciones`.
+SQL Server (`HV_OrganismosPublicos`), JDBC propio (`Database` + `*RepositorySQLServer`). Scripts en `HVOrganismosPublicosMigraciones`.
 
-`USUARIO.id` = `PERSONA.id` de Personas (clave compartida, no FK física obligatoria a otro catálogo). `PERSONA` no se crea aquí.
-
-### 6.1 Tablas
-
-| Tabla | Cardinalidad desde COMUNICACION | Rol |
+| Tabla | Relación con `COMUNICACION` | Rol |
 |---|---|---|
-| `COMUNICACION` | raíz | Un envío DEHú. `estado` interno: `pendiente` → `en_proceso` → `en_revision` \| `procesada`. No es el `estado` de DEHú. |
-| `DOCUMENTO` | 1:N | principal / anexo / acuse |
-| `INTERPRETACION` | 1:1 opcional | Tras IA |
-| `TEXTOEXTRAIDO` | 1:1 opcional desde interpretación | Texto pesado; retención por **parámetro global** (valor TBD con compañeros). Sin retención permanente para entrenamiento en el MVP. |
-| `CLASIFICACION` | 1:N append-only | `origen`: `ia` \| `operador`. `nIntentos` `1`, `2`, `3`… solo en `ia` |
-| `DERIVACION` | 1:N | Resultado RF-08. `estado` éxito/fallo. |
-| `REVISION` | 1:N opcional | Una fila por escalada; pendiente = `resuelto=false` |
-| `DEPARTAMENTO` | catálogo | `colaDestino`, `permiteEmail`, `activo` |
-| `USUARIO` | catálogo | `rol`, `activo` |
+| `COMUNICACION` | raíz | Un envío DEHú. `estado` interno (no el de DEHú). |
+| `DOCUMENTO` | 1:N | `principal` / `anexo` / `acuse` |
+| `INTERPRETACION` | 1:1 opcional | Resultado de la IA |
+| `TEXTOEXTRAIDO` | 1:1 opcional desde `INTERPRETACION` | Texto completo, con retención configurable |
+| `CLASIFICACION` | 1:N, solo inserciones | Historial de clasificaciones |
+| `DERIVACION` | 1:N, solo inserciones | Resultado de RF-08 |
+| `REVISION` | 1:N opcional | Una fila por escalado |
+| `DEPARTAMENTO` | catálogo | Colas y canales |
+| `USUARIO` | catálogo | Roles de la app |
 
-Índice único recomendado: `COMUNICACION(identificador)` (idempotencia RF-01.3).
+Campos:
 
-Campos mínimos (alineados al ER):
+- **COMUNICACION:** `id` (UUID, PK), `identificador` (índice único), `codigoOrigen`, `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre`, `tipoEnvio`, `fechaEvento`, `estado`, `fechaIngesta`.
+- **DOCUMENTO:** `id`, `comunicacion_id`, `tipo`, `nombre`, `mimeType`, `hashSha256`, `csvResguardo`, `rutaAlmacenamiento`, `fechaDescarga`.
+- **INTERPRETACION:** `id`, `comunicacion_id`, `tipoDetectado` (vacío en el MVP), `entidadesExtraidas` (JSON en `nvarchar`), `scoreConfianza`, `fechaProcesado`.
+- **TEXTOEXTRAIDO:** `id`, `interpretacion_id`, `textoExtraido`, `fechaCreacion`.
+- **CLASIFICACION:** `id`, `comunicacion_id`, `origen` (`ia` | `operador`), `modelo` (solo si hubo LLM), `nIntentos` (`1`, `2`, `3`…; solo si `origen=ia`), `usuario_id` (solo si `origen=operador`), `departamentoAsignado` (obligatorio), `tipoAsignado` (vacío en el MVP), `canalAsignado`, `scoreConfianza`, `resultado`, `fecha`.
+- **DERIVACION:** `id`, `comunicacion_id`, `canal`, `identificadorExterno`, `titulo`, `resumen`, `departamento` (FK), `estado` (`exito` | `fallo`), `esReclasificacion`, `ticketRelacionadoId`, `fechaEjecucion`.
+- **REVISION:** `id`, `comunicacion_id`, `usuario_id` (nulo hasta resolver), `motivo`, `resuelto`, `fechaEntrada`, `fechaResolucion`.
+- **DEPARTAMENTO:** `id`, `nombre`, `colaDestino`, `permiteEmail`, `activo`.
+- **USUARIO:** `id` (= `PERSONA.id` de Personas, sin FK física), `rol`, `activo`.
 
-**COMUNICACION:** `id` UUID PK, `identificador`, `codigoOrigen`, `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre`, `tipoEnvio` int, `fechaEvento`, `estado`, `fechaIngesta`.
-
-**DOCUMENTO:** `id`, `comunicacion_id`, `tipo`, `nombre`, `mimeType`, `hashSha256`, `csvResguardo`, `rutaAlmacenamiento`, `fechaDescarga`.
-
-**INTERPRETACION:** `id`, `comunicacion_id`, `tipoDetectado` (no se rellena en el MVP), `entidadesExtraidas` (JSON/nvarchar), `scoreConfianza`, `fechaProcesado`.
-
-**TEXTOEXTRAIDO:** `id`, `interpretacion_id`, `textoExtraido`, `fechaCreacion`.
-
-**CLASIFICACION:** `id`, `comunicacion_id`, `origen` (`ia` \| `operador`), `modelo` (nullable; nombre del modelo si hubo LLM), `nIntentos` (nullable; `1`, `2`, `3`… solo si `origen=ia`; vacío si `origen=operador`), `usuario_id` (nullable; `USUARIO.id` solo si `origen=operador`), `departamentoAsignado` (obligatorio). El tope de 2 reclasificaciones cuenta filas `origen=ia` con `nIntentos>1`. `tipoAsignado` (no se rellena en el MVP: no hay catálogo de tipos), `canalAsignado`, `scoreConfianza`, `resultado`, `fecha`.
-
-**DERIVACION:** `id`, `comunicacion_id`, `canal`, `identificadorExterno`, `titulo`, `resumen`, `departamento` FK, `estado`, `esReclasificacion`, `ticketRelacionadoId`, `fechaEjecucion`.
-
-**REVISION:** `id`, `comunicacion_id`, `usuario_id` nullable, `motivo`, `resuelto`, `fechaEntrada`, `fechaResolucion`.
-
-**DEPARTAMENTO:** `id`, `nombre`, `colaDestino`, `permiteEmail`, `activo`.
-
-**USUARIO:** `id`, `rol`, `activo`.
-
-Semilla `DEPARTAMENTO`: siniestros, laboral, comercial/concursos, fiscal, … (valores reales con el negocio). Umbral de confianza y retención de texto: properties, no constantes compiladas.
-
-Dominio (Information Expert / Creator): `Comunicacion` crea `Documento`, `Clasificacion`, `Derivacion`, `Revision`. Métodos: `tieneDerivacionAsociada`, `tieneDerivacionExitosa`, `tieneRevisionActiva`, `derivacionActiva`, `contarIntentosReclasificacion`, `registrarDerivacion`, `registrarClasificacion`, `escalarARevision`. `Derivacion.esModificableInPlace` / `actualizar`. `Revision.resolver(usuario)`.
+Semilla de `DEPARTAMENTO`: Coordinación DGS, SAC, Red de Mediación, Fiscal, RRHH. Faltan el resto de áreas y las colas reales de Ticketing.
 
 ---
 
 ## 7. Integraciones externas
 
-### 7.1 LEMA (SOAP 1.1 + WS-Security X.509)
+### 7.1 LEMA
 
-No REST. Certificado = identidad de la compañía. Prod: Seguridad confirma que existe. Pruebas: lo genera Sistemas. Custodia/renovación: Seguridad. Caducidad = corte total de ingesta.
-
-Entornos LEMA: **SE** (Servicios Estables, pruebas) y **PRO** (Producción). Properties distintas.
+- SOAP 1.1 firmado con certificado X.509 (WS-Security). No hay REST, token ni usuario.
+- El certificado es la identidad de la compañía. Producción: ya existe. Pruebas: autofirmado, lo genera Sistemas. Custodia y renovación: Seguridad. Si caduca, se corta la ingesta.
+- Entornos: SE (pruebas, `se-gd-dehuws.redsara.es`) y PRO (producción, `gd-dehuws.redsara.es`), con properties distintas.
+- El alta de Gran Destinatario (Declaración Responsable + validación en SE) es una dependencia de calendario, no de código.
 
 Orden de llamadas:
 
 ```
 localiza(nifTitular, pagina)
   → identificador, codigoOrigen → peticionAcceso
-       → csvResguardo → consultaAcusePdf
+       → csvResguardo → consultaAcusePdf                       (solo notificaciones)
        → anexosReferencia[].referenciaDocumento → consultaAnexos (uno a uno)
 ```
 
-Campos de respuesta verificados: `DEHu_Campos_Respuesta_Servicios.md`. Binarios por MTOM. Paginación `localiza`: `hayMasResultados`, `totalPag`, `paginaActual`.
+Binarios por MTOM. Paginación de `localiza()`: `hayMasResultados`, `totalPag`, `paginaActual`.
 
-Alta Gran Destinatario (Declaración Responsable + validación SE) es dependencia de calendario, no código.
+### 7.2 Ticketing
 
-### 7.2 Ticketing (HTTP / OpenAPI)
+- HTTP / OpenAPI. Se crea el ticket en la cola `DEPARTAMENTO.colaDestino`.
+- `modificarTicket` necesita la audiencia back, no confirmada.
+- Las cancelaciones no salen por webhook sino por un outbox interno.
 
-Crear ticket en cola `DEPARTAMENTO.colaDestino`. Finalizar + crear en reclasificación, con enlace `ticketRelacionado`. Deduplicar por identificador externo DEHú: **preguntar al equipo** (RF-08.5).
+### 7.3 Bus de eventos / n8n
 
-Audiencia back para `modificarTicket`: no confirmada. Hasta entonces RF-11.4/11.5 es diseño, no contrato cerrado.
-
-Cancelación: cambio de estado en Ticketing; **sin webhook**. Outbox interno; falta quién lo publica al bus (TODO).
-
-Departamento trabaja en el frontal de Ticketing, no en HV.
-
-### 7.3 Bus de eventos / n8n / AYEventos
-
-n8n orquesta RF-01–RF-08. Publicador Java hacia el bus corporativo (mismo patrón que Ticketing/AYEventos). n8n y el bus se tratan como piezas distintas hasta que Infra confirme el cableado del evento de cancelación.
+n8n orquesta RF-01 a RF-08. Java publica en el bus corporativo con el mismo patrón que Ticketing/AYEventos. n8n y el bus se tratan como piezas distintas hasta que Infra confirme el cableado.
 
 ### 7.4 Agente IA / MCP
 
-Proceso fuera de WAS. Java: `AgenteIAGateway`. Herramienta MCP del MVP: finalizar + crear ticket. OCR/LLM del pipeline inicial puede ser el mismo u otro proceso; no mezclar con el agente de reclasificación en el diseño de componentes.
+Proceso fuera de WAS, accedido por `AgenteIAGateway`. Su única herramienta MCP es finalizar + crear ticket. El OCR/LLM de la ingesta es un componente distinto del agente de reclasificación.
 
-### 7.5 Directorio / seguridad MGS
+### 7.5 Seguridad
 
-Login Operador: directorio de personal + `GestorBackendFilter` (como Ticketing Front, `codApp` propio cuando Infra lo asigne). `USUARIO` solo roles de esta app.
+Login del Operador contra el directorio de personal con `GestorBackendFilter`, como Ticketing Front (`codApp` pendiente de Infra). `USUARIO` solo guarda los roles de esta app.
 
 ### 7.6 Correo
 
-SMTP corporativo vía `EmailNotificacionGateway` si se implementa RF-08.2. No bloquea el cierre del MVP.
+SMTP corporativo vía `EmailNotificacionGateway`, solo si se implementa RF-08.2.
 
 ---
 
-## 8. Listado de endpoints
+## 8. Endpoints
 
-OpenAPI 3, camelCase plural, `x-area: hv`, `x-subarea: def`, `x-version: v1`. Prefijo gateway: `/api/{front|back|consumer}/hv/def/v1`. En WAS local el context-root Front es `HVOrganismosPublicos/api/front/v1` (los paths de la tabla van **después** de ese prefijo). No exponer SOAP ni el certificado al navegador.
+OpenAPI 3, recursos en camelCase plural, `x-area: hv`, `x-subarea: def`, `x-version: v1`. Prefijo en el gateway: `/api/{front|back|consumer}/hv/def/v1`. Context root en WAS: Front `HVOrganismosPublicos/api/front/v1`, Web `appt/HVOrganismosPublicosWeb`. El navegador nunca ve SOAP ni el certificado.
 
-Códigos: `401` no autenticado; `403` sin rol; `404` no existe; `409` regla de negocio (derivación duplicada, revisión ya resuelta, límite RF-10).
+Errores: `401` no autenticado, `403` sin rol, `404` no existe, `409` regla de negocio (derivación duplicada, revisión ya resuelta, límite de RF-10, comunicación no editable).
 
-### 8.1 Front (`x-audiencia: front`) — Operador
-
-Implementación: `RevisionesApiImpl`, `ComunicacionesApiImpl`. Autenticación: directorio + `GestorBackendFilter`.
+### 8.1 Front (Operador) — fase 1
 
 | Método | Path | Rol | RF | Servicio |
 |---|---|---|---|---|
 | `GET` | `/revisiones` | operador, administrador | 09.1 | `ConsultarRevisionService` |
 | `GET` | `/revisiones/{id}` | operador, administrador | 09.2 | `ConsultarRevisionService` (documento, texto extraído, propuesta IA) |
-| `GET` | `/revisiones/{id}/documentos/{documentoId}` | operador, administrador | 09.2 | binario del documento (no llama a LEMA) |
+| `GET` | `/revisiones/{id}/documentos/{documentoId}` | operador, administrador | 09.2 | binario local |
 | `POST` | `/revisiones/{id}/aceptacion` | operador, administrador | 09.5 | `AceptarClasificacionService` |
-| `POST` | `/revisiones/{id}/reclasificacion` | **administrador** | 09.6 | `ReclasificarComunicacionService` (body: `departamento`) |
-| `GET` | `/comunicaciones` | operador, administrador | 11.1 | `ConsultarComunicacionesService` (query: estado, texto; cada ítem trae `editable`) |
-| `GET` | `/comunicaciones/{id}` | operador, administrador | 11.1–11.3 | detalle; `editable` ⇔ existe `DERIVACION` |
+| `POST` | `/revisiones/{id}/reclasificacion` | administrador | 09.6 | `ReclasificarComunicacionService` (body: `departamento`) |
+| `GET` | `/comunicaciones` | operador, administrador | 11.1 | `ConsultarComunicacionesService` (query: `estado`, `texto`; cada ítem trae `editable`) |
+| `GET` | `/comunicaciones/{id}` | operador, administrador | 11.1–11.3 | detalle con `editable` |
 | `GET` | `/comunicaciones/{id}/documentos/{documentoId}` | operador, administrador | 11 | binario local |
-| `PATCH` | `/comunicaciones/{id}` | operador, administrador | 11.4 / 11.5 | `ModificarDerivacionService` (body: `titulo`, `resumen`, `departamentoDestino`). **409** si no es editable. Condicionado a audiencia back de Ticketing |
-| `GET` | `/departamentos` | operador, administrador | 09.6, 11.5 | catálogo `DEPARTAMENTO` activo (desplegable de reclasificación) |
+| `PATCH` | `/comunicaciones/{id}` | operador, administrador | 11.4 / 11.5 | `ModificarDerivacionService` (body: `titulo`, `resumen`, `departamentoDestino`) |
+| `GET` | `/departamentos` | operador, administrador | 09.6, 11.5 | `DEPARTAMENTO` activos |
 
-### 8.2 Back (`x-audiencia: back`) — n8n — fase 2
+### 8.2 Back (n8n) — fase 2
 
-Implementación: `IngestaApiImpl`, `InterpretacionesApiImpl`, `DerivacionesApiImpl`. Credencial de servicio, no el Operador.
-
-| Método | Path | RF | Servicio |
-|---|---|---|---|
-| `POST` | `/ciclosIngesta` | 01, 02 | `IngestarComunicacionesService` (`localiza` + persistencia inmediata; lista vacía → `204`) |
-| `POST` | `/interpretaciones` | 03–06 | `RegistrarInterpretacionService` + `ClasificarComunicacionService` + `GenerarContenidoTicketService` (n8n envía OCR/LLM ya calculado) |
-| `POST` | `/eventos/comunicacionClasificada` | 07 | `PublicarComunicacionClasificadaService` (si n8n no publica al bus directamente) |
-| `POST` | `/derivaciones` | 08 | `EjecutarDerivacionService` (consumo del evento RF-07) |
-
-`POST /interpretaciones` y el motor OCR en Java (`InterpretarComunicacionService`) son alternativas: n8n usa una de las dos, no las dos en el mismo ciclo.
-
-### 8.3 Consumer (`x-audiencia: consumer`) — fase 3
+Credencial de servicio, no de Operador.
 
 | Método | Path | RF | Servicio |
 |---|---|---|---|
-| `POST` | `/eventos/cancelaciones` | 10 | `AgenteReclasificacionService` (body: identificador DEHú o `comunicacionId`, `ticketOriginalId`) |
+| `POST` | `/ciclosIngesta` | 01, 02 | `IngestarComunicacionesService` (sin envíos nuevos → `204`) |
+| `POST` | `/interpretaciones` | 03–06 | `RegistrarInterpretacionService` + `ClasificarComunicacionService` + `GenerarContenidoTicketService` |
+| `POST` | `/eventos/comunicacionClasificada` | 07 | `PublicarComunicacionClasificadaService` (solo si n8n no publica al bus) |
+| `POST` | `/derivaciones` | 08 | `EjecutarDerivacionService` |
 
-Si el bus entrega el evento por otro adapter (no HTTP), este path es el contrato interno que ese adapter invoca.
+El OCR/LLM se hace de una de dos formas, nunca las dos: n8n lo calcula y lo envía a `POST /interpretaciones`, o Java lo pide con `InterpretarComunicacionService`.
+
+### 8.3 Consumer — fase 3
+
+| Método | Path | RF | Servicio |
+|---|---|---|---|
+| `POST` | `/eventos/cancelaciones` | 10 | `AgenteReclasificacionService` (body: `identificador` DEHú o `comunicacionId`, y `ticketOriginalId`) |
+
+Si el bus entrega el evento por otro medio, su adapter invoca este mismo contrato.
 
 ### 8.4 Rutas del frontal Vue
 
-No son la API. El SPA llama a Front.
+Vue 3 + TypeScript + Vite + Pinia sobre UIBaseProject, sin replicar el acabado visual de Ticketing.
 
-| Ruta Vue | Vista | Endpoints |
+| Ruta | Vista | Endpoints |
 |---|---|---|
 | `/revisiones` | `ListaRevisionesView` | `GET /revisiones` |
-| `/revisiones/:id` | `DetalleRevisionView` | `GET /revisiones/{id}`, `POST …/aceptacion` o `…/reclasificacion` |
+| `/revisiones/:id` | `DetalleRevisionView` | `GET /revisiones/{id}`, `POST …/aceptacion`, `POST …/reclasificacion` |
 | `/comunicaciones` | `ListaComunicacionesView` | `GET /comunicaciones` |
 | `/comunicaciones/:id` | `DetalleComunicacionView` | `GET /comunicaciones/{id}`, `PATCH` si `editable` |
-
-Vue 3 + TypeScript + Vite + Pinia sobre **UIBaseProject**. Listado, detalle y un flujo de estado (revisión). Sin acabado visual interno de Ticketing.
 
 ---
 
 ## 9. Requisitos no funcionales
 
-| Área | Implicación de código |
+| Área | Implicación |
 |---|---|
-| Seguridad | Certificado X.509 solo en servidor; alertas de caducidad; logs sin volcar el binario del cert. |
-| Acceso | Roles operador/administrador; auditoría de quién resolvió cada `REVISION`. |
-| Conservación legal | Documentos oficiales + trazabilidad recepción → ticket. Texto extraído con retención configurable. |
-| Resiliencia | Caídas SE/PRO sin perder ya detectadas; alerta si RF-02 falla dentro de 24 h. |
-| Rendimiento | Lotes LEMA &lt; 1000; `TEXTOEXTRAIDO` fuera de listados. |
-| Auditabilidad | Log de cada SOAP (resultado) y de cada clasificación + score. |
-| Extensibilidad | Canal nuevo = nueva clase `NotificacionGateway`. Fuente nueva ≠ DEHú = otro adapter de entrada al mismo bus. |
-| Entornos | local / desa / usua / prod + SE vs PRO LEMA. |
+| Seguridad | Certificado solo en el servidor, con alerta de caducidad. Los logs no vuelcan el certificado. |
+| Conservación legal | Documentos oficiales y trazabilidad de recepción a ticket. |
+| Resiliencia | Una caída de SE/PRO no pierde envíos ya detectados. |
+| Rendimiento | `TEXTOEXTRAIDO` fuera de los listados. |
+| Auditabilidad | Log del resultado de cada llamada SOAP y de cada clasificación con su score. |
+| Extensibilidad | Otra fuente distinta de DEHú = otro adapter de entrada al mismo bus. |
+| Entornos | local / desa / usua / prod, y SE / PRO en LEMA. |
 
 ---
 
-## 10. Configuración y operaciones
+## 10. Configuración y operación
 
-Properties (patrón Ticketing `{entorno}#….properties`):
+Properties (`{entorno}#organismosPublicos.properties`, patrón Ticketing):
 
-- URL/WSDL LEMA SE y PRO, NIF titular, timeouts, tamaño de lote, frecuencia de sondeo (la frecuencia puede vivir en n8n).
+- LEMA: URL/WSDL de SE y PRO, NIF titular, timeouts, tamaño de lote, frecuencia de sondeo (esta puede vivir en n8n).
 - Umbral de confianza.
 - Días de retención de `TEXTOEXTRAIDO`.
-- JNDI datasource SQLPortal.
-- URLs Ticketing Front/Back, AYEventos, endpoint del Agente IA.
-- `PATH_PROPERTIES_SERVIDOR` (resource-env-ref WAS, como Ticketing).
+- JNDI del datasource SQLPortal.
+- URLs de Ticketing Front/Back, AYEventos y Agente IA.
+- `PATH_PROPERTIES_SERVIDOR` (resource-env-ref en WAS).
 
-`HVOrganismosPublicosServer`: wsadmin datasource + instalación del certificado para WS-Security.
+`HVOrganismosPublicosServer` configura el datasource e instala el certificado para WS-Security.
 
-Almacenamiento de binarios: ruta en servidor o volumen; no asumir FILESTREAM hasta decidirlo con Infra. La BBDD ya está pedida con tamaño extra.
+Binarios: ruta en el servidor o volumen. FILESTREAM no, salvo que se decida con Infra.
 
-`.gitignore` en raíz del repo HV: `.metadata/`, compilados, `tsclient/`, `node_modules`, Playwright, `.env.*`. Versionar `.project`, `.classpath`, `.settings`.
+`.gitignore` del repo HV: `.metadata/`, compilados, `tsclient/`, `node_modules`, Playwright, `.env.*`. Se versionan `.project`, `.classpath` y `.settings`.
 
 ---
 
@@ -750,66 +700,57 @@ Almacenamiento de binarios: ruta en servidor o volumen; no asumir FILESTREAM has
 
 | Capa | Qué demuestra |
 |---|---|
-| `HVOrganismosPublicosTest` (JUnit 5) | Umbral, límite 2 de RF-10, idempotencia de derivación, finalizar+crear vs in-place, integridad hash, `tieneDerivacionExitosa` vs asociada. Gateways mockeados. |
-| `npm run test` del Vue | `vue-tsc` + eslint, no dominio. |
-| FT Playwright | Operador contra desa/usua, cuando exista entorno. |
-| SE LEMA | Pruebas reales SOAP cuando haya certificado de pruebas y alta GD. |
+| `HVOrganismosPublicosTest` (JUnit 5) | Umbral, límite de 2 en RF-10, idempotencia de derivación, finalizar + crear frente a in-place, integridad del hash, `tieneDerivacionExitosa` frente a `tieneDerivacionAsociada`. Gateways simulados. |
+| `npm run test` (Vue) | `vue-tsc` + eslint. |
+| FT Playwright | Flujos del Operador contra desa/usua. |
+| SE LEMA | Llamadas SOAP reales, con certificado de pruebas y alta de Gran Destinatario. |
 
-Sin WAS en unitarios. Evidencia de evaluación del TFM = Test, no solo E2E.
-
----
-
-## 12. Plan de construcción (slices)
-
-Orden que permite ir cerrando RF sin tener n8n ni LEMA el primer día:
-
-1. **Esquema + dominio** — migraciones, entidades, repositorio JDBC con tests de persistencia local si hay SQL; si no, tests del modelo en memoria.
-2. **RF-08/09 en seco** — servicios + Test con `TicketingGateway` falso (aceptar, reclasificar, idempotencia).
-3. **ApiFront + Web** — listado/detalle/revisión contra BD local.
-4. **LemaGateway** — cliente SOAP; persistencia RF-01/02; alerta 24 h. ApiBack.
-5. **RF-03–07** — persistir interpretación; publicar evento; n8n.
-6. **Ticketing real** — crear ticket; deduplicado si la API lo permite.
-7. **RF-11.4/11.5** — cuando exista audiencia back.
-8. **RF-10 + Consumer** — cuando exista el evento de cancelación.
-9. **Email / RF-12** — opcional.
-
-Deadlines de negocio: desarrollo+testing hasta 31 dic 2026; revisión 4–15 ene 2027. Gantt en `Diagramas/Gantt.md`.
+La evidencia para el TFM son los tests de `HVOrganismosPublicosTest`, no los E2E.
 
 ---
 
-## 13. Decisiones abiertas (no inventar en código)
+## 12. Plan de construcción
 
-Hasta que se cierre, implementar el diseño actual y dejar puntos de extensión:
+Fases por módulo:
+
+| Fase | Módulos |
+|---|---|
+| 1 | Beans, Comun, Business, Front + Web, Migraciones, Properties, Server, Test |
+| 2 | ApiBack |
+| 3 | ApiConsumer y FT, cuando existan el evento de cancelación y el entorno desa |
+
+Orden de trabajo, pensado para avanzar sin n8n ni LEMA al principio:
+
+1. Esquema y dominio: migraciones, entidades, repositorios y tests del modelo.
+2. RF-08/09 con `TicketingGateway` falso: aceptar, reclasificar, idempotencia.
+3. ApiFront + Web contra BBDD local.
+4. `LemaGateway`, RF-01/02, alerta de 24 h y ApiBack.
+5. RF-03 a RF-07 y n8n.
+6. Ticketing real.
+7. RF-11.4/11.5, cuando exista la audiencia back.
+8. RF-10 y Consumer, cuando exista el evento de cancelación.
+9. Email y RF-12, opcionales.
+
+Fechas: backend y frontend antes del 25 dic 2026; desarrollo y testing hasta el 31 dic; revisión del 4 al 15 ene 2027. Detalle en `Diagramas/Gantt.md`.
+
+---
+
+## 13. Decisiones abiertas
+
+Mientras no se cierren, se implementa lo descrito aquí sin fijar valores en código.
 
 | Tema | Impacto |
 |---|---|
-| Retención de `TEXTOEXTRAIDO` | Valor del parámetro; no hardcodear años. |
-| Clasificar sin leer el documento | Escrito en RF-05. Pendiente de confirmar con el resto de departamentos. |
-| Audiencia back Ticketing | Bloquea cierre de RF-11.4/11.5. |
-| Quién lee el outbox de cancelación | Bloquea RF-10 de verdad. |
-| Deduplicado por identificador DEHú en POST tickets | RF-08.5. |
-| `AgenteIAClient` → `TicketingGateway` | Confirmación de equipo. |
-| Rol `consulta` | No modelar UI de departamento en HV. |
-| `codApp` GestorBackend y grupos GIT | Infra. |
-| Colas reales de Ticketing por departamento | Semilla `DEPARTAMENTO`. |
+| Clasificar sin leer el documento | Falta confirmarlo con el resto de departamentos (RF-05). |
+| Área remitente dentro de la DGSFP | Sin ella no se separa Red de Mediación del resto de la DGSFP. Hay que ver de dónde sale sin abrir documentos (RF-05). |
+| Comparecencia de notificaciones | Hipótesis: un botón en el frontal HV para el responsable de área, con los datos de `localiza()` y el día 10 desde `fechaPuestaDisposicion`; al pulsarlo se descarga y se genera el ticket sin resumen. Alternativa: comparecer en batch. Falta actor, endpoint y vista hasta que decidan las áreas (RF-01). |
+| Resumen de notificaciones | No se hace mientras no se confirme con los departamentos (RF-03/04). |
+| Retención de `TEXTOEXTRAIDO` | Valor del parámetro. |
+| Audiencia back de Ticketing | Bloquea RF-11.4/11.5. |
+| Quién publica el outbox de cancelación en el bus | Bloquea RF-10. |
+| Deduplicado por `identificador` DEHú al crear tickets | RF-08.5; preguntar al equipo de Ticketing. |
+| Si el umbral de RF-10 lo compara el agente o el servicio | Se implementa lo diagramado: el agente compara y actúa. |
+| `codApp` de GestorBackend y grupos de Git | Infra. |
+| Colas reales de Ticketing por departamento | Semilla de `DEPARTAMENTO`. |
 
 No republicar código interno de Ticketing (`Estado_Tecnico_Ticketing.md`, `Analisis_Frontend_AYTicketing.md`).
-
----
-
-## 14. Invariantes (checklist al implementar)
-
-1. Java EE 7 / `javax.*` / WAS 9 / Java 8. Nada de `jakarta.*` ni Spring ni JPA.
-2. Constructor `@Inject`; tests con `new Servicio(...)`.
-3. Persistencia LEMA en Java dentro de 24 h.
-4. Metadatos de `localiza()` guardados antes de `peticionAcceso()`.
-5. Clasificación sin leer el documento (organismo y concepto). OCR solo del principal de la comunicación, para el resumen de la descarga inmediata. La notificación no se resume mientras la descarga no sea inmediata.
-6. `CLASIFICACION` y `DERIVACION` se acumulan, no se pisan.
-7. Editable RF-11 ⇔ existe `DERIVACION`, no `tipoEnvio`.
-8. Reclasificación = finalizar + crear, nunca transferir cola.
-9. Máximo 2 autocorrecciones IA; la 3.ª cancelación escala a humano.
-10. Canal nuevo = clase nueva, no `switch` en el Service.
-11. Agente IA fuera de WAS.
-12. Sin DAO, sin EJB, sin EAR por cada Utility.
-13. Email y RF-12 no bloquean el MVP; ticket sí.
-14. No enviar nada a la Administración.
