@@ -43,7 +43,6 @@ erDiagram
   INTERPRETACION {
     uuid id PK
     uuid comunicacion_id FK
-    string tipoDetectado "no se rellena en el MVP"
     json entidadesExtraidas
     float scoreConfianza
     datetime fechaProcesado
@@ -62,7 +61,6 @@ erDiagram
     int nIntentos "nullable; 1, 2, 3… si origen = ia"
     string usuario_id FK "nullable; USUARIO.id si origen = operador"
     string departamentoAsignado FK
-    string tipoAsignado "no se rellena en el MVP"
     string canalAsignado
     float scoreConfianza
     string resultado
@@ -95,6 +93,7 @@ erDiagram
     string nombre
     string colaDestino
     boolean permiteEmail
+    text criteriosReparto
     boolean activo
   }
   USUARIO {
@@ -153,7 +152,7 @@ Una comunicación puede tener varios documentos: el principal, cada anexo y, si 
 
 ### `INTERPRETACION` (1:1 opcional)
 
-Resultado de OCR + LLM sobre el **documento principal** (RF-03/RF-04): entidades y score de confianza. `tipoDetectado` queda en la tabla pero no se rellena en el MVP, igual que `tipoAsignado` en `CLASIFICACION`: no hay catálogo de tipos, la categorización es el departamento. Es opcional porque hasta que no se procesa, la comunicación no tiene interpretación todavía. El texto extraído en sí no vive aquí — ver `TEXTOEXTRAIDO`.
+Resultado de OCR + LLM sobre el **documento principal** (RF-03/RF-04): entidades y score de confianza. No decide el departamento: eso se hace al clasificar, antes de abrir el documento. Es opcional porque hasta que no se procesa, la comunicación no tiene interpretación todavía. El texto extraído en sí no vive aquí — ver `TEXTOEXTRAIDO`.
 
 ### `TEXTOEXTRAIDO` (1:1 opcional, desde `INTERPRETACION`)
 
@@ -165,11 +164,11 @@ Sujeto a una política de retención: se purga pasado un periodo definido por **
 
 Historial completo de decisiones de clasificación — no se sobrescribe, se acumula. Cada fila es un intento.
 
-- `origen` — `ia` u `operador`. No es el tipo de la comunicación (`tipoAsignado`)
+- `origen` — `ia` u `operador`
 - `modelo` — nombre del modelo si hubo LLM; vacío si la clasificación salió solo de metadatos o si `origen = operador`
 - `nIntentos` — `1`, `2`, `3`… solo en filas `ia`. Vacío si `origen = operador`. La inicial es `1`; el tope de reclasificaciones (RF-10.2) cuenta filas `origen = ia` con `nIntentos > 1`, sin campo contador en `COMUNICACION`
 - `usuario_id` (FK, nullable) — el operador de esa fila. Obligatorio si `origen = operador`; vacío si `origen = ia`. Varias clasificaciones de operadores distintos quedan en filas distintas, cada una con su id. No sustituye a `REVISION.usuario_id`, que es quién resolvió esa escalada
-- `departamentoAsignado` (FK, obligatorio) — a qué departamento va la comunicación. Es la categorización del MVP: no hay catálogo de tipos. `tipoAsignado` queda en la tabla y no se rellena. RF-09.6 corrige el departamento. Toda fila tiene departamento.
+- `departamentoAsignado` (FK, obligatorio) — a qué departamento va la comunicación. Es la única categorización: el modelo clasifica por departamento, con `DEPARTAMENTO.criteriosReparto`. RF-09.6 corrige el departamento. Toda fila tiene departamento.
 - Esta tabla es el historial de auditoría: no se sobrescribe, se acumula
 
 ### `DERIVACION` (1:N)
@@ -200,6 +199,7 @@ Catálogo/diccionario, no cuelga directamente de `COMUNICACION` — se referenci
 | `id`, `nombre` | Identidad del departamento |
 | `colaDestino` | Cola de Ticketing asociada, cuando el canal es ticket |
 | `permiteEmail` | Si el email está habilitado como canal (normal o de contingencia) para este departamento — RF-08.2 |
+| `criteriosReparto` | Organismos y materias que le corresponden (p. ej. «DGSFP: Modelo 2B, Reclamaciones»). Con este texto se construye el prompt de clasificación; cambiar el reparto es cambiar datos, no código |
 | `activo` | Si el departamento sigue operativo |
 
 ### `USUARIO`

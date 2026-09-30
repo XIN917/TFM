@@ -3,4 +3,8 @@
 
 # Notas de trabajo locales
 _local/
+
 _pdftool/
+
+# Datos
+data/

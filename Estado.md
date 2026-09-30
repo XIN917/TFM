@@ -57,7 +57,8 @@ RF-11.5 (cambio de departamento) está diagramada como propuesta de alto nivel, 
 - Acceso LEMA: sin token ni usuario; cada llamada va firmada con X.509 (WS-Security). Pruebas `se-gd-dehuws.redsara.es` (certificado autofirmado, alta propia; instrucciones en `docs/Instrucciones certificado LEMA pruebas.docx`); producción `gd-dehuws.redsara.es`.
 - `TEXTOEXTRAIDO` tabla 1:1 opcional de `INTERPRETACION` (sugerencia de la tutora de empresa). Retención por parámetro global; el valor se fija tras contrastarlo con las áreas. Sin retención permanente para entrenamiento en el MVP.
 - ER: tablas renombradas; `USUARIO` con clave compartida a `PERSONA`; sin tabla `EVENTO` (trazabilidad e idempotencia con `CLASIFICACION` + `DERIVACION`).
-- `CLASIFICACION` (22/09/2026): una fila por clasificación. `origen` `ia` | `operador`; `modelo` si hubo LLM; `nIntentos` solo en filas `ia` (el tope de reclasificaciones cuenta `nIntentos > 1`); `usuario_id` solo en filas `operador`. `departamentoAsignado` obligatorio. No hay catálogo de tipos: `tipoAsignado` y `tipoDetectado` no se rellenan en el MVP. La categorización es el departamento.
+- `CLASIFICACION` (22/09/2026): una fila por clasificación. `origen` `ia` | `operador`; `modelo` si hubo LLM; `nIntentos` solo en filas `ia` (el tope de reclasificaciones cuenta `nIntentos > 1`); `usuario_id` solo en filas `operador`. `departamentoAsignado` obligatorio.
+- Reparto (28/09/2026): el modelo clasifica solo por departamento; no hay catálogo de tipos. `tipoAsignado` y `tipoDetectado` eliminados del modelo. Qué organismos y materias van a cada departamento se guarda en `DEPARTAMENTO.criteriosReparto` y alimenta el prompt; el administrador reclasifica eligiendo departamento.
 - Aprendizaje continuo del Agente IA y diagnóstico sistemático de errores: evolución futura, no diseño cerrado.
 
 ## 4. Arquitectura (resumen)

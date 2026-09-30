@@ -24,7 +24,7 @@ El nombre `OrganismosPublicos` deja abierta la puerta a otras fuentes, pero el M
 ### 1.1 Ciclo del MVP
 
 1. Detectar el envío con `localiza()`.
-2. Clasificar con organismo emisor y concepto, sin leer el documento.
+2. Clasificar por departamento con organismo emisor y concepto, sin leer el documento.
 3. Según `tipoEnvio`:
    - Comunicación (`1`): descargar, resumir el documento principal y seguir.
    - Notificación (`2`): queda pendiente de comparecencia (sección 13). Al comparecer se descargan documentos y acuse; no se resume.
@@ -111,6 +111,7 @@ Operador ──► Vue Web ──► ApiFront (JAX-RS) ──► servicios de re
 - Cada `*Service` recibe sus dependencias por constructor con `@Inject`. Los tests lo instancian con `new Servicio(gatewayFalso, repoFalso)`, sin servidor.
 - `beans.xml` con `bean-discovery-mode="annotated"` en Business y Comun (`src/META-INF`) y en Front y Web (`WebContent/WEB-INF`).
 - `modelo` solo depende de interfaces; las implementaciones están en `infraestructura`.
+- Identificadores: `java.util.UUID`, generado por el dominio al crear la entidad, no por la BBDD.
 - Patrones: Strategy + Adapter en canales (`NotificacionGateway`), Gateway y Repository (Fowler), `NotificacionGatewayResolver` con `@Inject @Any Instance<NotificacionGateway>`. Canal nuevo = clase nueva, sin `switch` en el servicio.
 
 ### 3.2 Qué no crear
@@ -131,13 +132,6 @@ HVOrganismosPublicos/
 │
 ├── HVOrganismosPublicosBeans/
 │   └── src/es/mgs/hv/organismosPublicos/bean/
-│       ├── id/
-│       │   ├── ComunicacionId.java
-│       │   ├── DocumentoId.java
-│       │   ├── InterpretacionId.java
-│       │   ├── ClasificacionId.java
-│       │   ├── DerivacionId.java
-│       │   └── RevisionId.java
 │       ├── eventos/
 │       │   ├── EventoComunicacionClasificada.java      # RF-07
 │       │   └── EventoCancelacionTicket.java            # RF-10.1
@@ -389,7 +383,7 @@ HVOrganismosPublicos/
 
 | Módulo | Contenido |
 |---|---|
-| Beans | Ids, excepciones, DTOs de evento. Sin SQL ni SOAP. |
+| Beans | Excepciones y DTOs de evento. Sin SQL ni SOAP. |
 | Comun | log4j2 y carga de properties. |
 | Business | Modelo, aplicación e infraestructura (`*SQLServer`, `LemaClient`, `TicketingClient`, `AgenteIAClient`). |
 | ApiFront + WasEAR | REST del Operador. EAR: WAR + Business + Beans + Comun. |
@@ -412,7 +406,7 @@ Classpath (ya aplicado en RAD): Business → Beans + Comun; Test → Business; F
 | `Documento` | `verificarIntegridad` |
 | `Derivacion` | `esModificableInPlace`, `actualizar` |
 | `Revision` | `resolver(Usuario)` |
-| `ComunicacionRepository` | `save`, `query`, `siguienteId`, `queryPorIdentificadorDehu`, `queryListado`, `queryRevisionesPendientes` |
+| `ComunicacionRepository` | `save`, `query`, `queryPorIdentificadorDehu`, `queryListado`, `queryRevisionesPendientes` |
 | `LemaGateway` | `localiza`, `peticionAcceso`, `consultaAnexos`, `consultaAcusePdf` (implementado por `LemaClient`) |
 | `TicketingGateway` | `crearTicket`, `finalizarTicket`, `modificarTicket` |
 | `NotificacionGateway` | `soportaCanal`, `ejecutar` |
@@ -473,7 +467,7 @@ Solo las reglas que el código no puede violar.
 ### RF-05 Clasificación
 
 - Se clasifica con organismo emisor y concepto de `localiza()`, antes de abrir nada. No se leen principal, anexos ni acuse.
-- La categoría es el departamento. No hay catálogo de tipos: `tipoAsignado` y `tipoDetectado` no se rellenan.
+- Resultado: el departamento. No hay catálogo de tipos. El reparto (qué organismos y materias van a cada departamento) está en `DEPARTAMENTO.criteriosReparto` y con él se construye el prompt.
 - Umbral de confianza configurable. Por debajo: `REVISION` (RF-09); no se abre el envío ni se publica acción automática.
 - Pendiente de confirmar con el resto de departamentos.
 - Dentro de la DGSFP (DIR3 `E00119006`) el emisor no separa departamentos: Red de Mediación se guía por el área remitente, que no aparece en `localiza()` documentado (sección 13).
@@ -499,7 +493,7 @@ Título, resumen (si lo hay), campos, adjuntos e `identificador` DEHú.
 ### RF-08 Derivación
 
 - El canal sale de `Clasificacion.canalAsignado` y del catálogo `DEPARTAMENTO`, no de un `if` por tipo.
-- Ticket obligatorio. Email (RF-08.2) deseable: `EmailNotificacionGateway` solo si hay tiempo, pero el Resolver debe admitirlo.
+- Ticket obligatorio. Email (RF-08.2) no obligatorio, pero planificado justo después del ticket (`EmailNotificacionGateway`). Si no da tiempo, no bloquea el cierre del MVP.
 - Idempotencia: si ya hay una `DERIVACION` con `estado=exito` (`tieneDerivacionExitosa()`), no se repite. Un `fallo` sí se reintenta.
 - Reclasificación (RF-09.6, RF-10.4, RF-11.5): finalizar el ticket original y crear uno nuevo con `esReclasificacion=true` y `ticketRelacionadoId` = ticket original. No cuenta como duplicado. Ticketing no transfiere de cola (`PATCH` no toca `cola`).
 
@@ -508,7 +502,7 @@ Título, resumen (si lo hay), campos, adjuntos e `identificador` DEHú.
 - Confianza baja → `REVISION` con `resuelto=false`. Ninguna comunicación se pierde entre pasos.
 - UI: documento como vista principal y texto extraído como panel auxiliar (diseño abierto).
 - Aceptar (09.5) → RF-08 con la clasificación propuesta.
-- Reclasificar (09.6) → solo `administrador`; finalizar + crear.
+- Reclasificar (09.6) → solo `administrador`. Elige el departamento; finalizar + crear.
 - Feedback (09.3): deseable, asíncrono, no bloquea el cierre.
 
 ### RF-10 Agente IA
@@ -545,22 +539,30 @@ SQL Server (`HV_OrganismosPublicos`), JDBC propio (`Database` + `*RepositorySQLS
 | `CLASIFICACION` | 1:N, solo inserciones | Historial de clasificaciones |
 | `DERIVACION` | 1:N, solo inserciones | Resultado de RF-08 |
 | `REVISION` | 1:N opcional | Una fila por escalado |
-| `DEPARTAMENTO` | catálogo | Colas y canales |
+| `DEPARTAMENTO` | catálogo | Colas, canales y criterios de reparto |
 | `USUARIO` | catálogo | Roles de la app |
 
 Campos:
 
 - **COMUNICACION:** `id` (UUID, PK), `identificador` (índice único), `codigoOrigen`, `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre`, `tipoEnvio`, `fechaEvento`, `estado`, `fechaIngesta`.
 - **DOCUMENTO:** `id`, `comunicacion_id`, `tipo`, `nombre`, `mimeType`, `hashSha256`, `csvResguardo`, `rutaAlmacenamiento`, `fechaDescarga`.
-- **INTERPRETACION:** `id`, `comunicacion_id`, `tipoDetectado` (vacío en el MVP), `entidadesExtraidas` (JSON en `nvarchar`), `scoreConfianza`, `fechaProcesado`.
+- **INTERPRETACION:** `id`, `comunicacion_id`, `entidadesExtraidas` (JSON en `nvarchar`), `scoreConfianza`, `fechaProcesado`.
 - **TEXTOEXTRAIDO:** `id`, `interpretacion_id`, `textoExtraido`, `fechaCreacion`.
-- **CLASIFICACION:** `id`, `comunicacion_id`, `origen` (`ia` | `operador`), `modelo` (solo si hubo LLM), `nIntentos` (`1`, `2`, `3`…; solo si `origen=ia`), `usuario_id` (solo si `origen=operador`), `departamentoAsignado` (obligatorio), `tipoAsignado` (vacío en el MVP), `canalAsignado`, `scoreConfianza`, `resultado`, `fecha`.
+- **CLASIFICACION:** `id`, `comunicacion_id`, `origen` (`ia` | `operador`), `modelo` (solo si hubo LLM), `nIntentos` (`1`, `2`, `3`…; solo si `origen=ia`), `usuario_id` (solo si `origen=operador`), `departamentoAsignado` (obligatorio), `canalAsignado`, `scoreConfianza`, `resultado`, `fecha`.
 - **DERIVACION:** `id`, `comunicacion_id`, `canal`, `identificadorExterno`, `titulo`, `resumen`, `departamento` (FK), `estado` (`exito` | `fallo`), `esReclasificacion`, `ticketRelacionadoId`, `fechaEjecucion`.
 - **REVISION:** `id`, `comunicacion_id`, `usuario_id` (nulo hasta resolver), `motivo`, `resuelto`, `fechaEntrada`, `fechaResolucion`.
-- **DEPARTAMENTO:** `id`, `nombre`, `colaDestino`, `permiteEmail`, `activo`.
+- **DEPARTAMENTO:** `id`, `nombre`, `colaDestino`, `permiteEmail`, `criteriosReparto` (texto), `activo`.
 - **USUARIO:** `id` (= `PERSONA.id` de Personas, sin FK física), `rol`, `activo`.
 
-Semilla de `DEPARTAMENTO`: Coordinación DGS, SAC, Red de Mediación, Fiscal, RRHH. Faltan el resto de áreas y las colas reales de Ticketing.
+Semilla de `DEPARTAMENTO` (reparto conocido; faltan el resto de áreas y las colas reales de Ticketing):
+
+| Departamento | `criteriosReparto` |
+|---|---|
+| Coordinación DGS | DGSFP (`E00119006`): Inspección, análisis de balances, Solvencia, DEC |
+| SAC | DGSFP: Modelo 2B, Reclamaciones |
+| Red de Mediación | DGSFP: Exclusivos, Mediación |
+| Asesoría Fiscal | AEAT (`EA0028512`); Catastro (`E00127105`); TGSS (`EA0042298`): embargos |
+| RRHH | TGSS: todo salvo embargos |
 
 ---
 
@@ -604,7 +606,7 @@ Login del Operador contra el directorio de personal con `GestorBackendFilter`, c
 
 ### 7.6 Correo
 
-SMTP corporativo vía `EmailNotificacionGateway`, solo si se implementa RF-08.2.
+SMTP corporativo vía `EmailNotificacionGateway` (RF-08.2).
 
 ---
 
@@ -727,9 +729,10 @@ Orden de trabajo, pensado para avanzar sin n8n ni LEMA al principio:
 4. `LemaGateway`, RF-01/02, alerta de 24 h y ApiBack.
 5. RF-03 a RF-07 y n8n.
 6. Ticketing real.
-7. RF-11.4/11.5, cuando exista la audiencia back.
-8. RF-10 y Consumer, cuando exista el evento de cancelación.
-9. Email y RF-12, opcionales.
+7. Email (RF-08.2).
+8. RF-11.4/11.5, cuando exista la audiencia back.
+9. RF-10 y Consumer, cuando exista el evento de cancelación.
+10. RF-12, opcional.
 
 Fechas: backend y frontend antes del 25 dic 2026; desarrollo y testing hasta el 31 dic; revisión del 4 al 15 ene 2027. Detalle en `Diagramas/Gantt.md`.
 
@@ -751,6 +754,8 @@ Mientras no se cierren, se implementa lo descrito aquí sin fijar valores en có
 | Deduplicado por `identificador` DEHú al crear tickets | RF-08.5; preguntar al equipo de Ticketing. |
 | Si el umbral de RF-10 lo compara el agente o el servicio | Se implementa lo diagramado: el agente compara y actúa. |
 | `codApp` de GestorBackend y grupos de Git | Infra. |
+| Servidor SMTP y remitente del email | Infra. Bloquea probar RF-08.2 contra correo real; el código va por properties. |
 | Colas reales de Ticketing por departamento | Semilla de `DEPARTAMENTO`. |
+| Criterios de reparto completos | El reparto actual es «a grandes rasgos» (Asesoría Fiscal) y solo cubre algunas áreas. Falta confirmarlo con el resto. |
 
 No republicar código interno de Ticketing (`Estado_Tecnico_Ticketing.md`, `Analisis_Frontend_AYTicketing.md`).

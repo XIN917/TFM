@@ -27,6 +27,11 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 
 **Ponente**
 
+- Festivos en la fecha límite de comparecencia (`fechaPuestaDisposicion` + 10 días naturales, Ley 39/2015 arts. 43.2 y 30.3; `localiza()` no da la caducidad). Si el último día es sábado o domingo, pasa al primer día hábil siguiente (art. 30.5). Los festivos no se cuentan, igual que hace la AEAT. Comentarlo:
+  - Caso AEAT: el último día cayó en un festivo autonómico del domicilio de la empresa. Por el art. 30.6 era inhábil y debía pasar al día hábil siguiente, pero el vencimiento del aviso DEHú no se movió.
+  - El art. 30.6 suma los festivos del domicilio de la empresa y los de la sede de cada órgano emisor: nacionales, autonómicos y locales, que cambian cada año.
+  - Sin contar festivos, la fecha puede salir antes que la real, pero nunca después.
+
 - Término genérico: DEHú llama *envío* a ambos tipos (notificación y comunicación; `envios`/`tipoEnvio` en la API [1]). Propuesta: adoptar «envío» como término genérico y reservar «notificación»/«comunicación» para cada tipo. Consultar antes de tocar nada:
   - **Título**: ¿se puede cambiar sin trámite formal? Opción preferida: «Automatización de la recepción de notificaciones y comunicaciones electrónicas de la Administración Pública» (pareja que usa el propio portal); si no, se mantiene el actual.
   - **Modelo**: renombrar `COMUNICACION` → `ENVIO` (arrastra `Comunicacion`, `ComunicacionRepository`, ER, diagrama de clases, requisitos y flujos).
@@ -38,7 +43,9 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 - Campo `motivoResolucion` en `POST /tickets/{id}/estado` — ¿contradice lo de «sin motivo en frontend»?
 - Quién consume el outbox de cancelación y cómo llega al bus / n8n
 - ¿La creación de tickets permite deduplicar por identificador externo (el `identificador` DEHú)? Relevante para RF-08.5
-- Canal email (RF-08.2): no bloqueante; el director lo dejó como deseable
+**Infra**
+
+- Canal email (RF-08.2): qué servidor SMTP corporativo y qué remitente usa la aplicación. No es obligatorio en el MVP, pero está planificado tras el ticket.
 
 **IT / Seguridad**
 

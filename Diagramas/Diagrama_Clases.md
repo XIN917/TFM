@@ -106,7 +106,7 @@ Bajo acoplamiento vía `TicketingGateway`/`LemaGateway`/`NotificacionGateway`/`A
 
 **Gateway** *(patrón de arquitectura empresarial, Fowler — PoEAA, no GoF)* — `TicketingGateway`, `LemaGateway` y `AgenteIAGateway` encapsulan el acceso a cada sistema externo (Ticketing, LEMA/DEHú, Agente IA vía MCP) tras una interfaz mínima que oculta el protocolo real (REST, SOAP+WS-Security, MCP) al resto del sistema.
 
-**Repository** *(patrón de arquitectura empresarial, Fowler — PoEAA, no GoF)* — `ComunicacionRepository` abstrae la persistencia tras una interfaz orientada al dominio (`save`, `query`, `siguienteId`), sin exponer detalles de SQL Server ni de `JdbcTemplate`.
+**Repository** *(patrón de arquitectura empresarial, Fowler — PoEAA, no GoF)* — `ComunicacionRepository` abstrae la persistencia tras una interfaz orientada al dominio (`save`, `query`), sin exponer detalles de SQL Server ni de JDBC.
 
 ### Evaluados y descartados (documentado explícitamente, no es una omisión)
 
@@ -203,7 +203,6 @@ package "modelo" {
 
     class Interpretacion {
         +id: UUID
-        +tipoDetectado: String
         +entidadesExtraidas: JSON
         +scoreConfianza: float
         +fechaProcesado: DateTime
@@ -222,7 +221,6 @@ package "modelo" {
         +nIntentos: Integer
         +usuarioId: String
         +departamentoAsignado: String
-        +tipoAsignado: String
         +canalAsignado: String
         +scoreConfianza: float
         +resultado: String
@@ -260,6 +258,7 @@ package "modelo" {
         +nombre: String
         +colaDestino: String
         +permiteEmail: boolean
+        +criteriosReparto: String
         +activo: boolean
     }
 
@@ -283,8 +282,7 @@ package "modelo" {
 
     interface ComunicacionRepository {
         +save(comunicacion: Comunicacion): void
-        +query(id: ComunicacionId): Comunicacion
-        +siguienteId(): ComunicacionId
+        +query(id: UUID): Comunicacion
     }
 
     interface TicketingGateway {
@@ -317,8 +315,7 @@ package "modelo" {
     Comunicacion "1" -- "0..*" Revision : puede escalar a >
     Usuario "1" -- "0..*" Revision : resuelve >
     Departamento "1" -- "0..*" Clasificacion : < referenciado por
-    Departamento "1" -- "0..*" Derivacion : < referenciado por
-    Derivacion ..> CambiosDerivacion : usa >
+    Departamento "1" -- "0..*" Derivacion : < referenciado por    Derivacion ..> CambiosDerivacion : usa >
     ResultadoAutocorreccion ..> Clasificacion : contiene >
     AgenteIAGateway ..> ResultadoAutocorreccion : retorna >
 }
@@ -329,21 +326,21 @@ package "aplicacion" {
         -comunicacionRepository: ComunicacionRepository
         -ticketingGateway: TicketingGateway
         --
-        +aceptar(id: ComunicacionId, usuario: Usuario): void
+        +aceptar(id: UUID, usuario: Usuario): void
     }
 
     class ReclasificarComunicacionService <<Servicio>> {
         -comunicacionRepository: ComunicacionRepository
         -ticketingGateway: TicketingGateway
         --
-        +reclasificar(id: ComunicacionId, departamento: String, tipo: String, usuario: Usuario): void
+        +reclasificar(id: UUID, departamento: String, usuario: Usuario): void
     }
 
     class EjecutarDerivacionService <<Servicio>> {
         -comunicacionRepository: ComunicacionRepository
         -resolver: NotificacionGatewayResolver
         --
-        +ejecutar(id: ComunicacionId, clasificacion: Clasificacion): void
+        +ejecutar(id: UUID, clasificacion: Clasificacion): void
     }
 
     class NotificacionGatewayResolver <<Fabricacion>> {
@@ -357,14 +354,14 @@ package "aplicacion" {
         -agenteIAGateway: AgenteIAGateway
         -LIMITE_INTENTOS: int = 2
         --
-        +procesarCancelacion(id: ComunicacionId, ticketOriginalId: String): void
+        +procesarCancelacion(id: UUID, ticketOriginalId: String): void
     }
 
     class ModificarDerivacionService <<Servicio>> {
         -comunicacionRepository: ComunicacionRepository
         -ticketingGateway: TicketingGateway
         --
-        +modificar(id: ComunicacionId, cambios: CambiosDerivacion, usuario: Usuario): void
+        +modificar(id: UUID, cambios: CambiosDerivacion, usuario: Usuario): void
     }
 
     EjecutarDerivacionService --> NotificacionGatewayResolver : usa >
@@ -375,11 +372,10 @@ package "aplicacion" {
 package "infraestructura" {
 
     class ComunicacionRepositorySQLServer <<Repositorio>> <<Transaccional>> {
-        -jdbc: JdbcTemplate
+        -database: Database
         --
         +save(comunicacion: Comunicacion): void
-        +query(id: ComunicacionId): Comunicacion
-        +siguienteId(): ComunicacionId
+        +query(id: UUID): Comunicacion
     }
     ComunicacionRepositorySQLServer ..|> ComunicacionRepository
 
