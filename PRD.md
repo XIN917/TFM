@@ -1,6 +1,6 @@
 # PRD — HVOrganismosPublicos
 
-Documento de construcción del aplicativo `HVOrganismosPublicos` (MGS Seguros): alcance, arquitectura, módulos, reglas de implementación, datos, integraciones y endpoints. El texto completo de cada RF está en `Especificacion_Requisitos.md`; campos de LEMA en `DEHu_Campos_Respuesta_Servicios.md`; diagramas en `Diagramas/`.
+Documento de construcción del aplicativo `HVOrganismosPublicos` (MGS Seguros): alcance, arquitectura, módulos, reglas de implementación, datos, integraciones, endpoints y criterios de aceptación. Contiene lo necesario para implementar sin consultar otros documentos.
 
 | | |
 |---|---|
@@ -23,11 +23,11 @@ El nombre `OrganismosPublicos` deja abierta la puerta a otras fuentes, pero el M
 
 ### 1.1 Ciclo del MVP
 
-1. Detectar el envío con `localiza()`.
-2. Clasificar por departamento con organismo emisor y concepto, sin leer el documento.
-3. Según `tipoEnvio`:
-   - Comunicación (`1`): descargar, resumir el documento principal y seguir.
-   - Notificación (`2`): queda pendiente de comparecencia (sección 13). Al comparecer se descargan documentos y acuse; no se resume.
+1. Detectar el envío con `localiza()` y guardar los metadatos que `peticionAcceso()` no devuelve.
+2. Clasificar por departamento antes de abrir. La señal base es organismo emisor y concepto. No se lee el documento.
+3. Según `tipoEnvio`, solo si la confianza supera el umbral:
+   - Comunicación (`1`): descargar en el mismo ciclo, resumir el documento principal y seguir.
+   - Notificación (`2`): el lote de madrugada comparece, guarda documento, anexos y acuse cuando existan, y deriva enseguida. No se resume.
 4. Publicar el evento de comunicación clasificada (RF-07).
 5. Ejecutar la acción del canal: ticket obligatorio, email deseable (RF-08).
 6. Revisión humana (RF-09) y reclasificación por Operador o Agente IA (RF-10).
@@ -44,7 +44,7 @@ Generar el evento (RF-07) y ejecutar la acción (RF-08) son pasos separados, par
 - Buzón interno (RF-08.3; se mantiene el hueco de numeración).
 - Rol `consulta` para departamentos en el frontal HV, hasta que decidan IT y Seguridad.
 - Aprendizaje continuo del modelo con el feedback del Operador. Persistir ese feedback sí es deseable (RF-09.3).
-- RF-12 (`localizaRealizadas` / `consultaRealizadas`): solo si sobra tiempo.
+- RF-12 (`localizaRealizadas` / `consultaRealizadas`): reconciliación y evaluación de la clasificación con `REALIZADAS`, solo si sobra tiempo.
 
 ---
 
@@ -124,7 +124,7 @@ Operador ──► Vue Web ──► ApiFront (JAX-RS) ──► servicios de re
 
 ## 4. Estructura de directorios
 
-`# UML` = clase de `Diagramas/Diagrama_Clases.md`.
+`# UML` = clase del modelo de diseño (contrato en §4.1).
 
 ```
 HVOrganismosPublicos/
@@ -414,7 +414,7 @@ Classpath (ya aplicado en RAD): Business → Beans + Comun; Test → Business; F
 
 `ConstantesDominio`:
 
-- Estado de `COMUNICACION`: `pendiente`, `en_proceso`, `en_revision`, `procesada`.
+- Estado de `COMUNICACION`: `pendiente`, `en_proceso`, `en_revision`, `procesada` (`pendiente → en_proceso → en_revision / procesada`). Es el ciclo interno del sistema, no un estado de DEHú.
 - Origen de clasificación: `ia`, `operador`.
 - Canal: `ticket`, `email`.
 - Tipo de documento: `principal`, `anexo`, `acuse`.
@@ -448,12 +448,12 @@ Solo las reglas que el código no puede violar.
 ### RF-01 Detección
 
 - n8n o un timer llama al endpoint Back, que ejecuta `localiza()`. Si la lista está vacía, no se hace nada.
-- Guardar `concepto`, organismo emisor y `tipoEnvio` al procesar `localiza()`, antes de `peticionAcceso()`: esa respuesta no los devuelve.
+- Guardar, al procesar `localiza()` y antes de `peticionAcceso()`, los campos que esa segunda respuesta no devuelve: `concepto`, organismo emisor, organismo emisor raíz, `fechaPuestaDisposicion`, `tipoEnvio`, `vinculo`, titular y `metadatosPublicos`. `metadatosPublicos` se guarda tal como llega; no se interpreta ni entra en la clasificación.
 - Idempotencia por `identificador` DEHú: un envío ya registrado no se reprocesa.
 - Reintentos con backoff ante fallos SOAP, de certificado o de red, sin perder el envío pendiente.
 - Lotes de menos de 1000 peticiones por operación LEMA.
 - Comunicación (`tipoEnvio` `1`): `peticionAcceso(identificador, codigoOrigen)` en el mismo ciclo. Acceder no tiene efectos jurídicos y no hay acuse.
-- Notificación (`tipoEnvio` `2`): no se comparece en el sondeo. `peticionAcceso()` es la comparecencia y puede abrir el plazo de respuesta. El mecanismo está abierto (sección 13).
+- Notificación (`tipoEnvio` `2`): el sondeo no comparece. `peticionAcceso()` es la comparecencia y puede abrir el plazo de respuesta. La ejecuta el lote de madrugada, solo si la clasificación ya superó el umbral: abre, guarda anexos y acuse cuando existan, y deriva enseguida. Por debajo del umbral no se abre.
 
 ### RF-02 Almacenamiento (crítico)
 
@@ -463,19 +463,21 @@ Solo las reglas que el código no puede violar.
 - `consultaAnexos()` y `consultaAcusePdf()` solo funcionan durante 24 h desde `peticionAcceso()`. Pasado ese plazo, el documento no se puede recuperar por API. Si la descarga falla, alerta de alta prioridad; no reintentos silenciosos.
 - `Documento.verificarIntegridad()`: el SHA-256 del principal debe coincidir con el de DEHú.
 - Binarios en almacenamiento de ficheros (`rutaAlmacenamiento`); en BBDD solo metadatos y hash.
+- Guardar en `DOCUMENTO.metadatos` el `documento.metadatos` del principal y el `acusePdf.metadatos` del acuse, tal como llegan y sin interpretar. Si no se guardan al recibirlos, no se pueden recuperar: `consultaRealizadas()` no trae el del documento, y el acuse solo se puede volver a pedir durante 24 h.
+- Guardar también `algoritmoHash` y, en cada anexo por referencia, `referenciaDocumento`. El binario va a fichero. No se persiste la paginación de `localiza()`.
 
 ### RF-05 Clasificación
 
-- Se clasifica con organismo emisor y concepto de `localiza()`, antes de abrir nada. No se leen principal, anexos ni acuse.
-- Resultado: el departamento. No hay catálogo de tipos. El reparto (qué organismos y materias van a cada departamento) está en `DEPARTAMENTO.criteriosReparto` y con él se construye el prompt.
+- Se clasifica antes de abrir nada. La señal base es organismo emisor y concepto de `localiza()`. No se leen principal, anexos ni acuse. Otro metadato de `localiza()` solo entra si una muestra real demuestra que discrimina. El concepto se reconoce por la materia, sin igualdad exacta. Los DIR3 observados no son la clave universal del organismo.
+- Resultado: el departamento. No hay catálogo de tipos. El prompt se construye solo con `DEPARTAMENTO.criteriosReparto` (reglas confirmadas y ya realizables con `localiza()`).
 - Umbral de confianza configurable. Por debajo: `REVISION` (RF-09); no se abre el envío ni se publica acción automática.
-- Pendiente de confirmar con el resto de departamentos.
-- Dentro de la DGSFP (DIR3 `E00119006`) el emisor no separa departamentos: Red de Mediación se guía por el área remitente, que no aparece en `localiza()` documentado (sección 13).
+- DGSFP no va a un solo departamento: la materia separa Coordinación DGS, SAC y Red de Mediación. Exclusivos y Mediación entran por concepto. Distribución → Red de Mediación está confirmada en negocio y fuera del prompt: el área remitente se ve en un aviso de la sede y no es un campo documentado de `localiza()`.
+- TGSS salvo embargo → RRHH está fuera del prompt hasta validarlo con RRHH. No consultar hoy el buzón no excluye a un departamento como destino.
 
 ### RF-03/04 Extracción y resumen
 
 - OCR/LLM solo del documento principal de las comunicaciones, para el resumen. Anexos y acuse se archivan sin procesar.
-- Las notificaciones no se resumen (pendiente de confirmar con el resto de departamentos).
+- Las notificaciones no se resumen en este alcance. El lote de madrugada las archiva. El resumen se retomará cuando la clasificación por departamento esté cerrada.
 - Salida: entidades (organismo, expediente, plazos, importes, partes).
 - n8n puede orquestar el OCR/LLM; Java persiste `INTERPRETACION`, `TEXTOEXTRAIDO` y `CLASIFICACION`.
 
@@ -500,8 +502,8 @@ Título, resumen (si lo hay), campos, adjuntos e `identificador` DEHú.
 ### RF-09 Revisión humana
 
 - Confianza baja → `REVISION` con `resuelto=false`. Ninguna comunicación se pierde entre pasos.
-- UI: documento como vista principal y texto extraído como panel auxiliar (diseño abierto).
-- Aceptar (09.5) → RF-08 con la clasificación propuesta.
+- UI (09.2): metadatos de `localiza()` y clasificación propuesta. No se abre el documento para decidir el departamento.
+- Aceptar (09.5) fija el departamento. Una comunicación sigue el ciclo de descarga del sondeo. Una notificación no se abre aquí: queda para el lote de madrugada, que archiva y deriva.
 - Reclasificar (09.6) → solo `administrador`. Elige el departamento; finalizar + crear.
 - Feedback (09.3): deseable, asíncrono, no bloquea el cierre.
 
@@ -520,9 +522,15 @@ Título, resumen (si lo hay), campos, adjuntos e `identificador` DEHú.
 - 11.4, mismo departamento: `modificarTicket` in-place (depende de la audiencia back de Ticketing).
 - 11.5, cambio de departamento: finalizar + crear, como en 09.6.
 
-### RF-12 Reconciliación (opcional)
+### RF-12 Reconciliación y evaluación (opcional)
 
-Batch con `localizaRealizadas`, que no filtra por fecha. No es consulta interactiva.
+Batch con `localizaRealizadas`, que no filtra por fecha y exige `tipoEnvio`. No es consulta interactiva. «Realizada» quiere decir que DEHú ya no la tiene pendiente (aceptada, rechazada o expirada), no que un departamento la haya tramitado. Una notificación comparecida pasa a realizadas.
+
+- Un identificador vive en un solo sitio, y manda `COMUNICACION`. Lo que ya está ahí se descarta.
+- `fechaPuestaDisposicion` posterior al arranque y ausente en `COMUNICACION`: anomalía de reconciliación (RF-12.3). También aparece si un área lo abrió a mano en el portal.
+- Anterior al arranque y ausente en `COMUNICACION`: va a `REALIZADAS` (RF-12.4), en producción, porque el buzón de pruebas no tiene los envíos reales de MGS. No tiene efectos jurídicos.
+- `REALIZADAS` se clasifica con el mismo prompt y umbral (RF-12.5) y nunca crea ticket, revisión ni derivación.
+- Descarga opcional del principal de una muestra con `consultaRealizadas()` (RF-12.6), para analizar o etiquetar. No entra en la clasificación. Anexos y acuse no se piden. Acceso restringido y borrado al terminar la evaluación.
 
 ---
 
@@ -541,11 +549,12 @@ SQL Server (`HV_OrganismosPublicos`), JDBC propio (`Database` + `*RepositorySQLS
 | `REVISION` | 1:N opcional | Una fila por escalado |
 | `DEPARTAMENTO` | catálogo | Colas, canales y criterios de reparto |
 | `USUARIO` | catálogo | Roles de la app |
+| `REALIZADAS` | ninguna | Envíos ya realizados para evaluar la clasificación (RF-12.4–12.6). Fuera del flujo |
 
 Campos:
 
-- **COMUNICACION:** `id` (UUID, PK), `identificador` (índice único), `codigoOrigen`, `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre`, `tipoEnvio`, `fechaEvento`, `estado`, `fechaIngesta`.
-- **DOCUMENTO:** `id`, `comunicacion_id`, `tipo`, `nombre`, `mimeType`, `hashSha256`, `csvResguardo`, `rutaAlmacenamiento`, `fechaDescarga`.
+- **COMUNICACION:** `id` (UUID, PK), `identificador` (índice único), `codigoOrigen`, `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre`, `organismoEmisorRaizCodigo`, `organismoEmisorRaizNombre`, `fechaPuestaDisposicion`, `tipoEnvio`, `vinculo`, `titularNombre`, `titularNif`, `fechaEvento`, `estado` (interno), `metadatosPublicos` (base64 de `localiza()`, `nvarchar(max)`; no se interpreta ni entra en el prompt), `fechaIngesta`.
+- **DOCUMENTO:** `id`, `comunicacion_id`, `tipo`, `nombre`, `mimeType`, `hashSha256`, `algoritmoHash`, `csvResguardo` (el del documento en `peticionAcceso()`), `referenciaDocumento` (anexo por referencia), `metadatos` (`documento.metadatos` o `acusePdf.metadatos` en base64, `nvarchar(max)`; vacío en anexos; no se interpreta), `rutaAlmacenamiento`, `fechaDescarga`.
 - **INTERPRETACION:** `id`, `comunicacion_id`, `entidadesExtraidas` (JSON en `nvarchar`), `scoreConfianza`, `fechaProcesado`.
 - **TEXTOEXTRAIDO:** `id`, `interpretacion_id`, `textoExtraido`, `fechaCreacion`.
 - **CLASIFICACION:** `id`, `comunicacion_id`, `origen` (`ia` | `operador`), `modelo` (solo si hubo LLM), `nIntentos` (`1`, `2`, `3`…; solo si `origen=ia`), `usuario_id` (solo si `origen=operador`), `departamentoAsignado` (obligatorio), `canalAsignado`, `scoreConfianza`, `resultado`, `fecha`.
@@ -553,16 +562,27 @@ Campos:
 - **REVISION:** `id`, `comunicacion_id`, `usuario_id` (nulo hasta resolver), `motivo`, `resuelto`, `fechaEntrada`, `fechaResolucion`.
 - **DEPARTAMENTO:** `id`, `nombre`, `colaDestino`, `permiteEmail`, `criteriosReparto` (texto), `activo`.
 - **USUARIO:** `id` (= `PERSONA.id` de Personas, sin FK física), `rol`, `activo`.
+- **REALIZADAS:** `id`, `identificador` (único; nunca presente en `COMUNICACION`), `codigoOrigen`, `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre`, `organismoEmisorRaizCodigo`, `organismoEmisorRaizNombre`, `fechaPuestaDisposicion`, `tipoEnvio`, `vinculo`, `titularNombre`, `titularNif`, `estadoDehu`, `referenciaPdfAcuse`, `csvResguardo` (del envío), `rutaDocumento`, `hashSha256`, `algoritmoHash` (solo si se descargó el principal), `departamentoEsperado` (FK, etiquetado), `departamentoPropuesto` (FK), `scoreConfianza`, `modelo`, `fechaClasificacion`, `fechaCarga`.
 
-Semilla de `DEPARTAMENTO` (reparto conocido; faltan el resto de áreas y las colas reales de Ticketing):
+Semilla de `DEPARTAMENTO`. `criteriosReparto` es el texto del prompt: solo reglas confirmadas cuyo dato ya está en `localiza()`. Los DIR3 son ejemplos observados (`E00119006` DGSFP, `EA0028512` AEAT, `E00127105` Catastro, `EA0042298` TGSS); no son la clave de la regla. Faltan las colas reales de Ticketing.
 
 | Departamento | `criteriosReparto` |
 |---|---|
-| Coordinación DGS | DGSFP (`E00119006`): Inspección, análisis de balances, Solvencia, DEC |
-| SAC | DGSFP: Modelo 2B, Reclamaciones |
+| Coordinación DGS | DGSFP: Inspección, análisis de balances, Solvencia, DEC |
+| SAC | DGSFP: Modelo 2B, Reclamaciones. El concepto puede llevar variación de formato |
 | Red de Mediación | DGSFP: Exclusivos, Mediación |
-| Asesoría Fiscal | AEAT (`EA0028512`); Catastro (`E00127105`); TGSS (`EA0042298`): embargos |
-| RRHH | TGSS: todo salvo embargos |
+| Asesoría Fiscal | AEAT; Dirección General del Catastro; TGSS cuando el concepto es embargo o levantamiento de embargo, aunque venga abreviado |
+| Canal Directo | Entidad Pública Empresarial red.es, con concepto o referencia asociados a Kit Digital (por ejemplo KD). «Kit Digital» no es un literal obligatorio |
+| Servicio Jurídico | AEPD |
+
+Fuera del prompt, y por tanto sin fila activa de criterio:
+
+- DGSFP + Distribución → Red de Mediación. Regla de negocio confirmada. El área remitente se ve en un aviso de la sede, no en `localiza()` documentado. Entra si una muestra real lo muestra en `concepto`, `metadatosPublicos` u otro metadato previo a comparecer.
+- DGSFP + Corredores → Red de Mediación. Observado, sin consolidar.
+- TGSS salvo embargo → RRHH. Identificado por Asesoría Fiscal; pendiente de validación directa con RRHH. RRHH no consulta hoy el buzón DEHú.
+- Siniestros y Sucursal Central. Sin regla hasta cerrar su catálogo. Un ayuntamiento no implica un departamento.
+
+Agrupar varias notificaciones por referencia de acuerdo es una necesidad identificada en Canal Directo y no es requisito del MVP. La clasificación de ese departamento es la fila de arriba.
 
 ---
 
@@ -584,7 +604,55 @@ localiza(nifTitular, pagina)
        → anexosReferencia[].referenciaDocumento → consultaAnexos (uno a uno)
 ```
 
-Binarios por MTOM. Paginación de `localiza()`: `hayMasResultados`, `totalPag`, `paginaActual`.
+```
+localizaRealizadas(nifTitular, tipoEnvio)
+  → identificador, codigoOrigen, concepto → consultaRealizadas
+```
+
+Binarios por MTOM. Paginación de `localiza()`: `hayMasResultados`, `opcionesRespuestaLocaliza` (`totalResultados`, `totalPag`, `paginaActual`). Paginación de `localizaRealizadas()`: `totalPaginas`, `paginaActual`, sin `hayMasResultados` en el ejemplo.
+
+Campos confirmados en los ejemplos del Anexo I de la guía de integración:
+
+| Servicio | Elemento | Destino |
+|---|---|---|
+| `localiza()` (por `item` de `envios`) | `identificador`, `codigoOrigen` | `COMUNICACION` |
+| | `concepto` | `COMUNICACION.concepto` |
+| | `organismoEmisor.codigoOrganismo` / `.nombreOrganismo` | `organismoEmisorCodigo` / `organismoEmisorNombre` |
+| | `organismoEmisorRaiz.codigoOrganismo` / `.nombreOrganismo` | `organismoEmisorRaizCodigo` / `organismoEmisorRaizNombre` |
+| | `fechaPuestaDisposicion` (datetime ISO) | `fechaPuestaDisposicion` |
+| | `tipoEnvio` (int: `1` comunicación, `2` notificación; otro valor es error) | `tipoEnvio` |
+| | `vinculo` (int: `1` titular, `2` destinatario; si aparece como ambos, titular) | `vinculo` |
+| | `titular.nombreTitular` / `titular.nifTitular` | `titularNombre` / `titularNif` |
+| | `metadatosPublicos` (base64, contenido no documentado) | `COMUNICACION.metadatosPublicos` |
+| `peticionAcceso()` | `fechaEvento` | `COMUNICACION.fechaEvento` |
+| | `documento.nombre`, `documento.mimeType` | `DOCUMENTO` (principal) |
+| | `documento.contenido` (MTOM, `href="cid:..."`) | Fichero (`rutaAlmacenamiento`) |
+| | `documento.hashDocumento.hash` / `.algoritmoHash` (`sha256` en los ejemplos) | `hashSha256` / `algoritmoHash` |
+| | `documento.metadatos` (base64) | `DOCUMENTO.metadatos` (principal) |
+| | `documento.csvResguardo` | `DOCUMENTO.csvResguardo`; entrada de `consultaAcusePdf()` |
+| | `anexos.anexosReferencia[].nombre` / `.mimeType` / `.referenciaDocumento` | `DOCUMENTO` (anexo); `referenciaDocumento` es la entrada de `consultaAnexos()` |
+| `consultaAnexos()` | `documento.nombre`, `documento.contenido`, `documento.mimeType` | `DOCUMENTO` (anexo). No trae hash ni `csvResguardo` |
+| `consultaAcusePdf()` | `acusePdf.nombreAcuse`, `acusePdf.contenido`, `acusePdf.mimeType` | `DOCUMENTO` (acuse) |
+| | `acusePdf.metadatos` (en los ejemplos contiene el propio `csvResguardo`; formato por confirmar en pruebas) | `DOCUMENTO.metadatos` (acuse) |
+| `localizaRealizadas()` | Los de `localiza()` salvo `metadatosPublicos`, que no aparece en el ejemplo | `REALIZADAS` |
+| | `estado` (ej. `EXPIRADA`) | `REALIZADAS.estadoDehu` |
+| | `referenciaPdfAcuse` (base64), `csvResguardo` | `REALIZADAS.referenciaPdfAcuse` / `.csvResguardo` |
+| `consultaRealizadas()` | `identificador`, `codigoOrigen`, `fechaEvento`, `documento.nombre`, `documento.hashDocumento.hash` / `.algoritmoHash` | `REALIZADAS` (RF-12.6) o `COMUNICACION` (RF-12.3) |
+| | `documento.contenido.tipoMIME` (anidado bajo `contenido`, a diferencia de `peticionAcceso()`) | Tipo MIME del principal |
+| | `anexos.anexosReferencia[].nombre` / `.mimeType` / `.referenciaDocumento` | Detalle de RF-12.3. En RF-12.6 los anexos no se piden |
+
+`peticionAcceso()` no devuelve `concepto`, `organismoEmisor`, `organismoEmisorRaiz`, `vinculo` ni `titular`. `consultaRealizadas()` no trae `csvResguardo` del documento. Los anexos con URL directa no vienen en `anexosReferencia`, y el nombre de su elemento no está confirmado en los ejemplos; no tienen columna hasta confirmarlo en pruebas.
+
+Datos de cada petición:
+
+| Servicio | Campos | Origen |
+|---|---|---|
+| `localiza()` | `nifTitular`; opcional `opcionesLocaliza.pagina` | NIF propio; paginación del sistema |
+| `peticionAcceso()` | `identificador`, `codigoOrigen` | `item` de `localiza()` |
+| `consultaAnexos()` | `nifReceptor`, `identificador`, `codigoOrigen`, `referencia` | `referencia` = `referenciaDocumento` de cada anexo de `peticionAcceso()` |
+| `consultaAcusePdf()` | `nifReceptor`, `identificador`, `codigoOrigen` y una de dos: `identificadorAcusePdf.csvResguardo` o `identificadorAcusePdf.referencia` | `csvResguardo` = `documento.csvResguardo` de `peticionAcceso()` |
+| `localizaRealizadas()` | `nifTitular`, `tipoEnvio` | NIF propio. Sin filtro por fecha |
+| `consultaRealizadas()` | `identificador`, `codigoOrigen`, `nifPeticion`, `nombrePeticion`, `concepto` | `item` de `localizaRealizadas()` |
 
 ### 7.2 Ticketing
 
@@ -621,7 +689,7 @@ Errores: `401` no autenticado, `403` sin rol, `404` no existe, `409` regla de ne
 | Método | Path | Rol | RF | Servicio |
 |---|---|---|---|---|
 | `GET` | `/revisiones` | operador, administrador | 09.1 | `ConsultarRevisionService` |
-| `GET` | `/revisiones/{id}` | operador, administrador | 09.2 | `ConsultarRevisionService` (documento, texto extraído, propuesta IA) |
+| `GET` | `/revisiones/{id}` | operador, administrador | 09.2 | `ConsultarRevisionService` (metadatos de `localiza()` y propuesta de departamento; el documento solo si ya consta abierto) |
 | `GET` | `/revisiones/{id}/documentos/{documentoId}` | operador, administrador | 09.2 | binario local |
 | `POST` | `/revisiones/{id}/aceptacion` | operador, administrador | 09.5 | `AceptarClasificacionService` |
 | `POST` | `/revisiones/{id}/reclasificacion` | administrador | 09.6 | `ReclasificarComunicacionService` (body: `departamento`) |
@@ -637,8 +705,9 @@ Credencial de servicio, no de Operador.
 
 | Método | Path | RF | Servicio |
 |---|---|---|---|
-| `POST` | `/ciclosIngesta` | 01, 02 | `IngestarComunicacionesService` (sin envíos nuevos → `204`) |
-| `POST` | `/interpretaciones` | 03–06 | `RegistrarInterpretacionService` + `ClasificarComunicacionService` + `GenerarContenidoTicketService` |
+| `POST` | `/ciclosIngesta` | 01, 05 | `IngestarComunicacionesService`: `localiza()`, persiste metadatos y clasifica antes de abrir. Sin envíos nuevos → `204`. Una comunicación sobre el umbral sigue a `peticionAcceso()` en el mismo ciclo (RF-02). Una notificación sobre el umbral queda para el lote de madrugada. Por debajo del umbral, revisión y no se abre |
+| `POST` | `/lotesMadrugada` | 01, 02, 06, 08 | Comparece las notificaciones ya clasificadas por encima del umbral, archiva documento, anexos y acuse cuando existan, y deriva. No vuelve a clasificar ni resume |
+| `POST` | `/interpretaciones` | 03–06 | `RegistrarInterpretacionService` + `GenerarContenidoTicketService`. No clasifica. Solo hay documento que interpretar si ya se abrió |
 | `POST` | `/eventos/comunicacionClasificada` | 07 | `PublicarComunicacionClasificadaService` (solo si n8n no publica al bus) |
 | `POST` | `/derivaciones` | 08 | `EjecutarDerivacionService` |
 
@@ -709,6 +778,23 @@ Binarios: ruta en el servidor o volumen. FILESTREAM no, salvo que se decida con 
 
 La evidencia para el TFM son los tests de `HVOrganismosPublicosTest`, no los E2E.
 
+### 11.1 Criterios de aceptación
+
+| RF | Criterio |
+|---|---|
+| 01 | Ninguna comunicación pendiente permanece sin detectar más de N minutos (SLA a definir); ninguna se procesa dos veces. |
+| 02 | El 100% de las notificaciones comparecidas en el día tienen su acuse y sus anexos por referencia almacenados antes de que expire la ventana de 24 h. Las comunicaciones no tienen acuse; sí tienen documento principal y anexos por referencia. |
+| 03 | El documento principal de toda comunicación (`tipoEnvio` `1`) descargada en el mismo ciclo tiene una representación textual asociada, con indicador de calidad o confianza del OCR cuando aplique. Las notificaciones, los anexos y el acuse no entran. |
+| 04 | Cada comunicación procesada produce una estructura con entidades y score de confianza, verificable por un humano. |
+| 05 | Toda comunicación queda clasificada con un departamento y una confianza a partir de las señales base, o marcada para revisión humana sin haber abierto el documento. |
+| 06 | El contenido generado es válido según el esquema de la API de Ticketing, sin intervención manual, en el 100% de los casos clasificados con confianza suficiente. |
+| 07 | Toda comunicación que complete RF-06 genera exactamente un evento publicado, verificable con independencia del resultado de RF-08. |
+| 08 | Toda comunicación clasificada con éxito produce exactamente una acción por el canal ticket, en un tiempo máximo definido por SLA. El email (RF-08.2) no es requisito de cierre. |
+| 09 | El 100% de las comunicaciones detectadas tienen un estado final trazable: acción automática o revisión humana. Ninguna se pierde entre pasos. |
+| 10 | Toda comunicación reportada como mal clasificada obtiene una resolución automática (ticket reclasificado) o una escalada a revisión humana. Nunca queda sin resultado ni requiere un aviso aparte de la creación del ticket. |
+| 11 | El Operador consulta cualquier registro local sin depender de DEHú. Solo puede modificar el ticket si ya hay una derivación. La comunicación tal como la entregó DEHú nunca se modifica; la modificación actualiza el ticket in-place o crea uno nuevo según cambie o no la cola. |
+| 12 | (si se implementa) Ningún envío realizado en DEHú queda sin registro local, en `COMUNICACION` o en `REALIZADAS`, dentro del margen de la frecuencia configurada. Ninguno está en las dos tablas. Ningún envío de `REALIZADAS` genera una acción. |
+
 ---
 
 ## 12. Plan de construcción
@@ -734,7 +820,7 @@ Orden de trabajo, pensado para avanzar sin n8n ni LEMA al principio:
 9. RF-10 y Consumer, cuando exista el evento de cancelación.
 10. RF-12, opcional.
 
-Fechas: backend y frontend antes del 25 dic 2026; desarrollo y testing hasta el 31 dic; revisión del 4 al 15 ene 2027. Detalle en `Diagramas/Gantt.md`.
+Fechas: backend y frontend antes del 25 dic 2026; desarrollo y testing hasta el 31 dic; revisión del 4 al 15 ene 2027.
 
 ---
 
@@ -744,10 +830,9 @@ Mientras no se cierren, se implementa lo descrito aquí sin fijar valores en có
 
 | Tema | Impacto |
 |---|---|
-| Clasificar sin leer el documento | Falta confirmarlo con el resto de departamentos (RF-05). |
-| Área remitente dentro de la DGSFP | Sin ella no se separa Red de Mediación del resto de la DGSFP. Hay que ver de dónde sale sin abrir documentos (RF-05). |
-| Comparecencia de notificaciones | Hipótesis: un botón en el frontal HV para el responsable de área, con los datos de `localiza()` y el día 10 desde `fechaPuestaDisposicion`; al pulsarlo se descarga y se genera el ticket sin resumen. Alternativa: comparecer en batch. Falta actor, endpoint y vista hasta que decidan las áreas (RF-01). |
-| Resumen de notificaciones | No se hace mientras no se confirme con los departamentos (RF-03/04). |
+| Cómo aparece Distribución en `localiza()` | La regla DGSFP + Distribución → Red de Mediación está confirmada y fuera del prompt. Hay que ver si el dato llega en `concepto`, `metadatosPublicos` u otro metadato previo a comparecer (RF-05). |
+| Catálogo de Siniestros y Sucursal Central | Sin reglas activas hasta cerrarlo. Tampoco Corredores, ni TGSS → RRHH hasta validarlo con RRHH (RF-05). |
+| Resumen de notificaciones | No forma parte de este alcance. Se retomará cuando la clasificación por departamento esté cerrada (RF-03/04). |
 | Retención de `TEXTOEXTRAIDO` | Valor del parámetro. |
 | Audiencia back de Ticketing | Bloquea RF-11.4/11.5. |
 | Quién publica el outbox de cancelación en el bus | Bloquea RF-10. |
@@ -756,6 +841,4 @@ Mientras no se cierren, se implementa lo descrito aquí sin fijar valores en có
 | `codApp` de GestorBackend y grupos de Git | Infra. |
 | Servidor SMTP y remitente del email | Infra. Bloquea probar RF-08.2 contra correo real; el código va por properties. |
 | Colas reales de Ticketing por departamento | Semilla de `DEPARTAMENTO`. |
-| Criterios de reparto completos | El reparto actual es «a grandes rasgos» (Asesoría Fiscal) y solo cubre algunas áreas. Falta confirmarlo con el resto. |
-
-No republicar código interno de Ticketing (`Estado_Tecnico_Ticketing.md`, `Analisis_Frontend_AYTicketing.md`).
+| Alcance real de `localizaRealizadas()` | Cuántos devuelve, qué periodo cubre (el portal solo enseña 30 días), si el tipo `1` trae comunicaciones, si aparece al momento de comparecer y si trae `metadatosPublicos`. Condiciona RF-12.4. |

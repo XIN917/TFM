@@ -6,7 +6,7 @@ Seis flujos independientes (cada uno con su propio inicio/fin, sin referencias c
 
 ## 1. Sistema (automático) — Detección, sondeo y clasificación
 
-Sondeo periódico de `localiza()`. Los dos tipos se clasifican antes de abrir el documento, con organismo emisor y concepto. Si la confianza no basta, van a revisión y no se abre. **Comunicación (`1`)**, ya clasificada: `peticionAcceso()` en el mismo ciclo, anexos solo si la respuesta trae `anexosReferencia`, sin `consultaAcusePdf()`. Se extrae y resume el documento principal y se genera el ticket del departamento ya asignado. No se clasifica otra vez. **Notificación (`2`)**: queda pendiente de comparecencia para esa área. No hay `peticionAcceso()`, anexo, acuse, resumen ni ticket.
+Sondeo periódico de `localiza()`. Los dos tipos se clasifican antes de abrir el documento. La señal base es organismo emisor y concepto. Si la confianza no basta, van a revisión y no se abre. **Comunicación (`1`)**, ya clasificada: `peticionAcceso()` en el mismo ciclo, anexos solo si la respuesta trae `anexosReferencia`, sin `consultaAcusePdf()`. Se extrae y resume el documento principal y se genera el ticket del departamento ya asignado. No se clasifica otra vez. **Notificación (`2`)** por encima del umbral: queda clasificada para el lote de madrugada. En el sondeo no hay `peticionAcceso()`, anexo, acuse, resumen ni ticket.
 
 ```mermaid
 %%{init: {"flowchart": {"wrappingWidth": 600}}}%%
@@ -27,7 +27,7 @@ flowchart TD
         a3["Almacenar documento principal y anexos"]
         a4["Extraer texto del documento principal"]
         a5["Resumir contenido"]
-        aNotif["Registrar notificación pendiente de comparecencia en su área"]
+        aNotif["Dejar la notificación clasificada para el lote de madrugada"]
         decLoop{"¿Quedan más en la lista?"}
         pollWait["Fin del ciclo de sondeo (esperar frecuencia configurable)"]
 
@@ -127,39 +127,34 @@ flowchart TD
 
 ---
 
-## 3. Responsable de área — Comparecencia de una notificación
+## 3. Lote de madrugada — Comparecencia y derivación
 
-El responsable consulta en el frontal las notificaciones de su área que siguen pendientes. Ya están clasificadas: el departamento salió de organismo y concepto en el sondeo, y aquí no se clasifica otra vez. La lista muestra organismo, concepto, titular, `fechaPuestaDisposicion` y el día 10 calculado desde esa fecha. Confirmar es la comparecencia: `peticionAcceso()` practica la notificación y el plazo de respuesta del documento empieza al día siguiente. Los anexos por referencia se piden solo si la respuesta trae `referenciaDocumento`. El acuse se descarga en el mismo ciclo. No se extrae ni se resume el documento: el resumen solo se hace si la descarga es inmediata, y en la notificación no lo es hasta que lo confirmen el resto de departamentos. Se genera el ticket del departamento ya asignado, sin ese resumen. El vencimiento del correo de aviso no entra: `localiza()` no lo devuelve.
+Entran las notificaciones ya clasificadas por encima del umbral. No se clasifica otra vez. `peticionAcceso()` es la comparecencia y puede abrir el plazo de respuesta. Los anexos por referencia se piden solo si la respuesta trae `referenciaDocumento`. El acuse se descarga en el mismo ciclo cuando existe. No se extrae ni se resume el documento. Se genera el ticket del departamento ya asignado, sin ese resumen, y se deriva enseguida. Una notificación por debajo del umbral no entra.
 
 ```mermaid
 %%{init: {"flowchart": {"wrappingWidth": 600}}}%%
 flowchart TD
-    start(("Inicio")) --> n1
+    start(("Inicio")) --> n0
 
-    subgraph RESP["Responsable de área"]
+    subgraph SIS["Sistema (automático) — Lote de madrugada"]
         direction TB
-        n1["Consultar notificaciones pendientes de su área"]
-        decConf{"¿Confirma la comparecencia?"}
-        n1 --> decConf
-    end
-
-    decConf -->|no| stopNo(("Fin"))
-    decConf -->|sí| n2
-
-    subgraph SIS["Sistema (automático)"]
-        direction TB
+        n0["Seleccionar notificaciones clasificadas por encima del umbral"]
+        decHay{"¿Hay alguna pendiente de comparecer?"}
         n2["Comparecer (peticionAcceso())"]
         decAnexos{"¿La respuesta trae anexos por referencia?"}
         nAnexos["Descargar cada anexo (consultaAnexos())"]
-        nAcuse["Descargar acuse (consultaAcusePdf())"]
+        nAcuse["Descargar acuse si existe (consultaAcusePdf())"]
         n3["Almacenar documento principal, anexos y acuse"]
+        decMas{"¿Queda otra en el lote?"}
 
-        n2 --> decAnexos
+        n0 --> decHay
+        decHay -->|sí| n2 --> decAnexos
         decAnexos -->|sí| nAnexos --> nAcuse
         decAnexos -->|no| nAcuse
         nAcuse --> n3
     end
 
+    decHay -->|no| stopNo(("Fin"))
     n3 --> b1
 
     subgraph SIS2["Sistema (automático)"]
@@ -169,9 +164,10 @@ flowchart TD
         b1 --> b2
     end
 
-    b2 --> procReg["Registrar en historial de envíos procesados"] --> stop1(("Fin"))
+    b2 --> procReg["Registrar en historial de envíos procesados"] --> decMas
+    decMas -->|sí| n2
+    decMas -->|no| stop1(("Fin"))
 
-    style RESP fill:#E8F5E9,stroke:#A5D6A7,color:#000000,font-weight:bold,font-size:14px
     style SIS fill:#E3F2FD,stroke:#90CAF9,color:#000000,font-weight:bold,font-size:14px
     style SIS2 fill:#E3F2FD,stroke:#90CAF9,color:#000000,font-weight:bold,font-size:14px
 
@@ -179,8 +175,8 @@ flowchart TD
     classDef decision fill:#FFE0B2,stroke:#FFB74D,color:#000000;
     classDef terminal fill:#37474F,stroke:#263238,color:#ffffff;
 
-    class n1,n2,nAnexos,nAcuse,n3,b1,b2,procReg process
-    class decConf,decAnexos decision
+    class n0,n2,nAnexos,nAcuse,n3,b1,b2,procReg process
+    class decHay,decAnexos,decMas decision
     class start,stopNo,stop1 terminal
 ```
 
@@ -188,7 +184,7 @@ flowchart TD
 
 ## 4. Usuario/Operador
 
-Gestión manual de comunicaciones de baja confianza: aceptar la propuesta de la IA o reclasificar. Ambas rutas generan un evento que, en paralelo (sin bloquear el cierre del caso), retroalimenta al modelo IA.
+Gestión manual de envíos de baja confianza: aceptar la propuesta o reclasificar el departamento, con los metadatos de `localiza()` y sin abrir el documento. Aceptar una notificación no la comparece: queda para el lote de madrugada. Ambas rutas generan un evento que, en paralelo (sin bloquear el cierre del caso), retroalimenta al modelo IA.
 
 ```mermaid
 %%{init: {"flowchart": {"wrappingWidth": 600}}}%%
@@ -272,7 +268,7 @@ flowchart TD
 
 ## 6. Reconciliación periódica *(condicionado a tiempo disponible)*
 
-Proceso batch independiente que compara `localizaRealizadas()` contra el repositorio local, para detectar posibles fallos silenciosos del flujo principal. No forma parte del alcance comprometido del MVP.
+Proceso batch independiente que compara `localizaRealizadas()` contra el repositorio local. Un envío posterior al arranque que no está en `COMUNICACION` es una anomalía: un fallo silencioso del flujo principal o un acceso manual al portal. Uno anterior al arranque se guarda en `REALIZADAS` para evaluar la clasificación, sin generar ninguna acción (RF-12.4–12.6). No forma parte del alcance comprometido del MVP.
 
 ```mermaid
 %%{init: {"flowchart": {"wrappingWidth": 600}}}%%
@@ -281,16 +277,21 @@ flowchart TD
 
     subgraph BATCH["Sistema (proceso batch de reconciliación)"]
         direction TB
-        r1["Consultar listado de comunicaciones realizadas (localizaRealizadas())"]
+        r1["Consultar listado de envíos realizados (localizaRealizadas())"]
         r2["Filtrar por fecha"]
-        r3["Consultar registro local"]
-        decR1{"¿Existe en local?"}
+        r3["Consultar COMUNICACION"]
+        decR1{"¿Existe en COMUNICACION?"}
+        decR2{"¿Puesta a disposición posterior al arranque?"}
         r4["Consultar detalle (consultaRealizadas())"]
-        r5["Guardar registro"]
+        r5["Guardar registro y anomalía"]
+        r6["Guardar en REALIZADAS (si no estaba)"]
+        r7["Clasificar sin generar acciones"]
 
         r1 --> r2 --> r3 --> decR1
         decR1 -->|sí| rstop
-        decR1 -->|no| r4 --> r5 --> rstop
+        decR1 -->|no| decR2
+        decR2 -->|sí| r4 --> r5 --> rstop
+        decR2 -->|no| r6 --> r7 --> rstop
     end
 
     rstop(("Fin batch"))
@@ -301,7 +302,7 @@ flowchart TD
     classDef decision fill:#FFE0B2,stroke:#FFB74D,color:#000000;
     classDef terminalBatch fill:#00695C,stroke:#004D40,color:#ffffff;
 
-    class r1,r2,r3,r4,r5 processBatch
-    class decR1 decision
+    class r1,r2,r3,r4,r5,r6,r7 processBatch
+    class decR1,decR2 decision
     class rstart,rstop terminalBatch
 ```

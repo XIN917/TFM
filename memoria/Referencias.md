@@ -75,3 +75,11 @@ Numeración alineada con el orden de aparición en la memoria: primero las citad
     https://administracionelectronica.gob.es/ctt/lema/descargas
 29. **Especificación de Servicios Web (Punto Único / Sedes)** (CTT, iniciativa 2311, elemento 11689). La guía de integración remite aquí el detalle del contrato que sus ejemplos no tabulan. Aún no contrastada campo a campo con `DEHu_Campos_Respuesta_Servicios.md` (22/09/2026):
     https://administracionelectronica.gob.es/ctt/resources/Soluciones/2311/Descargas/Especificacion%20de%20servicios%20web.pdf?idIniciativa=2311&idElemento=11689
+30. **Acceso a las notificaciones electrónicas en DEHú — Ayuda técnica** (Sede electrónica de la AEAT; consultado el 5 de octubre de 2026). Describe el portal: los envíos pendientes pasan a realizadas al comparecerlos, y realizadas agrupa los aceptados, rechazados y expirados. Es el comportamiento del portal, no está comprobado en LEMA:
+    https://sede.agenciatributaria.gob.es/Sede/ayuda/consultas-informaticas/notificaciones-electronicas-ayuda-tecnica/acceso-notificaciones-electronicas-dehu.html
+31. **Ayuda técnica DEHú** (Sede electrónica del CSIC; consultado el 5 de octubre de 2026). Confirma la separación entre pendientes y realizadas en el portal:
+    https://sede.csic.gob.es/ayuda-tecnica-dehu
+32. **Manual de acceso a notificaciones de nacionalidad en la DEHú** (Sede electrónica del Ministerio de Justicia; consultado el 5 de octubre de 2026). Muestra el paso de una notificación comparecida a realizadas:
+    https://sede.mjusticia.gob.es/documents/d/guest/manual-acceso-a-notificaciones-de-nacionalidad-en-la-dehu
+33. **DEHú — Manual de usuario Frontal** (SGAD, publicado en la web del Ayuntamiento de Miguelturra; consultado el 5 de octubre de 2026). Estados de los envíos realizados, incluidos los expirados en TEU, y ventana de consulta de 30 días en el portal:
+    https://www.miguelturra.es/sites/default/files/2022-11/DEHu-Manual%20de%20usuario-Frontal.pdf

@@ -173,9 +173,16 @@ package "modelo" {
         +concepto: String
         +organismoEmisorCodigo: String
         +organismoEmisorNombre: String
+        +organismoEmisorRaizCodigo: String
+        +organismoEmisorRaizNombre: String
+        +fechaPuestaDisposicion: DateTime
+        +vinculo: int
+        +titularNombre: String
+        +titularNif: String
         +tipoEnvio: int
         +fechaEvento: DateTime
         +estado: String
+        +metadatosPublicos: String
         +fechaIngesta: DateTime
         --
         +tieneDerivacionAsociada(): boolean
@@ -194,7 +201,10 @@ package "modelo" {
         +nombre: String
         +mimeType: String
         +hashSha256: String
+        +algoritmoHash: String
         +csvResguardo: String
+        +referenciaDocumento: String
+        +metadatos: String
         +rutaAlmacenamiento: String
         +fechaDescarga: DateTime
         --

@@ -14,7 +14,7 @@
 
 Los componentes se agrupan en cuatro bloques, cada uno correspondiente a un tramo de requisitos funcionales, siguiendo la misma frontera que ya separa el `Especificacion_Requisitos.md` (sección 1: "generar el evento" vs. "ejecutar la acción") y el `Estado.md` (sección 4, decisión de capas/patrones):
 
-- **Pipeline de Ingesta y Clasificación (RF-01–RF-07)**: sondeo LEMA, almacenamiento documental, OCR/interpretación, clasificación, generación del contenido del ticket y publicación del evento.
+- **Pipeline de Ingesta y Clasificación (RF-01–RF-07)**: sondeo LEMA, clasificación por metadatos de `localiza()` antes de abrir, almacenamiento documental, OCR/interpretación del documento ya descargado, generación del contenido del ticket y publicación del evento.
 - **Ejecución de Acciones (RF-08)**: un único componente (Ejecutor/Selector de Canal) que consume el evento y decide el canal de salida (ticket o email) por configuración, no por código específico (RF-08.4).
 
 Ambos bloques se marcan como orquestados por **n8n**, siguiendo la tabla de componentes internos de `Especificacion_Requisitos.md` (sección 2.2): *"Orquestador (n8n u equivalente): coordina el flujo completo (RF-01 a RF-08) y publica/consume eventos"* — n8n no se limita al pipeline de ingesta, también implementa el enrutado/ejecución de la acción resultante.

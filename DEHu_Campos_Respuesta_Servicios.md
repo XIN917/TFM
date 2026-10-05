@@ -28,7 +28,7 @@ Por cada `item` dentro de `envios`:
 
 Paginación: `hayMasResultados`, `opcionesRespuestaLocaliza` (`totalResultados`, `totalPag`, `paginaActual`).
 
-**⚠️ Estos campos (`concepto`, `organismoEmisor*`, `vinculo`, `titular`) NO vuelven a aparecer en `peticionAcceso()`. Si no se capturan aquí, se pierden.**
+**⚠️ Estos campos (`concepto`, `organismoEmisor*`, `fechaPuestaDisposicion`, `vinculo`, `titular`, `metadatosPublicos`) NO vuelven a aparecer en `peticionAcceso()`. El sistema los persiste al procesar `localiza()`. `metadatosPublicos` se guarda tal como llega en `COMUNICACION.metadatosPublicos`, sin interpretarlo.**
 
 ---
 
@@ -85,7 +85,9 @@ Dos variantes de petición (`csvResguardo` o `referencia`), misma forma de respu
 
 ### 5. `localizaRealizadas()` — listado de envíos ya realizados
 
-Mismos campos que `localiza()` (`identificador`, `codigoOrigen`, `concepto`, `organismoEmisor`, `organismoEmisorRaiz`, `fechaPuestaDisposicion`, `tipoEnvio`, `vinculo`, `titular`), **más**:
+Lista los envíos que DEHú ya no tiene pendientes: aceptados, rechazados o expirados. En el portal, una notificación pasa a realizadas en cuanto se comparece (ayuda DEHú de la AEAT, `memoria/Referencias.md` [30]); en LEMA está sin comprobar.
+
+Mismos campos que `localiza()` (`identificador`, `codigoOrigen`, `concepto`, `organismoEmisor`, `organismoEmisorRaiz`, `fechaPuestaDisposicion`, `tipoEnvio`, `vinculo`, `titular`), **más** los de abajo. `metadatosPublicos` no aparece en el ejemplo:
 
 | Campo | Tipo / ejemplo | Nota |
 |---|---|---|

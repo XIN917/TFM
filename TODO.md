@@ -4,11 +4,16 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 
 ## Próximos pasos
 
-- [ ] Esperar respuestas del resto de departamentos (correos ya enviados). Hechos: Fiscal, Coordinación DGS y Red de Mediación (25/09). Guion: `_local/Preguntas_departamentos.md`. Resúmenes: `_local/reuniones/`
-- [ ] Ver de dónde sale el área remitente de Red de Mediación y reproducir ese reparto dentro del DIR3 `E00119006` (25/09). No está en el aviso DEHú ni en `localiza()` documentado. El aviso de la sede queda fuera. No preguntar al área. No abrir documentos para buscarlo, de momento. Detalle en `_local/reuniones/`
-- [ ] Alinear casos de uso, RF-09.4, la aceptación de RF-01 y RF-06.1 con el diagrama del 23/09 (descarga y acuse según `tipoEnvio`, comparecencia en flujo propio). La clasificación sin leer el documento ya está en requisitos y PRD. No tocar el flujo 2.
+- [ ] Cerrar reglas de Siniestros y validar Sucursal Central. Fiscal, Coordinación DGS, Red de Mediación y Canal Directo ya están en el catálogo del PRD. Interlocutores: `_local/interlocutores_reparto.md`. Resúmenes: `_local/reuniones/`
+- [ ] Cuando haya acceso a LEMA, comprobar qué devuelve `localiza()` para una notificación DGSFP que hoy se ve como área remitente Distribución (`concepto`, `metadatosPublicos` u otro dato previo a comparecer). Hasta entonces no entra en el prompt. No abrir el documento para buscarlo. Exclusivos y Mediación sí entran, por concepto. Detalle en `_local/reuniones/`
+- [ ] Validar con RRHH la regla TGSS salvo embargo. Está fuera del prompt. RRHH no consulta hoy el buzón DEHú. Interlocutor en `_local/interlocutores_reparto.md`
+- [ ] Con acceso a LEMA, antes de cargar `REALIZADAS` (RF-12.4): cuántos envíos devuelve `localizaRealizadas()` y qué periodo cubre (el portal solo muestra 30 días); si `tipoEnvio` `1` devuelve comunicaciones; si un envío comparecido aparece al momento (en el portal sí); si trae `metadatosPublicos`. Comprobar también si se pueden recuperar anexos y acuse de envíos antiguos (el límite de 24 h aplica a `consultaAnexos()` y `consultaAcusePdf()`)
+- [ ] En pruebas LEMA: nombre del elemento de los anexos con URL directa (no vienen en `anexosReferencia`; hasta confirmarlo no tienen columna) y formato real de `acusePdf.metadatos` (en los ejemplos contiene el `csvResguardo`)
+- [ ] Decidir si RF-04.1 (identificar el tipo de comunicación) sigue en la especificación. El PRD y `INTERPRETACION` solo guardan entidades y score; sin catálogo de tipos (decisión del 28/09)
+- [ ] Copiar `PRD.md` a `HVOrganismosPublicos`
+- [ ] Si se hace RF-12.6, acordar el tamaño de la muestra, quién accede a los documentos y cuándo se borran (contienen datos personales de terceros)
 - [ ] Decidir el periodo de retención de `TEXTOEXTRAIDO` (tras hablarlo con los compañeros)
-- [ ] Diseño de interfaz RF-09.2 (documento como vista principal, texto extraído como panel auxiliar)
+- [ ] Diseño de interfaz RF-09.2: metadatos de `localiza()` y departamento propuesto. El documento no se abre para clasificar
 - [ ] Decidir alcance del diagnóstico sistemático de errores de clasificación
 - [ ] Definir el rol `consulta` en `USUARIO` — bloqueado hasta IT/Seguridad
 - [ ] Actualizar `Diagrama_Componentes.md`: el evento de cancelación (RF-10.1) sale de un outbox en BD, no de Ticketing publicando al bus; falta dibujar el proceso intermedio
@@ -19,11 +24,11 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 
 ## Preguntas pendientes
 
-**Áreas de negocio** (Fiscal, Coordinación DGS y Red de Mediación hechos; SAC y el resto en espera)
+**Áreas de negocio**
 
-- Clasificación sin leer el documento: ya escrita en RF-05 y en el PRD (organismo y concepto de `localiza()`, antes de abrir). El caso DGSFP está en el paso de arriba. Pendiente de confirmar con el resto de departamentos.
-- Resumen de la notificación: no se hace mientras la descarga no sea inmediata. La comunicación sí, porque se descarga en el mismo ciclo. Pendiente de confirmar con el resto de departamentos.
-- Comparecencia eager (batch madrugada) vs lazy (ellas / botón HV), **solo notificaciones** (`tipoEnvio` `2`): el diagrama ya dibuja el botón en el frontal HV (responsable de área, sin volver a clasificar). Pendiente de que el resto de áreas confirmen si les perjudica arrancar el plazo de respuesta al comparecer. Las comunicaciones (`1`) no tienen ese plazo (FAQ DEHú, 23/09) y se descargan en el mismo ciclo.
+- Siniestros y Sucursal Central siguen sin regla activa. No convertir en regla lo observado (ayuntamientos, juzgados, Guardia Civil, contratación) hasta validarlo. Nombres en `_local/interlocutores_reparto.md`.
+- DGSFP + Corredores → Red de Mediación: observado, sin consolidar. Fuera del prompt.
+- Resumen del documento principal de las notificaciones: no forma parte del alcance actual. Se verá cuando la clasificación por departamento esté cerrada. La comunicación (`tipoEnvio` `1`) sí se resume.
 
 **Ponente**
 

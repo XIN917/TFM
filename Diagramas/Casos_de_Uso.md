@@ -25,7 +25,7 @@ Basado en `casos_de_uso_final.xml`. Actores: **DEHú/LEMA**, **Departamento**, *
 ### CU2 — Consultar contenido de una comunicación
 **Actor:** DEHú/LEMA
 **Objetivo:** Acceder al contenido (documento + anexos) de una comunicación concreta.
-**Flujo:** El sistema invoca `peticionAcceso()` para cada comunicación detectada, obteniendo el documento principal y las referencias a sus anexos.
+**Flujo:** Tras clasificar (RF-05), una comunicación (`tipoEnvio` `1`) por encima del umbral se abre en el mismo ciclo. Una notificación (`tipoEnvio` `2`) por encima del umbral se abre en el lote de madrugada. Por debajo del umbral no se abre. `peticionAcceso()` devuelve el documento principal y las referencias a sus anexos.
 **RF:** RF-01.2, RF-02.1, RF-02.2
 
 ---
@@ -62,20 +62,20 @@ Basado en `casos_de_uso_final.xml`. Actores: **DEHú/LEMA**, **Departamento**, *
 
 ### CU3b — Consultar detalle de comunicación pendiente
 **Actor:** Usuario/Operador
-**Objetivo:** Ver el documento, texto extraído y clasificación propuesta de una comunicación en revisión, para poder decidir.
-**Flujo:** El Operador abre una comunicación de la cola de revisión (CU3a) y consulta el material necesario para resolverla.
+**Objetivo:** Ver los metadatos de `localiza()` y la clasificación propuesta, para poder decidir el departamento sin abrir el documento.
+**Flujo:** El Operador abre una comunicación de la cola de revisión (CU3a) y consulta organismo, concepto y el resto de metadatos ya capturados, junto con la propuesta.
 **RF:** RF-09.2
 
 ### CU4a — Aceptar clasificación propuesta
 **Actor:** Usuario/Operador
 **Objetivo:** Confirmar que la propuesta de clasificación de la IA es correcta.
-**Flujo:** El Operador acepta la propuesta desde CU3b, disparando la acción normal (RF-08) con la clasificación sin modificar.
+**Flujo:** El Operador acepta la propuesta desde CU3b y fija el departamento. Una comunicación sigue el ciclo de descarga del sondeo. Una notificación queda para el lote de madrugada, que abre, archiva y deriva.
 **RF:** RF-09.5
 
 ### CU4b — Reclasificar comunicación
 **Actor:** Usuario/Operador
-**Objetivo:** Corregir manualmente el departamento y/o tipo de una comunicación mal clasificada.
-**Flujo:** El Operador indica el departamento/tipo correcto desde CU3b; el sistema ejecuta **Asignar a departamento** (CU4c, `<<include>>`) para derivar la comunicación al destino correcto.
+**Objetivo:** Corregir el departamento de una comunicación mal clasificada.
+**Flujo:** El Operador indica el departamento correcto desde CU3b; el sistema ejecuta **Asignar a departamento** (CU4c, `<<include>>`) para derivar la comunicación al destino correcto. Una notificación no se comparece en este paso: queda para el lote de madrugada.
 **RF:** RF-09.6
 
 ### CU4c — Asignar a departamento

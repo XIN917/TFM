@@ -6,7 +6,7 @@ Resumen vivo. Pendientes y preguntas: `TODO.md`. Índice de documentos: `README.
 
 ## 1. Contexto
 
-Automatizar la recepción y tramitación de comunicaciones de la administración pública (DEHú/LEMA) en MGS Seguros: clasificar (cascada de RF-03 en hipótesis, ver §3) y derivar al Ticketing interno.
+Automatizar la recepción y tramitación de comunicaciones de la administración pública (DEHú/LEMA) en MGS Seguros: clasificar el departamento con los metadatos de `localiza()` antes de abrir el documento, y derivar al Ticketing interno.
 
 Hoy el acceso es **manual** a **DEHú** (habitualmente por el enlace del correo de aviso). Mi Carpeta Ciudadana es otro portal, también puede abrir el mismo buzón. El proyecto sustituye esa consulta en pantalla por **LEMA** (Grandes Destinatarios): mismo buzón, servicios web. Seguridad Informática confirma: certificado de producción ya existe; el de pruebas lo genera Sistemas; contratación/custodia/renovación es de Seguridad.
 
@@ -25,11 +25,12 @@ Hoy el acceso es **manual** a **DEHú** (habitualmente por el enlace del correo 
 
 ## 2. Dónde está el trabajo
 
-Análisis y diseño del MVP cerrados en lo esencial (ER aprobado por la tutora de empresa), salvo la confirmación de la clasificación sin leer el documento y la política de comparecencia de las notificaciones, pendientes del resto de áreas. Requisitos y PRD ya clasifican sin leer el documento. Casos de uso, y algunas frases de RF-06.1 y RF-09.4, siguen el diseño anterior.
+Análisis y diseño del MVP cerrados en lo esencial (ER aprobado por la tutora de empresa). La clasificación por departamento es previa a la apertura: organismo emisor y concepto son la señal base. La comparecencia de las notificaciones es el lote de madrugada: si la clasificación superó el umbral, se abre, se archiva y se deriva enseguida. Siguen abiertos el catálogo de Siniestros y Sucursal Central, la validación de RRHH y la comprobación en LEMA de Distribución. El resumen de las notificaciones no entra todavía.
 
 | Artefacto | Dónde |
 |---|---|
-| Requisitos RF-01–RF-11 | `Especificacion_Requisitos.md` |
+| Requisitos RF-01–RF-12 | `Especificacion_Requisitos.md` |
+| PRD para implementación (autocontenido) | `PRD.md` |
 | Casos de uso | `Diagramas/Casos_de_Uso.md` |
 | Flujos | `Diagramas/Diagramas_de_flujo.md` |
 | ER | `Diagramas/ER_Explicacion.md` |
@@ -49,11 +50,13 @@ RF-11.5 (cambio de departamento) está diagramada como propuesta de alto nivel, 
 - Reclasificación restringida a administrador. No se renombra «Aceptar clasificación propuesta». «Asignar a departamento» no replica la separación ticket/email de «Modificar»: es automático, no una decisión del actor.
 - RF-10 cerrado a nivel de diseño: cancelación → Agente IA (umbral) → autocorrección MCP o escalado humano. MCP acotado a esa acción. Ticketing no expone webhook: el cambio de estado sale por outbox interno. Falta quién lo consume (ver `TODO.md`).
 - `tipoEnvio`: `1` comunicación, `2` notificación. `vinculo`: `1` titular, `2` destinatario (plan de pruebas GD v2.0, §2.1.2–2.1.3).
-- Descarga según `tipoEnvio` (FAQ DEHú). Comunicación: acceder no tiene efectos jurídicos ni genera acuse; se descarga en el mismo ciclo que `localiza()`. Notificación: `peticionAcceso()` es la comparecencia y puede abrir el plazo de respuesta, que fija el organismo emisor. Sin comparecer, rechazo tácito a los 10 días naturales (Ley 39/2015, art. 43.2). Cuándo comparecer: pendiente de las áreas.
-- Clasificación sin leer el documento (en RF-05 y PRD; pendiente de confirmar con el resto de departamentos): organismo emisor y concepto de `localiza()`, antes de abrir. Sin confianza suficiente, revisión y no se abre. El anexo no entra. Solo se resume lo que se descarga en el mismo ciclo (la comunicación).
-- Flujos (23/09/2026): sondeo, autocorrección, comparecencia, operador, consulta local, reconciliación. Comunicación clasificada: `peticionAcceso()`, anexos si hay `anexosReferencia`, sin acuse, resumen del principal y ticket. Notificación: queda pendiente de comparecencia.
-- Comparecencia (hipótesis): no en el sondeo. Botón en el frontal HV para el responsable de área, con los datos de `localiza()` y el día 10 desde `fechaPuestaDisposicion`. El ticket se genera sin resumen.
-- Fuente y reparto (25/09/2026; detalle en `_local/reuniones/`). La fuente es DEHú, no los correos de aviso. Dentro de la DGSFP (`E00119006`) el emisor no separa departamentos: Red de Mediación se guía por el área remitente, que no está en `localiza()` documentado. Reparto aproximado: Inspección, balances, Solvencia y DEC → Coordinación DGS; Modelo 2B y Reclamaciones → SAC; Exclusivos y Mediación → Red de Mediación; embargos de la TGSS → Fiscal, el resto de la TGSS → RRHH. A Red de Mediación la descarga automática no le perjudica.
+- Descarga según `tipoEnvio` (FAQ DEHú). Comunicación: acceder no tiene efectos jurídicos ni genera acuse; se descarga en el mismo ciclo en que queda clasificada. Notificación: `peticionAcceso()` es la comparecencia y puede abrir el plazo de respuesta, que fija el organismo emisor. Sin comparecer, rechazo tácito a los 10 días naturales (Ley 39/2015, art. 43.2).
+- Clasificación sin leer el documento (RF-05 y PRD): organismo emisor y concepto de `localiza()` son la señal base, antes de abrir. Otro metadato de `localiza()` solo si una muestra real demuestra que discrimina. Sin confianza suficiente, revisión y no se abre. El anexo no entra. El resumen de este alcance es el de la comunicación (`tipoEnvio` `1`).
+- Flujos (05/10/2026): sondeo, autocorrección, lote de madrugada, operador, consulta local, reconciliación. Comunicación clasificada: `peticionAcceso()`, anexos si hay `anexosReferencia`, sin acuse, resumen del principal y ticket. Notificación clasificada: espera al lote de madrugada.
+- Comparecencia: lote de madrugada. Si la clasificación superó el umbral, se abre el documento, se guardan anexos y acuse cuando existan, y se deriva enseguida. No hay confirmación manual. Por debajo del umbral no se abre. El ticket de la notificación sale sin resumen.
+- Fuente y reparto (05/10/2026; detalle en `_local/reuniones/`, interlocutores en `_local/interlocutores_reparto.md`). La fuente es DEHú, no los correos de aviso. El prompt solo lleva reglas confirmadas y realizables con `localiza()`; los DIR3 observados no son la clave. Semilla en `PRD.md`. Distribución → Red de Mediación está confirmada en negocio y fuera del prompt hasta ver el dato en LEMA. TGSS salvo embargo → RRHH está fuera del prompt hasta validarlo con RRHH. Siniestros y Sucursal Central siguen sin regla activa.
+- Atributos de LEMA y realizadas (05/10/2026). Se guardan como columnas los atributos que devuelve LEMA, incluidos los blobs sin documentar (`COMUNICACION.metadatosPublicos`, `DOCUMENTO.metadatos`); no hay columna con la respuesta en bruto. `REALIZADAS` guarda los envíos realizados anteriores al arranque para probar la clasificación, sin relación con el flujo ni acciones (RF-12.4–12.6, opcional). Un identificador vive en una sola tabla; un envío posterior al arranque que falte en `COMUNICACION` es anomalía de reconciliación.
+- `PRD.md` autocontenido (05/10/2026): incluye lo necesario para implementar (diccionario de datos, correspondencia con LEMA, endpoints, criterios de aceptación) sin citar otros documentos del repo ni `_local`. Pensado para copiarlo a `HVOrganismosPublicos`.
 - Acceso LEMA: sin token ni usuario; cada llamada va firmada con X.509 (WS-Security). Pruebas `se-gd-dehuws.redsara.es` (certificado autofirmado, alta propia; instrucciones en `docs/Instrucciones certificado LEMA pruebas.docx`); producción `gd-dehuws.redsara.es`.
 - `TEXTOEXTRAIDO` tabla 1:1 opcional de `INTERPRETACION` (sugerencia de la tutora de empresa). Retención por parámetro global; el valor se fija tras contrastarlo con las áreas. Sin retención permanente para entrenamiento en el MVP.
 - ER: tablas renombradas; `USUARIO` con clave compartida a `PERSONA`; sin tabla `EVENTO` (trazabilidad e idempotencia con `CLASIFICACION` + `DERIVACION`).

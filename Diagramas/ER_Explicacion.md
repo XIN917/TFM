@@ -24,9 +24,16 @@ erDiagram
     string concepto
     string organismoEmisorCodigo
     string organismoEmisorNombre
+    string organismoEmisorRaizCodigo
+    string organismoEmisorRaizNombre
+    datetime fechaPuestaDisposicion
     int tipoEnvio
+    int vinculo
+    string titularNombre
+    string titularNif
     datetime fechaEvento
     string estado
+    text metadatosPublicos
     datetime fechaIngesta
   }
   DOCUMENTO {
@@ -36,7 +43,10 @@ erDiagram
     string nombre
     string mimeType
     string hashSha256
+    string algoritmoHash
     string csvResguardo
+    string referenciaDocumento
+    text metadatos
     string rutaAlmacenamiento
     datetime fechaDescarga
   }
@@ -102,8 +112,37 @@ erDiagram
     boolean activo
   }
 
+  REALIZADAS {
+    uuid id PK
+    string identificador
+    string codigoOrigen
+    string concepto
+    string organismoEmisorCodigo
+    string organismoEmisorNombre
+    string organismoEmisorRaizCodigo
+    string organismoEmisorRaizNombre
+    datetime fechaPuestaDisposicion
+    int tipoEnvio
+    int vinculo
+    string titularNombre
+    string titularNif
+    string estadoDehu
+    text referenciaPdfAcuse
+    string csvResguardo
+    string rutaDocumento "nullable"
+    string hashSha256 "nullable"
+    string algoritmoHash "nullable"
+    string departamentoEsperado FK "nullable"
+    string departamentoPropuesto FK "nullable"
+    float scoreConfianza "nullable"
+    string modelo "nullable"
+    datetime fechaClasificacion "nullable"
+    datetime fechaCarga
+  }
+
   CLASIFICACION }o--|| DEPARTAMENTO : referencia
   DERIVACION }o--|| DEPARTAMENTO : referencia
+  REALIZADAS }o--o| DEPARTAMENTO : referencia
 ```
 
 ---
@@ -115,10 +154,11 @@ Cada fila representa **un envío recibido de DEHú** (notificación o comunicaci
 | Campo | Origen | Nota |
 |---|---|---|
 | `identificador`, `codigoOrigen` | `localiza()` | Identificadores propios de DEHú; se usan para deduplicar (RF-01.3) y para encadenar las siguientes llamadas a LEMA |
-| `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre` | `localiza()` | Solo existen en `localiza()`, no en `peticionAcceso()` — hay que capturarlos en el primer paso del flujo (detección), no esperar a la descarga del documento |
-| `tipoEnvio` | `localiza()` | `1` comunicación, `2` notificación (plan de pruebas GD v2.0, §2.1.2–2.1.3). La comunicación se descarga al momento y no tiene acuse; la notificación sí, y comparecerla puede arrancar plazo (FAQ DEHú) |
+| `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre`, `organismoEmisorRaizCodigo`, `organismoEmisorRaizNombre`, `fechaPuestaDisposicion`, `vinculo`, `titularNombre`, `titularNif` | `localiza()` | No vuelven en `peticionAcceso()`. Se capturan al detectar. `fechaPuestaDisposicion` sirve para el plazo de comparecencia |
+| `tipoEnvio` | `localiza()` | `1` comunicación, `2` notificación (plan de pruebas GD v2.0, §2.1.2–2.1.3). La comunicación se descarga en el ciclo en que queda clasificada y no tiene acuse. La notificación se comparece en el lote de madrugada, solo si la clasificación superó el umbral, y comparecerla puede arrancar plazo (FAQ DEHú) |
 | `estado` | Interno | Ciclo de vida propio del sistema: `pendiente → en_proceso → en_revision / procesada` — no es un estado de DEHú |
-| `fechaEvento`, `fechaIngesta` | Mixto | `fechaEvento` viene de DEHú; `fechaIngesta` es el timestamp interno de cuándo se procesó |
+| `fechaEvento`, `fechaIngesta` | Mixto | `fechaEvento` viene de `peticionAcceso()` o `consultaRealizadas()`; `fechaIngesta` es el timestamp interno de cuándo se procesó |
+| `metadatosPublicos` | `localiza()` | Base64 tal como llega (`nvarchar(max)`); la guía no documenta su contenido. No vuelve en `peticionAcceso()`. No se interpreta ni entra en la clasificación |
 
 ---
 
@@ -135,6 +175,7 @@ USUARIO      0..1───N REVISION
 USUARIO      0..1───N CLASIFICACION
 DEPARTAMENTO 1───N CLASIFICACION
 DEPARTAMENTO 1───N DERIVACION
+DEPARTAMENTO 1───N REALIZADAS        (opcional; sin relación con COMUNICACION)
 ```
 
 `(opcional)` marca las relaciones donde no toda `COMUNICACION` tiene necesariamente una fila asociada — `INTERPRETACION` solo existe tras el procesamiento IA; `TEXTOEXTRAIDO` solo existe mientras no haya expirado su periodo de retención (ver más abajo); `REVISION` solo existe si la comunicación escaló a revisión humana, y puede tener más de una fila si la comunicación escala a revisión en más de una ocasión (p. ej. una reclasificación posterior vuelve a caer por debajo del umbral).
@@ -147,8 +188,13 @@ DEPARTAMENTO 1───N DERIVACION
 
 Una comunicación puede tener varios documentos: el principal, cada anexo y, si es notificación (`tipoEnvio` `2`), el acuse — todos en la misma tabla, distinguidos por `tipo`. La comunicación (`1`) no genera acuse (FAQ DEHú). Solo el documento principal pasa por el pipeline de IA (RF-03); anexos y acuse se archivan pero no se procesan (ver `INTERPRETACION`).
 
-- `hashSha256` — verifica integridad (RF-02.4), comparando contra el hash que devuelve DEHú
-- `csvResguardo` — código de justificante que devuelve `peticionAcceso()` junto al documento principal; hay que poder reenviarlo si algún día se necesita volver a pedir el acuse por esa vía (`consultaAcusePdf()` con tipo `csvResguardo`)
+- `hashSha256` y `algoritmoHash` — el hash y el algoritmo que devuelve DEHú (`hashDocumento`). La integridad (RF-02.4) compara el hash
+- `csvResguardo` — código de justificante del documento principal en `peticionAcceso()`. Sirve para volver a pedir el acuse
+- `referenciaDocumento` — referencia del anexo en `peticionAcceso()` o `consultaRealizadas()`, la que se pasa a `consultaAnexos()`. Vacía en principal y acuse
+- `metadatos` — `documento.metadatos` del principal (`peticionAcceso()`) o `acusePdf.metadatos` del acuse (`consultaAcusePdf()`), tal como llegan (`nvarchar(max)`). Vacío en anexos: `consultaAnexos()` no lo devuelve. No se interpreta
+- `rutaAlmacenamiento` — el binario (`documento.contenido` o `acusePdf.contenido`). No se guarda el `href` MTOM
+
+Las columnas son los atributos que devuelve LEMA según la guía, sin el binario. Los blobs `metadatosPublicos` y `metadatos` se guardan aunque no se interpreten, porque después no se pueden recuperar: `consultaRealizadas()` no los trae y el acuse solo se puede volver a pedir durante 24 h. La paginación de la llamada no se guarda: no es un atributo del envío. La URL de un anexo directo no tiene columna hasta que las pruebas confirmen el nombre de su elemento.
 
 ### `INTERPRETACION` (1:1 opcional)
 
@@ -192,15 +238,26 @@ Solo existe si la comunicación quedó por debajo del umbral de confianza y esca
 
 ### `DEPARTAMENTO`
 
-Catálogo/diccionario, no cuelga directamente de `COMUNICACION` — se referencia desde `CLASIFICACION` y `DERIVACION` (ver resumen de relaciones al principio del documento).
+Catálogo/diccionario, no cuelga directamente de `COMUNICACION` — se referencia desde `CLASIFICACION`, `DERIVACION` y `REALIZADAS` (ver resumen de relaciones al principio del documento).
 
 | Campo | Para qué |
 |---|---|
 | `id`, `nombre` | Identidad del departamento |
 | `colaDestino` | Cola de Ticketing asociada, cuando el canal es ticket |
 | `permiteEmail` | Si el email está habilitado como canal (normal o de contingencia) para este departamento — RF-08.2 |
-| `criteriosReparto` | Organismos y materias que le corresponden (p. ej. «DGSFP: Modelo 2B, Reclamaciones»). Con este texto se construye el prompt de clasificación; cambiar el reparto es cambiar datos, no código |
+| `criteriosReparto` | Organismos y materias confirmados cuyo dato ya está en `localiza()` (p. ej. «DGSFP: Modelo 2B, Reclamaciones»). Con este texto se construye el prompt. Una regla confirmada en negocio pero aún no localizable en LEMA no se escribe aquí. Cambiar el reparto es cambiar datos, no código. El concepto no se compara por igualdad exacta |
 | `activo` | Si el departamento sigue operativo |
+
+### `REALIZADAS`
+
+Envíos que DEHú ya tiene como realizados (aceptados, rechazados o expirados), cargados con `localizaRealizadas()` para probar la clasificación (RF-12.4–12.6). No cuelga de `COMUNICACION` ni tiene documentos, clasificaciones, revisiones ni derivaciones: no entra en el flujo y no genera ninguna acción.
+
+- Un identificador vive en un solo sitio. Si ya está en `COMUNICACION`, no se carga aquí
+- `estadoDehu` — el estado DEHú del envío. No es el `estado` interno de `COMUNICACION`
+- `referenciaPdfAcuse` (referencia al PDF del acuse, base64) y `csvResguardo` del envío — de `localizaRealizadas()`, tal como llegan
+- `rutaDocumento`, `hashSha256`, `algoritmoHash` — solo si se descargó el principal con `consultaRealizadas()` para analizarlo o etiquetarlo (RF-12.6). Anexos y acuse no se piden
+- `departamentoEsperado` — el departamento correcto, etiquetado a mano o con las áreas
+- `departamentoPropuesto`, `scoreConfianza`, `modelo`, `fechaClasificacion` — la última clasificación con el mismo prompt y umbral que el flujo normal. Para comparar varias versiones de `criteriosReparto` haría falta una tabla hija
 
 ### `USUARIO`
 

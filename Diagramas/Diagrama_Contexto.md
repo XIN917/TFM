@@ -4,7 +4,7 @@
 
 `Propuesta de proyecto.md` describe la situación actual de forma genérica ("buzones y sedes electrónicas de organismos públicos"). La puerta concreta es la **sede web de DEHú** (Dirección Electrónica Habilitada única). **Mi Carpeta Ciudadana** es otro portal (ciudadano); no es la que usan las áreas para este proceso. LEMA es la misma DEHú por servicios web, para Grandes Destinatarios (ver `Estado.md`, sección 1).
 
-**Objetivo concreto**: sustituir el acceso manual y periódico de cada departamento a la sede web de DEHú por LEMA, clasificar cada comunicación (metadatos primero; OCR/LLM si hace falta) y derivarla al departamento vía ticket, sin que nadie recorra el listado completo.
+**Objetivo concreto**: sustituir el acceso manual y periódico de cada departamento a la sede web de DEHú por LEMA, clasificar cada comunicación por departamento con los metadatos de `localiza()` antes de abrir el documento, y derivarla vía ticket, sin que nadie recorra el listado completo. El OCR/LLM interpreta el documento principal después, y en este alcance solo resume las comunicaciones.
 
 ---
 
@@ -69,7 +69,7 @@ El sistema se interpone entre DEHú y la Empresa MGS: consulta las comunicacione
 ### Elementos
 
 - **DEHú**: fuente de las comunicaciones (sede web hoy; LEMA en la situación futura). Mi Carpeta Ciudadana no aparece: es otro portal.
-- **Sistema (IA)**: la plataforma de automatización objeto del TFM — ingesta, clasificación (metadatos; OCR si hace falta) y generación de tickets/notificaciones.
+- **Sistema (IA)**: la plataforma de automatización objeto del TFM — ingesta, clasificación por metadatos de `localiza()` antes de abrir, y generación de tickets. El OCR interpreta el documento ya descargado y no decide el departamento.
 - **Sistema de Ticketing**: sistema interno ya existente en MGS (fuera del alcance del TFM) donde el Sistema (IA) crea el ticket derivado; es el canal por el que la Empresa MGS consulta y gestiona sus comunicaciones asignadas (ver `Diagrama_Componentes.md`).
 - **Empresa MGS**: los departamentos internos que reciben ya filtrada y clasificada solo la comunicación que les corresponde (a diferencia de la situación actual, ya no revisan el listado completo).
 - **Operador**: rol interno que gestiona la cola de revisión humana y la reclasificación manual (ver `Diagrama_Componentes.md`, bloque "Gestión y Revisión").
