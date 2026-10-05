@@ -138,12 +138,7 @@ HVOrganismosPublicos/
 │       ├── exception/
 │       │   ├── OrganismosPublicosException.java
 │       │   ├── EntidadNoEncontradaException.java
-│       │   ├── OperacionNoPermitidaException.java
-│       │   ├── BusinessRuleViolationException.java
-│       │   ├── DerivacionDuplicadaException.java
-│       │   ├── VentanaAnexoExpiradaException.java
-│       │   ├── IntegridadDocumentoException.java
-│       │   └── LimiteReclasificacionException.java
+│       │   └── ReglaNegocioException.java                  # 409; el mensaje distingue el caso
 │       └── seguridad/
 │           └── UsuarioAutenticado.java
 │
@@ -158,15 +153,16 @@ HVOrganismosPublicos/
 │           │   ├── Endpoint.java
 │           │   ├── Transaccional.java
 │           │   └── Client.java
-│           ├── properties/
-│           │   ├── PropiedadesLoader.java
-│           │   └── GestorPropiedadesProvider.java
+│           ├── logging/
+│           │   └── ConfiguradorLogs.java
+│           ├── properties/                                   # carga de ficheros por entorno
 │           ├── exceptions/
-│           │   ├── BadInputException.java
-│           │   └── IntegrationException.java
+│           │   ├── PeticionNoValidaException.java          # entrada mal formada; la rechaza el adaptador REST
+│           │   └── IntegrationException.java               # fallo de un adaptador de salida
 │           └── util/
 │               ├── Fechas.java
-│               └── ConversionUtils.java
+│               ├── ConversionUtils.java
+│               └── ObjectMappers.java
 │
 ├── HVOrganismosPublicosBusiness/
 │   └── src/
@@ -187,6 +183,8 @@ HVOrganismosPublicos/
 │           │   ├── EnvioPendiente.java
 │           │   ├── ContenidoTicket.java
 │           │   ├── FiltroConsultaComunicaciones.java
+│           │   ├── Pagina.java
+│           │   ├── TipoEnvio.java
 │           │   ├── ConstantesDominio.java
 │           │   ├── ComunicacionRepository.java            # UML
 │           │   ├── DepartamentoRepository.java
@@ -225,7 +223,8 @@ HVOrganismosPublicos/
 │           │       └── AgenteReclasificacionService.java            # UML RF-10
 │           └── infraestructura/
 │               ├── persistencia/
-│               │   ├── Database.java
+│               │   ├── jdbc/
+│               │   │   └── JdbcTemplate.java
 │               │   ├── ComunicacionRepositorySQLServer.java         # UML
 │               │   ├── DepartamentoRepositorySQLServer.java
 │               │   └── UsuarioRepositorySQLServer.java
@@ -249,6 +248,7 @@ HVOrganismosPublicos/
 │                   └── RestClientSupport.java
 │
 ├── HVOrganismosPublicosApiFrontV1WebService/                       # fase 1
+│   ├── build.xml                                                    # ant generate
 │   ├── openapi/
 │   │   ├── openapi.yaml
 │   │   └── paths/
@@ -266,13 +266,13 @@ HVOrganismosPublicos/
 │   │   ├── listeners/
 │   │   │   └── ApiServletContextListener.java
 │   │   ├── filters/
-│   │   │   └── CacheControlFilter.java
-│   │   ├── exception/mappers/
-│   │   │   ├── EntidadNoEncontradaExceptionMapper.java
-│   │   │   ├── BadInputExceptionMapper.java
-│   │   │   └── OrganismosPublicosExceptionMapper.java
+│   │   │   ├── CacheControlFilter.java
+│   │   │   ├── Cached.java
+│   │   │   └── LoggingFilter.java
+│   │   ├── exception/mappers/                              # uno por excepción de Beans y Comun; UnknownExceptionMapper, WebApplicationExceptionMapper y RespuestasError
 │   │   └── providers/
-│   │       └── GestorBackendFeature.java
+│   │       ├── GestorBackendFeature.java
+│   │       └── JsonProvider.java
 │   └── WebContent/WEB-INF/
 │       ├── web.xml
 │       ├── beans.xml
@@ -339,9 +339,6 @@ HVOrganismosPublicos/
 ├── HVOrganismosPublicosApiConsumerV1WasEAR/
 │
 ├── HVOrganismosPublicosMigraciones/
-│   ├── V1__esquema.sql
-│   ├── V2__indices.sql
-│   └── V3__seed_departamento.sql
 │
 ├── HVOrganismosPublicosProperties/                                  # disco servidor, no EAR
 │   ├── local#organismosPublicos.properties
@@ -357,23 +354,7 @@ HVOrganismosPublicos/
 │   ├── datasource.py
 │   └── certificado_lema.py
 │
-├── HVOrganismosPublicosTest/
-│   └── src/es/mgs/hv/organismosPublicos/test/
-│       ├── aplicacion/
-│       │   ├── IngestarComunicacionesServiceTest.java
-│       │   ├── InterpretarComunicacionServiceTest.java
-│       │   ├── ClasificarComunicacionServiceTest.java
-│       │   ├── GenerarContenidoTicketServiceTest.java
-│       │   ├── PublicarComunicacionClasificadaServiceTest.java
-│       │   ├── EjecutarDerivacionServiceTest.java
-│       │   ├── AceptarClasificacionServiceTest.java
-│       │   ├── ReclasificarComunicacionServiceTest.java
-│       │   ├── AgenteReclasificacionServiceTest.java
-│       │   ├── ModificarDerivacionServiceTest.java
-│       │   └── ConsultarComunicacionesServiceTest.java
-│       └── modelo/
-│           ├── ComunicacionTest.java
-│           └── DocumentoTest.java
+├── HVOrganismosPublicosTest/                                        # el test vive en el mismo paquete que la clase; JUnit 5 y fakes de los puertos
 │
 └── HVOrganismosPublicosFT/                                          # fase 3
     └── tests/
@@ -383,9 +364,9 @@ HVOrganismosPublicos/
 
 | Módulo | Contenido |
 |---|---|
-| Beans | Excepciones y DTOs de evento. Sin SQL ni SOAP. |
-| Comun | log4j2 y carga de properties. |
-| Business | Modelo, aplicación e infraestructura (`*SQLServer`, `LemaClient`, `TicketingClient`, `AgenteIAClient`). |
+| Beans | Excepciones de aplicación (`EntidadNoEncontradaException`, `ReglaNegocioException`) y DTOs de evento. El 409 es `ReglaNegocioException`. Sin SQL ni SOAP. |
+| Comun | log4j2, carga de properties, `PeticionNoValidaException`, `IntegrationException` y `ObjectMappers`. |
+| Business | Modelo, aplicación e infraestructura (`JdbcTemplate`, `*SQLServer`, `LemaClient`, `TicketingClient`, `AgenteIAClient`). |
 | ApiFront + WasEAR | REST del Operador. EAR: WAR + Business + Beans + Comun. |
 | Web + WebEAR | SPA Vue (UIBaseProject) y servlets de seguridad. EAR: WAR + Comun, sin Business. |
 | ApiBack | Endpoints que llama n8n: sondeo, interpretación, derivación. |
@@ -393,7 +374,7 @@ HVOrganismosPublicos/
 | Migraciones | SQL del esquema. |
 | Properties | `{local\|desa\|usua\|prod}#*.properties`, en el disco del servidor (`PATH_PROPERTIES_SERVIDOR`). |
 | Server | Scripts wsadmin: datasource SQLPortal y certificado LEMA. |
-| Test | JUnit 5 + Mockito, sin WAS. |
+| Test | JUnit 5, sin WAS. Mismo paquete que la clase probada y fakes de los puertos. |
 | FT | Playwright E2E contra desa/usua. |
 
 Classpath (ya aplicado en RAD): Business → Beans + Comun; Test → Business; Front → Beans + Comun + Business; Web → Comun. `/lib` de WasEAR: Beans, Comun, Business. `/lib` de WebEAR: Comun.
@@ -536,7 +517,7 @@ Batch con `localizaRealizadas`, que no filtra por fecha y exige `tipoEnvio`. No 
 
 ## 6. Base de datos
 
-SQL Server (`HV_OrganismosPublicos`), JDBC propio (`Database` + `*RepositorySQLServer`). Scripts en `HVOrganismosPublicosMigraciones`.
+SQL Server (`HV_OrganismosPublicos`), JDBC propio (`JdbcTemplate` + `*RepositorySQLServer`). Scripts en `HVOrganismosPublicosMigraciones`.
 
 | Tabla | Relación con `COMUNICACION` | Rol |
 |---|---|---|
