@@ -1,6 +1,6 @@
 # DEHú/LEMA — Campos de respuesta por servicio
 
-*Extraído y verificado contra el Anexo I (ejemplos de petición/respuesta) de la Guía de Integración para Gran Destinatario. Solo se listan campos confirmados en los ejemplos reales del PDF — no se han inferido ni completado con supuestos. La leyenda de `tipoEnvio` y `vinculo` sale del plan de pruebas funcionales GD v2.0, no de esa guía. Especificación de servicios web (Punto Único / Sedes), aún no contrastada: `memoria/Referencias.md` [28].*
+*Extraído y verificado contra el Anexo I (ejemplos de petición/respuesta) de la Guía de Integración para Gran Destinatario.*
 
 ---
 
@@ -20,7 +20,7 @@ Por cada `item` dentro de `envios`:
 | `organismoEmisorRaiz.codigoOrganismo` | string | |
 | `organismoEmisorRaiz.nombreOrganismo` | string | Organismo "padre" (ej. Ministerio) |
 | `fechaPuestaDisposicion` | datetime ISO | |
-| `tipoEnvio` | int | `1` comunicación, `2` notificación. Plan de pruebas funcionales para Gran Destinatario v2.0 (SGAD, 18/03/2024), §2.1.2 y §2.1.3. Un valor distinto de 1 o 2 es error (§2.1.9). La guía de integración solo ejemplifica el `2`. Efecto (FAQ DEHú, `memoria/Referencias.md` [29], 23/09/2026): la comunicación no tiene plazo de lectura ni acuse; la notificación tiene plazo de comparecencia, fijado por el emisor y gestionado por el PUC. |
+| `tipoEnvio` | int | `1` comunicación, `2` notificación. Plan de pruebas funcionales para Gran Destinatario v2.0 (SGAD, 18/03/2024), §2.1.2 y §2.1.3. Un valor distinto de 1 o 2 es error (§2.1.9). La guía de integración solo ejemplifica el `2`. Efecto (FAQ DEHú): la comunicación no tiene plazo de lectura ni acuse; la notificación tiene plazo de comparecencia, fijado por el emisor y gestionado por el PUC. |
 | `vinculo` | int | `1` titular, `2` destinatario (mismo plan de pruebas, §2.1.4–2.1.7). Si aparece como ambos, se entiende titular. |
 | `titular.nombreTitular` | string | |
 | `titular.nifTitular` | string | |
@@ -168,4 +168,4 @@ No son llamadas independientes: cada servicio de "detalle" depende de un identif
 
 ## Nota sobre la extracción del PDF
 
-Este documento se ha construido revisando directamente el texto extraído del PDF original (`DEHuGuia_Integracion_para_Gran_Destinatario.pdf`), páginas 22-49 (Anexo I). Se han evitado los tramos con artefactos de extracción (saltos de línea con guion mal codificados, presentes sobre todo en URLs de namespaces XML y en la sección de endpoints WSDL) — ninguno de los campos aquí listados proviene de esas zonas afectadas.
+Este documento se ha construido revisando directamente el texto extraído del PDF original (`DEHuGuia_Integracion_para_Gran_Destinatario.pdf`), páginas 22-49 (Anexo I).
