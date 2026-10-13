@@ -9,7 +9,6 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 - [ ] Validar con RRHH la regla TGSS salvo embargo. Está fuera del prompt. RRHH no consulta hoy el buzón DEHú. Interlocutor en `_local/interlocutores_reparto.md`
 - [ ] Con acceso a LEMA, antes de cargar `REALIZADAS` (RF-12.4): cuántos envíos devuelve `localizaRealizadas()` y qué periodo cubre (el portal solo muestra 30 días); si `tipoEnvio` `1` devuelve comunicaciones; si un envío comparecido aparece al momento (en el portal sí); si trae `metadatosPublicos`. Comprobar también si se pueden recuperar anexos y acuse de envíos antiguos (el límite de 24 h aplica a `consultaAnexos()` y `consultaAcusePdf()`)
 - [ ] En pruebas LEMA: nombre del elemento de los anexos con URL directa (no vienen en `anexosReferencia`; hasta confirmarlo no tienen columna) y formato real de `acusePdf.metadatos` (en los ejemplos contiene el `csvResguardo`)
-- [ ] Decidir si RF-04.1 (identificar el tipo de comunicación) sigue en la especificación. El PRD y `INTERPRETACION` solo guardan entidades y score; sin catálogo de tipos (decisión del 28/09)
 - [ ] Copiar `PRD.md` a `HVOrganismosPublicos`
 - [ ] Si se hace RF-12.6, acordar el tamaño de la muestra, quién accede a los documentos y cuándo se borran (contienen datos personales de terceros)
 - [ ] Decidir el periodo de retención de `TEXTOEXTRAIDO` (tras hablarlo con los compañeros)
@@ -21,6 +20,7 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 - [ ] Revisar con el equipo si `AgenteIAClient` (infra) debe invocar `TicketingGateway` — lectura literal de RF-10.4, no cerrado con nadie
 - [ ] Valorar extraer el colaborador «finalizar ticket + crear uno nuevo» (hoy en RF-09.6, RF-10.4 y RF-11.5) — YAGNI de momento
 - [ ] Mejora pendiente del flujo 2 (no cambia el diagrama actual). Si alguien abre una notificación mal clasificada, el plazo de respuesta ya corre desde la comparecencia y hay que redirigir enseguida. Idea: esa persona deja un comentario («esto no es de siniestros, es de canal directo»); la IA lo interpreta y reasigna el departamento al momento, y se avisa por correo a la persona correcta. El ticket no se borra; cómo modificarlo está sin decidir (Ticketing no transfiere de cola)
+- [ ] Cerrar la política temporal de sondeo y comparecencia de las notificaciones. La necesidad es conservar el mayor margen posible antes de la comparecencia sin retrasar innecesariamente la derivación. Valorar si el sondeo principal se realiza de madrugada y, tras clasificar el envío con los metadatos de `localiza()`, la comparecencia, descarga y derivación se ejecutan inmediatamente dentro del mismo flujo. Si se adopta esta solución, integrar el actual flujo independiente de «lote de madrugada» en el flujo principal de sondeo. Hasta cerrar esta decisión, RF-01 mantiene el diseño vigente.
 
 ## Preguntas pendientes
 
