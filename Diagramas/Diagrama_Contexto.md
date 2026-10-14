@@ -60,57 +60,64 @@ end note
 
 ---
 
-## Situación futura (con Sistema + IA)
+## Situación objetivo
 
-![Diagrama de contexto - situación futura](img/diagrama_contexto.png)
+![Diagrama de contexto - situación objetivo](img/diagrama_contexto.png)
 
-El sistema se interpone entre DEHú y la Empresa MGS: consulta las comunicaciones automáticamente (vía LEMA), las clasifica y deriva a cada departamento solo lo que le corresponde, creando un ticket en el Sistema de Ticketing (canal principal, ver `Estado.md` sección 3). El Operador gestiona la cola de revisión humana para los casos de baja confianza.
+El sistema sustituye el acceso manual de los usuarios de MGS al portal de DEHú por una integración automatizada mediante LEMA. Las comunicaciones se reciben y clasifican antes de ser derivadas al departamento correspondiente a través del Sistema de Ticketing. Los casos que requieren intervención humana quedan disponibles para el Operador/Administrador mediante el sistema de automatización.
 
 ### Elementos
 
-- **DEHú**: fuente de las comunicaciones (sede web hoy; LEMA en la situación futura). Mi Carpeta Ciudadana no aparece: es otro portal.
-- **Sistema (IA)**: la plataforma de automatización objeto del TFM — ingesta, clasificación por metadatos de `localiza()` antes de abrir, y generación de tickets. El OCR interpreta el documento ya descargado y no decide el departamento.
-- **Sistema de Ticketing**: sistema interno ya existente en MGS (fuera del alcance del TFM) donde el Sistema (IA) crea el ticket derivado; es el canal por el que la Empresa MGS consulta y gestiona sus comunicaciones asignadas (ver `Diagrama_Componentes.md`).
-- **Empresa MGS**: los departamentos internos que reciben ya filtrada y clasificada solo la comunicación que les corresponde (a diferencia de la situación actual, ya no revisan el listado completo).
-- **Operador**: rol interno que gestiona la cola de revisión humana y la reclasificación manual (ver `Diagrama_Componentes.md`, bloque "Gestión y Revisión").
+- **DEHú / LEMA**: fuente externa de las notificaciones y comunicaciones electrónicas. En la situación objetivo, el acceso se realiza de forma automatizada mediante los servicios web de LEMA para Grandes Destinatarios.
+- **Sistema de automatización**: sistema objeto del TFM. Centraliza la recepción y el tratamiento de las comunicaciones, determina el departamento destinatario y coordina su posterior derivación.
+- **Sistema de Ticketing**: sistema corporativo ya existente en MGS y externo al sistema desarrollado. Constituye el canal principal mediante el que las comunicaciones clasificadas se derivan a los departamentos.
+- **Empresa MGS**: representa los departamentos internos destinatarios de las comunicaciones. A diferencia de la situación actual, dejan de revisar directamente el listado completo de DEHú y reciben a través de Ticketing las comunicaciones que les han sido asignadas.
+- **Operador/Administrador**: personal interno que utiliza el sistema para consultar los registros y gestionar los casos que requieren intervención humana.
 
 ```plantuml
-@startuml diagrama_contexto
+@startuml diagrama_contexto_objetivo
 
 skinparam backgroundColor White
 skinparam defaultFontName Helvetica
+skinparam shadowing false
+
 skinparam actor {
     BackgroundColor White
     BorderColor Black
 }
+
 skinparam component {
     BackgroundColor White
     BorderColor Black
     ArrowColor Black
     FontSize 14
 }
+
 skinparam cloud {
     BackgroundColor White
     BorderColor Black
 }
+
 skinparam nodesep 60
 skinparam ranksep 60
 
 left to right direction
 
-cloud "Portal DEHú" as Carpeta
-actor "Operador" as Operador
-component "Empresa MGS\n(departamentos)" as MGS
+cloud "DEHú / LEMA" as DEHu
+actor "Operador /\nAdministrador" as Operador
+component "Sistema de\nautomatización" as Sistema
 component "Sistema de\nTicketing" as Ticketing
+component "Empresa MGS\n(departamentos)" as MGS
 
-component "Sistema\n(IA)" as Sistema
+DEHu --> Sistema : comunicaciones y\nmetadatos
 
-Carpeta --> Sistema : comunicaciones\n(vía LEMA, automático)
-Sistema --> Ticketing : crea ticket\nya clasificado
-Ticketing --> MGS : consulta / gestiona\nsu cola asignada
-MGS --> Ticketing : reporta clasificación\nincorrecta (cancela)
-Operador --> Sistema : gestiona / revisa /\nreclasifica
-Sistema --> Operador : cola de revisión
+Operador --> Sistema : consulta y\nrevisión
+Sistema --> Operador : casos que requieren\nrevisión
+
+Sistema --> Ticketing : deriva comunicación\nclasificada
+
+Ticketing --> MGS : comunicaciones\nasignadas
+MGS --> Ticketing : reporta asignación\nincorrecta
 
 @enduml
 ```

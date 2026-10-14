@@ -41,13 +41,17 @@ El objetivo general de este trabajo es diseñar e implementar un sistema que aut
 De este objetivo general se derivan los siguientes objetivos específicos:
 
 - Sustituir el acceso manual a DEHú mediante certificado digital por una integración automatizada con las APIs de LEMA, capaz de detectar y descargar por sí misma las comunicaciones y la documentación asociada.
-- Interpretar y clasificar automáticamente el contenido de cada comunicación mediante inteligencia artificial (OCR y modelos de lenguaje), identificando su naturaleza, el organismo emisor y el área de negocio a la que corresponde.
+- Clasificar automáticamente cada comunicación a partir de la información proporcionada por LEMA para determinar el área de negocio destinataria y, cuando resulte necesario, interpretar su contenido documental mediante técnicas de extracción de texto, OCR y modelos de lenguaje
 - Generar eventos dentro de la arquitectura orientada a eventos ya existente en la compañía, de modo que la clasificación de una comunicación quede desacoplada de la acción concreta que se ejecuta sobre ella.
 - Enrutar automáticamente cada comunicación clasificada hacia la cola de trabajo correspondiente del sistema de Ticketing interno —o, como canal alternativo, notificarla por correo electrónico—, evitando el traslado manual de información entre sistemas.
 - Ofrecer un mecanismo de revisión humana para los casos en los que la clasificación automática no alcance el nivel de confianza necesario, explorando además que un agente de inteligencia artificial, apoyado en el protocolo MCP, pueda corregir sus propios errores de clasificación sin depender de la disponibilidad de un operador.
 - Sentar una base escalable y reutilizable, alineada con las líneas de evolución tecnológica de la compañía descritas en la Motivación, que permita incorporar en el futuro nuevos organismos, tipos de comunicaciones y automatismos adicionales.
 
 Estos objetivos se persiguen dentro del alcance de un Producto Mínimo Viable (MVP) centrado en el ciclo de recepción de los envíos de DEHú; los límites concretos de dicho alcance se detallan en el apartado 4.8, *Alcance y límites del diseño*.
+
+![Diagrama de contexto — situación objetivo](../Diagramas/img/diagrama_contexto.png)
+
+**Figura 2.** Situación objetivo: gestión automatizada de comunicaciones.
 
 ---
 
