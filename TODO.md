@@ -12,6 +12,11 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 - [ ] Copiar `PRD.md` a `HVOrganismosPublicos`
 - [ ] Si se hace RF-12.6, acordar el tamaño de la muestra, quién accede a los documentos y cuándo se borran (contienen datos personales de terceros)
 - [ ] Decidir el periodo de retención de `TEXTOEXTRAIDO` (tras hablarlo con los compañeros)
+- [ ] Validar con Seguridad y Protección de Datos las condiciones para remitir documentos reales a OpenAI o Mistral (datos personales, contratos, retención y transferencias). Definir el comportamiento alternativo de derivación si el tratamiento no se autoriza o falla; no asumir que el ticket se genera sin interpretación hasta que se acuerde.
+- [ ] Seleccionar y evaluar modelo/API de OpenAI o Mistral con documentos de prueba digitales, escaneados y mixtos; comprobar calidad de extracción, interpretación orientada a la tramitación, coste y latencia. Definir y validar el indicador de confianza de interpretación sin asumir que sea una probabilidad calibrada.
+- [ ] Confirmar con Canal Directo qué información operativa necesita identificar de los documentos de Kit Digital (fases, requerimientos y actuaciones). La guía disponible es material de dominio, no un catálogo obligatorio de salida ya validado.
+- [ ] Verificar durante la integración con LEMA si la autorización de Gran Destinatario de MGS permite consultar los envíos dirigidos a personas físicas cuyos avisos llegan al buzón corporativo. No asumir una integración adicional con Notific@.
+- [ ] Contrastar las fechas calculadas de comparecencia con fechas de vencimiento de avisos reales y validar las reglas jurídicas aplicables. No usar una fecha orientativa como vencimiento confirmado ni como único criterio de acceso.
 - [ ] Diseño de interfaz RF-09.2: metadatos de `localiza()` y departamento propuesto. El documento no se abre para clasificar
 - [ ] Decidir alcance del diagnóstico sistemático de errores de clasificación
 - [ ] Definir el rol `consulta` en `USUARIO` — bloqueado hasta IT/Seguridad
@@ -28,14 +33,11 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 
 - Siniestros y Sucursal Central siguen sin regla activa. No convertir en regla lo observado (ayuntamientos, juzgados, Guardia Civil, contratación) hasta validarlo. Nombres en `_local/interlocutores_reparto.md`.
 - DGSFP + Corredores → Red de Mediación: observado, sin consolidar. Fuera del prompt.
-- Resumen del documento principal de las notificaciones: no forma parte del alcance actual. Se verá cuando la clasificación por departamento esté cerrada. La comunicación (`tipoEnvio` `1`) sí se resume.
+- Interpretación documental: se contempla para los documentos principales de notificaciones y comunicaciones, condicionada a la autorización de IA externa. Sigue pendiente acordar la salida operativa cuando no se pueda procesar el documento.
 
 **Ponente**
 
-- Festivos en la fecha límite de comparecencia (`fechaPuestaDisposicion` + 10 días naturales, Ley 39/2015 arts. 43.2 y 30.3; `localiza()` no da la caducidad). Si el último día es sábado o domingo, pasa al primer día hábil siguiente (art. 30.5). Los festivos no se cuentan, igual que hace la AEAT. Comentarlo:
-  - Caso AEAT: el último día cayó en un festivo autonómico del domicilio de la empresa. Por el art. 30.6 era inhábil y debía pasar al día hábil siguiente, pero el vencimiento del aviso DEHú no se movió.
-  - El art. 30.6 suma los festivos del domicilio de la empresa y los de la sede de cada órgano emisor: nacionales, autonómicos y locales, que cambian cada año.
-  - Sin contar festivos, la fecha puede salir antes que la real, pero nunca después.
+- Cómputo de la fecha límite de comparecencia: revisar con el ponente, el área jurídica y la integración LEMA la relación entre el artículo 43.2 y las reglas de cómputo del artículo 30 de la Ley 39/2015. Existe un caso observado de AEAT en que el vencimiento del aviso no coincidió con el desplazamiento esperado por festivo autonómico; no generalizar a partir de ese caso. La fecha calculada por la aplicación es orientativa, y todavía no se ha verificado cómo obtener un vencimiento confirmado mediante LEMA. Distinguirlo de los plazos de actuación que figuran en los documentos.
 
 - Término genérico: DEHú llama *envío* a ambos tipos (notificación y comunicación; `envios`/`tipoEnvio` en la API [1]). Propuesta: adoptar «envío» como término genérico y reservar «notificación»/«comunicación» para cada tipo. Consultar antes de tocar nada:
   - **Título**: ¿se puede cambiar sin trámite formal? Opción preferida: «Automatización de la recepción de notificaciones y comunicaciones electrónicas de la Administración Pública» (pareja que usa el propio portal); si no, se mantiene el actual.
@@ -53,6 +55,7 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 - Campo `motivoResolucion` en `POST /tickets/{id}/estado` — ¿contradice lo de «sin motivo en frontend»?
 - Quién consume el outbox de cancelación y cómo llega al bus / n8n
 - ¿La creación de tickets permite deduplicar por identificador externo (el `identificador` DEHú)? Relevante para RF-08.5
+
 **Infra**
 
 - Canal email (RF-08.2): qué servidor SMTP corporativo y qué remitente usa la aplicación. No es obligatorio en el MVP, pero está planificado tras el ticket.
