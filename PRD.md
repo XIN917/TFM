@@ -17,7 +17,7 @@ Documento de construcción del aplicativo `HVOrganismosPublicos` (MGS Seguros): 
 
 **Problema:** cada departamento entra a DEHú con certificado local, revisa el buzón entero y decide qué es suyo. Hay carga manual, certificados en los puestos y comunicaciones que se pierden o llegan tarde.
 
-**Solución:** sustituir la consulta en pantalla por LEMA (servicios web de Gran Destinatario). El sistema sondea DEHú, clasifica cada envío por departamento sin abrir el documento, descarga y persiste los documentos, y crea un ticket en la cola de Ticketing del departamento. Si la clasificación no alcanza el umbral, la revisa un Operador. Si el departamento cancela el ticket por estar en la cola equivocada, un Agente IA intenta corregirlo, como máximo dos veces.
+**Solución:** sustituir la consulta en pantalla por LEMA (servicios web de Gran Destinatario). El sistema sondea DEHú, guarda sus metadatos y clasifica cada envío por departamento sin abrir el documento, descarga y persiste los documentos, y crea un ticket en la cola de Ticketing del departamento. Si la clasificación no alcanza el umbral, la revisa un Operador. Si el departamento cancela el ticket por estar en la cola equivocada, un Agente IA intenta corregirlo, como máximo dos veces.
 
 El nombre `OrganismosPublicos` deja abierta la puerta a otras fuentes, pero el MVP es solo DEHú/LEMA.
 
@@ -26,8 +26,8 @@ El nombre `OrganismosPublicos` deja abierta la puerta a otras fuentes, pero el M
 1. Detectar el envío con `localiza()` y guardar los metadatos que `peticionAcceso()` no devuelve.
 2. Clasificar por departamento antes de abrir. La señal base es organismo emisor y concepto. No se lee el documento.
 3. Según `tipoEnvio`, solo si la confianza supera el umbral:
-   - Comunicación (`1`): descargar en el mismo ciclo, resumir el documento principal y seguir.
-   - Notificación (`2`): el lote de madrugada comparece, guarda documento, anexos y acuse cuando existan, y deriva enseguida. No se resume.
+   - Comunicación (`1`): descargar en el mismo ciclo, extraer información relevante del documento principal y seguir, sujeto a autorización de tratamiento.
+   - Notificación (`2`): conforme al diseño temporal vigente, el lote de madrugada comparece, guarda documento, anexos y acuse cuando existan, obtiene información relevante del principal si el tratamiento está autorizado y deriva. La política temporal sigue pendiente de cierre.
 4. Publicar el evento de comunicación clasificada (RF-07).
 5. Ejecutar la acción del canal: ticket obligatorio, email deseable (RF-08).
 6. Revisión humana (RF-09) y reclasificación por Operador o Agente IA (RF-10).
@@ -72,7 +72,7 @@ Cada resolución de `REVISION` guarda el `USUARIO` que la hizo.
 - **Entre componentes:** orientada a eventos (bus corporativo / n8n). Ingesta, ejecución y reclasificación no se llaman en cadena.
 - **Dentro de Java:** hexagonal: `modelo` / `aplicacion` / `infraestructura` / `api`.
 
-n8n orquesta: dispara el sondeo y el OCR/LLM, y publica y consume eventos. Java es dueño del estado y de la ventana de 24 h: el conector LEMA y la persistencia de documentos viven en Java, no en un flujo n8n.
+n8n orquesta: dispara el sondeo y el procesamiento documental mediante IA (extracción nativa, OCR o análisis multimodal, según el modelo seleccionado), y publica y consume eventos. Java es dueño del estado y de la ventana de 24 h: el conector LEMA y la persistencia de documentos viven en Java, no en un flujo n8n.
 
 ```
 DEHú/LEMA (SOAP 1.1 + WS-Security X.509)
@@ -81,7 +81,7 @@ DEHú/LEMA (SOAP 1.1 + WS-Security X.509)
   LemaGateway ──► JDBC ──► HV_OrganismosPublicos
         │                    ▲
         ▼                    │
-  OCR/LLM (n8n) ── persiste INTERPRETACION / TEXTOEXTRAIDO
+  Procesamiento documental IA (n8n) ── persiste INTERPRETACION / TEXTOEXTRAIDO
         │
         ▼
   Publicador RF-07 ──► Bus / n8n ──► EjecutarDerivacionService
@@ -199,12 +199,12 @@ HVOrganismosPublicos/
 │           │   └── MailGateway.java
 │           ├── aplicacion/
 │           │   ├── ingesta/
-│           │   │   └── IngestarComunicacionesService.java           # RF-01/02
+│           │   │   └── IngestarComunicacionesService.java           # RF-01/02/03
 │           │   ├── interpretacion/
-│           │   │   ├── InterpretarComunicacionService.java          # RF-03/04
+│           │   │   ├── InterpretarComunicacionService.java          # RF-04/05
 │           │   │   └── RegistrarInterpretacionService.java
 │           │   ├── clasificacion/
-│           │   │   ├── ClasificarComunicacionService.java           # RF-05
+│           │   │   ├── ClasificarComunicacionService.java           # RF-02
 │           │   │   └── GenerarContenidoTicketService.java           # RF-06
 │           │   ├── eventos/
 │           │   │   └── PublicarComunicacionClasificadaService.java  # RF-07
@@ -303,7 +303,8 @@ HVOrganismosPublicos/
 │   │   ├── views/
 │   │   │   ├── ListaRevisiones/ListaRevisionesView.vue             # RF-09.1
 │   │   │   ├── DetalleRevision/DetalleRevisionView.vue             # RF-09.2/09.5/09.6
-│   │   │   ├── ListaComunicaciones/ListaComunicacionesView.vue     # RF-11.1
+│   │   │   ├── ListaComunicaciones/ListaComunicacionesView.vue     # RF-11.1/11.6
+│   │   │   ├── ListaNotificaciones/ListaNotificacionesView.vue     # RF-11.6
 │   │   │   ├── DetalleComunicacion/DetalleComunicacionView.vue     # RF-11
 │   │   │   └── Error/ErrorView.vue
 │   │   └── components/
@@ -321,8 +322,8 @@ HVOrganismosPublicos/
 │   ├── gen/
 │   ├── src/es/mgs/hv/organismosPublicos/api/back/v1/
 │   │   ├── impl/
-│   │   │   ├── IngestaApiImpl.java                                 # POST sondeo RF-01/02
-│   │   │   ├── InterpretacionesApiImpl.java                        # POST OCR/LLM
+│   │   │   ├── IngestaApiImpl.java                                 # POST sondeo RF-01/02/03
+│   │   │   ├── InterpretacionesApiImpl.java                        # POST procesamiento documental
 │   │   │   └── DerivacionesApiImpl.java                            # POST RF-08
 │   │   ├── mappers/
 │   │   ├── exception/mappers/
@@ -426,7 +427,7 @@ Dependencias de cada servicio:
 
 Solo las reglas que el código no puede violar.
 
-### RF-01 Detección
+### RF-01 Detección y registro inicial
 
 - n8n o un timer llama al endpoint Back, que ejecuta `localiza()`. Si la lista está vacía, no se hace nada.
 - Guardar, al procesar `localiza()` y antes de `peticionAcceso()`, los campos que esa segunda respuesta no devuelve: `concepto`, organismo emisor, organismo emisor raíz, `fechaPuestaDisposicion`, `tipoEnvio`, `vinculo`, titular y `metadatosPublicos`. `metadatosPublicos` se guarda tal como llega; no se interpreta ni entra en la clasificación.
@@ -435,8 +436,17 @@ Solo las reglas que el código no puede violar.
 - Lotes de menos de 1000 peticiones por operación LEMA.
 - Comunicación (`tipoEnvio` `1`): `peticionAcceso(identificador, codigoOrigen)` en el mismo ciclo. Acceder no tiene efectos jurídicos y no hay acuse.
 - Notificación (`tipoEnvio` `2`): el sondeo no comparece. `peticionAcceso()` es la comparecencia y puede abrir el plazo de respuesta. La ejecuta el lote de madrugada, solo si la clasificación ya superó el umbral: abre, guarda anexos y acuse cuando existan, y deriva enseguida. Por debajo del umbral no se abre.
+- La fecha límite de comparecencia se calcula provisionalmente a partir de `fechaPuestaDisposicion` y de las reglas de cómputo previstas. Hasta validar este cálculo con los vencimientos reales y la normativa aplicable, el resultado tendrá carácter orientativo y no se considerará una fecha de vencimiento confirmada por LEMA. No debe utilizarse como único criterio para decidir el momento de acceso a una notificación.
 
-### RF-02 Almacenamiento (crítico)
+### RF-02 Clasificación
+
+- Se clasifica antes de abrir nada. La señal base es organismo emisor y concepto de `localiza()`. No se leen principal, anexos ni acuse. Otro metadato de `localiza()` solo entra si una muestra real demuestra que discrimina. El concepto se reconoce por la materia, sin igualdad exacta. Los DIR3 observados no son la clave universal del organismo.
+- Resultado: el departamento. No hay catálogo de tipos. El prompt se construye solo con `DEPARTAMENTO.criteriosReparto` (reglas confirmadas y ya realizables con `localiza()`).
+- Umbral de confianza configurable. Por debajo: `REVISION` (RF-09); no se abre el envío ni se publica acción automática.
+- DGSFP no va a un solo departamento: la materia separa Coordinación DGS, SAC y Red de Mediación. Exclusivos y Mediación entran por concepto. Distribución → Red de Mediación está confirmada en negocio y fuera del prompt: el área remitente se ve en un aviso de la sede y no es un campo documentado de `localiza()`.
+- TGSS salvo embargo → RRHH está fuera del prompt hasta validarlo con RRHH. No consultar hoy el buzón no excluye a un departamento como destino.
+
+### RF-03 Almacenamiento documental (crítico)
 
 - En el mismo ciclo que `peticionAcceso()`, persistir el documento principal y todos los anexos. En notificaciones, también el acuse.
 - Anexo con URL directa: descarga HTTP, sin LEMA. Anexo por referencia: `consultaAnexos()`, uno a uno.
@@ -447,24 +457,16 @@ Solo las reglas que el código no puede violar.
 - Guardar en `DOCUMENTO.metadatos` el `documento.metadatos` del principal y el `acusePdf.metadatos` del acuse, tal como llegan y sin interpretar. Si no se guardan al recibirlos, no se pueden recuperar: `consultaRealizadas()` no trae el del documento, y el acuse solo se puede volver a pedir durante 24 h.
 - Guardar también `algoritmoHash` y, en cada anexo por referencia, `referenciaDocumento`. El binario va a fichero. No se persiste la paginación de `localiza()`.
 
-### RF-05 Clasificación
+### RF-04/05 Obtención de texto e interpretación documental
 
-- Se clasifica antes de abrir nada. La señal base es organismo emisor y concepto de `localiza()`. No se leen principal, anexos ni acuse. Otro metadato de `localiza()` solo entra si una muestra real demuestra que discrimina. El concepto se reconoce por la materia, sin igualdad exacta. Los DIR3 observados no son la clave universal del organismo.
-- Resultado: el departamento. No hay catálogo de tipos. El prompt se construye solo con `DEPARTAMENTO.criteriosReparto` (reglas confirmadas y ya realizables con `localiza()`).
-- Umbral de confianza configurable. Por debajo: `REVISION` (RF-09); no se abre el envío ni se publica acción automática.
-- DGSFP no va a un solo departamento: la materia separa Coordinación DGS, SAC y Red de Mediación. Exclusivos y Mediación entran por concepto. Distribución → Red de Mediación está confirmada en negocio y fuera del prompt: el área remitente se ve en un aviso de la sede y no es un campo documentado de `localiza()`.
-- TGSS salvo embargo → RRHH está fuera del prompt hasta validarlo con RRHH. No consultar hoy el buzón no excluye a un departamento como destino.
-
-### RF-03/04 Extracción y resumen
-
-- OCR/LLM solo del documento principal de las comunicaciones, para el resumen. Anexos y acuse se archivan sin procesar.
-- Las notificaciones no se resumen en este alcance. El lote de madrugada las archiva. El resumen se retomará cuando la clasificación por departamento esté cerrada.
-- Salida: entidades (organismo, expediente, plazos, importes, partes).
-- n8n puede orquestar el OCR/LLM; Java persiste `INTERPRETACION`, `TEXTOEXTRAIDO` y `CLASIFICACION`.
+- Procesamiento textual y semántico del documento principal de las comunicaciones y notificaciones (`tipoEnvio` `1` y `2`), cuando el tratamiento mediante IA externa esté autorizado. Se permite extracción nativa, OCR o procesamiento multimodal directo con modelos de OpenAI o Mistral. Un mismo servicio puede obtener el texto y la interpretación sin requerir dos llamadas independientes. Anexos y acuse se archivan sin procesar.
+- La interpretación está orientada a identificar el asunto, las solicitudes o requerimientos, las actuaciones expresas, los plazos indicados y otros datos útiles para el departamento. No se presupone un plazo universal ni se calculan vencimientos jurídicos definitivos con el modelo. La política temporal de sondeo y comparecencia sigue pendiente de cierre.
+- Salidas diferenciadas: representación textual conservada en `TEXTOEXTRAIDO`; interpretación estructurada orientada a la tramitación (asunto, requerimientos, actuaciones expresas, plazos documentados, organismo, expediente, importes y partes). Las inferencias se diferencian de los datos explícitos; si falta información se indica. El indicador de confianza de interpretación requiere definición y validación; no asumir probabilidad calibrada del proveedor.
+- n8n puede orquestar el procesamiento documental; Java persiste `INTERPRETACION`, `TEXTOEXTRAIDO` y `CLASIFICACION`.
 
 ### RF-06 Contenido del ticket
 
-Título, resumen (si lo hay), campos, adjuntos e `identificador` DEHú.
+Título, información relevante para la tramitación cuando esté disponible, campos, adjuntos e `identificador` DEHú. La derivación sin interpretación por falta de autorización o fallo sigue pendiente de decisión.
 
 ### RF-07 Evento
 
@@ -647,7 +649,7 @@ n8n orquesta RF-01 a RF-08. Java publica en el bus corporativo con el mismo patr
 
 ### 7.4 Agente IA / MCP
 
-Proceso fuera de WAS, accedido por `AgenteIAGateway`. Su única herramienta MCP es finalizar + crear ticket. El OCR/LLM de la ingesta es un componente distinto del agente de reclasificación.
+Proceso fuera de WAS, accedido por `AgenteIAGateway`. Su única herramienta MCP es finalizar + crear ticket. El procesamiento documental de la ingesta es una capacidad distinta del agente de reclasificación.
 
 ### 7.5 Seguridad
 
@@ -674,7 +676,7 @@ Errores: `401` no autenticado, `403` sin rol, `404` no existe, `409` regla de ne
 | `GET` | `/revisiones/{id}/documentos/{documentoId}` | operador, administrador | 09.2 | binario local |
 | `POST` | `/revisiones/{id}/aceptacion` | operador, administrador | 09.5 | `AceptarClasificacionService` |
 | `POST` | `/revisiones/{id}/reclasificacion` | administrador | 09.6 | `ReclasificarComunicacionService` (body: `departamento`) |
-| `GET` | `/comunicaciones` | operador, administrador | 11.1 | `ConsultarComunicacionesService` (query: `estado`, `texto`; cada ítem trae `editable`) |
+| `GET` | `/comunicaciones` | operador, administrador | 11.1, 11.6 | `ConsultarComunicacionesService` (query: `estado`, `texto`, `tipoEnvio`; cada ítem trae `editable`; frontend presenta dos listados independientes) |
 | `GET` | `/comunicaciones/{id}` | operador, administrador | 11.1–11.3 | detalle con `editable` |
 | `GET` | `/comunicaciones/{id}/documentos/{documentoId}` | operador, administrador | 11 | binario local |
 | `PATCH` | `/comunicaciones/{id}` | operador, administrador | 11.4 / 11.5 | `ModificarDerivacionService` (body: `titulo`, `resumen`, `departamentoDestino`) |
@@ -686,13 +688,13 @@ Credencial de servicio, no de Operador.
 
 | Método | Path | RF | Servicio |
 |---|---|---|---|
-| `POST` | `/ciclosIngesta` | 01, 05 | `IngestarComunicacionesService`: `localiza()`, persiste metadatos y clasifica antes de abrir. Sin envíos nuevos → `204`. Una comunicación sobre el umbral sigue a `peticionAcceso()` en el mismo ciclo (RF-02). Una notificación sobre el umbral queda para el lote de madrugada. Por debajo del umbral, revisión y no se abre |
-| `POST` | `/lotesMadrugada` | 01, 02, 06, 08 | Comparece las notificaciones ya clasificadas por encima del umbral, archiva documento, anexos y acuse cuando existan, y deriva. No vuelve a clasificar ni resume |
-| `POST` | `/interpretaciones` | 03–06 | `RegistrarInterpretacionService` + `GenerarContenidoTicketService`. No clasifica. Solo hay documento que interpretar si ya se abrió |
+| `POST` | `/ciclosIngesta` | 01, 02, 03 | `IngestarComunicacionesService`: `localiza()`, persiste metadatos y clasifica (RF-02) antes de abrir. Sin envíos nuevos → `204`. Una comunicación sobre el umbral sigue a `peticionAcceso()` en el mismo ciclo (RF-03). Una notificación sobre el umbral queda para el lote de madrugada. Por debajo del umbral, revisión y no se abre |
+| `POST` | `/lotesMadrugada` | 01, 03, 06, 08 | Comparece las notificaciones ya clasificadas por encima del umbral, archiva documento, anexos y acuse cuando existan, permite su interpretación documental si está autorizada y deriva conforme al flujo. No vuelve a clasificar |
+| `POST` | `/interpretaciones` | 04–06 | `RegistrarInterpretacionService` + `GenerarContenidoTicketService`. No clasifica. Solo hay documento que interpretar si ya se abrió |
 | `POST` | `/eventos/comunicacionClasificada` | 07 | `PublicarComunicacionClasificadaService` (solo si n8n no publica al bus) |
 | `POST` | `/derivaciones` | 08 | `EjecutarDerivacionService` |
 
-El OCR/LLM se hace de una de dos formas, nunca las dos: n8n lo calcula y lo envía a `POST /interpretaciones`, o Java lo pide con `InterpretarComunicacionService`.
+El procesamiento documental se ejecuta mediante una de dos vías de integración, evitando duplicar el procesamiento: n8n obtiene la representación textual y la interpretación y las envía a `POST /interpretaciones`, o Java las solicita mediante `InterpretarComunicacionService`. La extracción/OCR y la interpretación pueden resolverse en una misma llamada multimodal; se conserva `TEXTOEXTRAIDO`.
 
 ### 8.3 Consumer — fase 3
 
@@ -710,7 +712,8 @@ Vue 3 + TypeScript + Vite + Pinia sobre UIBaseProject, sin replicar el acabado v
 |---|---|---|
 | `/revisiones` | `ListaRevisionesView` | `GET /revisiones` |
 | `/revisiones/:id` | `DetalleRevisionView` | `GET /revisiones/{id}`, `POST …/aceptacion`, `POST …/reclasificacion` |
-| `/comunicaciones` | `ListaComunicacionesView` | `GET /comunicaciones` |
+| `/comunicaciones` | `ListaComunicacionesView` (filtro `tipoEnvio=1`) | `GET /comunicaciones` |
+| `/notificaciones` | `ListaNotificacionesView` | `GET /comunicaciones?tipoEnvio=2` |
 | `/comunicaciones/:id` | `DetalleComunicacionView` | `GET /comunicaciones/{id}`, `PATCH` si `editable` |
 
 ---
@@ -720,6 +723,8 @@ Vue 3 + TypeScript + Vite + Pinia sobre UIBaseProject, sin replicar el acabado v
 | Área | Implicación |
 |---|---|
 | Seguridad | Certificado solo en el servidor, con alerta de caducidad. Los logs no vuelcan el certificado. |
+| Protección de datos e IA externa | No enviar documentos reales a OpenAI o Mistral sin validación corporativa de Seguridad y Protección de Datos. No puede descartarse la presencia de datos personales a partir de `localiza()`. Condiciones contractuales, retención y transferencias por confirmar; alternativa operativa sin autorización pendiente. |
+| Accesibilidad | WCAG 2.1 AA como objetivo de calidad del frontal, sin presumir obligación legal específica para esta herramienta interna. |
 | Conservación legal | Documentos oficiales y trazabilidad de recepción a ticket. |
 | Resiliencia | Una caída de SE/PRO no pierde envíos ya detectados. |
 | Rendimiento | `TEXTOEXTRAIDO` fuera de los listados. |
@@ -764,10 +769,10 @@ La evidencia para el TFM son los tests de `HVOrganismosPublicosTest`, no los E2E
 | RF | Criterio |
 |---|---|
 | 01 | Ninguna comunicación pendiente permanece sin detectar más de N minutos (SLA a definir); ninguna se procesa dos veces. |
-| 02 | El 100% de las notificaciones comparecidas en el día tienen su acuse y sus anexos por referencia almacenados antes de que expire la ventana de 24 h. Las comunicaciones no tienen acuse; sí tienen documento principal y anexos por referencia. |
-| 03 | El documento principal de toda comunicación (`tipoEnvio` `1`) descargada en el mismo ciclo tiene una representación textual asociada, con indicador de calidad o confianza del OCR cuando aplique. Las notificaciones, los anexos y el acuse no entran. |
-| 04 | Cada comunicación procesada produce una estructura con entidades y score de confianza, verificable por un humano. |
-| 05 | Toda comunicación queda clasificada con un departamento y una confianza a partir de las señales base, o marcada para revisión humana sin haber abierto el documento. |
+| 02 | Toda comunicación recibe una propuesta de departamento con indicador de confianza basada en organismo emisor y concepto, o se deriva a revisión humana sin acceder al documento. |
+| 03 | Tras el acceso, se conservan el documento principal, los anexos y, en notificaciones, el acuse cuando exista, respetando la ventana de recuperación y la integridad documental. |
+| 04 | El documento principal de cada comunicación o notificación procesada dispone de representación textual verificable, con independencia del mecanismo de extracción. |
+| 05 | La interpretación produce información estructurada útil para la tramitación, distinguiendo los requerimientos y plazos expresos de las inferencias y señalando datos no determinados. |
 | 06 | El contenido generado es válido según el esquema de la API de Ticketing, sin intervención manual, en el 100% de los casos clasificados con confianza suficiente. |
 | 07 | Toda comunicación que complete RF-06 genera exactamente un evento publicado, verificable con independencia del resultado de RF-08. |
 | 08 | Toda comunicación clasificada con éxito produce exactamente una acción por el canal ticket, en un tiempo máximo definido por SLA. El email (RF-08.2) no es requisito de cierre. |
@@ -793,8 +798,8 @@ Orden de trabajo, pensado para avanzar sin n8n ni LEMA al principio:
 1. Esquema y dominio: migraciones, entidades, repositorios y tests del modelo.
 2. RF-08/09 con `TicketingGateway` falso: aceptar, reclasificar, idempotencia.
 3. ApiFront + Web contra BBDD local.
-4. `LemaGateway`, RF-01/02, alerta de 24 h y ApiBack.
-5. RF-03 a RF-07 y n8n.
+4. `LemaGateway`, RF-01/02/03, alerta de 24 h y ApiBack.
+5. RF-04 a RF-07 y n8n.
 6. Ticketing real.
 7. Email (RF-08.2).
 8. RF-11.4/11.5, cuando exista la audiencia back.
@@ -811,10 +816,16 @@ Mientras no se cierren, se implementa lo descrito aquí sin fijar valores en có
 
 | Tema | Impacto |
 |---|---|
-| Cómo aparece Distribución en `localiza()` | La regla DGSFP + Distribución → Red de Mediación está confirmada y fuera del prompt. Hay que ver si el dato llega en `concepto`, `metadatosPublicos` u otro metadato previo a comparecer (RF-05). |
-| Catálogo de Siniestros y Sucursal Central | Sin reglas activas hasta cerrarlo. Tampoco Corredores, ni TGSS → RRHH hasta validarlo con RRHH (RF-05). |
-| Resumen de notificaciones | No forma parte de este alcance. Se retomará cuando la clasificación por departamento esté cerrada (RF-03/04). |
+| Tratamiento de documentos mediante IA externa | Validación con Seguridad y Protección de Datos antes de procesar documentos reales; determinar alternativa cuando no se autorice o falle la interpretación. |
+| Interpretación específica de Canal Directo | La guía de Kit Digital sirve como material de dominio; confirmar con el área qué fases, requerimientos y actuaciones necesita identificar. No implica un catálogo cerrado para el MVP. |
+| Subdepartamentos de Siniestros | Clasificación interna documental fuera del MVP hasta disponer de criterios suficientes. |
+| Cobertura LEMA para destinatarios personas físicas | Comprobar durante integración si los envíos cuyos avisos recibe MGS pero que identifican a una persona física como destinataria aparecen con la autorización de Gran Destinatario de MGS. No ampliar por ello el alcance a Notific@. |
+| Vencimiento de acceso | Contrastar fechas reales con `localiza()` y validar el cómputo jurídico; no confundir estimaciones con vencimientos confirmados ni con plazos de actuación. |
+| Cómo aparece Distribución en `localiza()` | La regla DGSFP + Distribución → Red de Mediación está confirmada y fuera del prompt. Hay que ver si el dato llega en `concepto`, `metadatosPublicos` u otro metadato previo a comparecer (RF-02). |
+| Catálogo de Siniestros y Sucursal Central | Sin reglas activas hasta cerrarlo. Tampoco Corredores, ni TGSS → RRHH hasta validarlo con RRHH (RF-02). |
+| Interpretación de notificaciones | Incluida en el alcance funcional, condicionada a la autorización de tratamiento mediante IA externa. |
 | Retención de `TEXTOEXTRAIDO` | Valor del parámetro. |
+| Procesamiento documental OpenAI/Mistral | Seleccionar modelo y API; probar PDFs digitales, escaneados y mixtos, transcripción completa, coste, latencia y calidad. No se presupone OCR independiente ni confianza calibrada. |
 | Audiencia back de Ticketing | Bloquea RF-11.4/11.5. |
 | Quién publica el outbox de cancelación en el bus | Bloquea RF-10. |
 | Deduplicado por `identificador` DEHú al crear tickets | RF-08.5; preguntar al equipo de Ticketing. |
