@@ -39,12 +39,6 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 
 - Cómputo de la fecha límite de comparecencia: revisar con el ponente, el área jurídica y la integración LEMA la relación entre el artículo 43.2 y las reglas de cómputo del artículo 30 de la Ley 39/2015. Existe un caso observado de AEAT en que el vencimiento del aviso no coincidió con el desplazamiento esperado por festivo autonómico; no generalizar a partir de ese caso. La fecha calculada por la aplicación es orientativa, y todavía no se ha verificado cómo obtener un vencimiento confirmado mediante LEMA. Distinguirlo de los plazos de actuación que figuran en los documentos.
 
-- Término genérico: DEHú llama *envío* a ambos tipos (notificación y comunicación; `envios`/`tipoEnvio` en la API [1]). Propuesta: adoptar «envío» como término genérico y reservar «notificación»/«comunicación» para cada tipo. Consultar antes de tocar nada:
-  - **Título**: ¿se puede cambiar sin trámite formal? Opción preferida: «Automatización de la recepción de notificaciones y comunicaciones electrónicas de la Administración Pública» (pareja que usa el propio portal); si no, se mantiene el actual.
-  - **Modelo**: renombrar `COMUNICACION` → `ENVIO` (arrastra `Comunicacion`, `ComunicacionRepository`, ER, diagrama de clases, requisitos y flujos).
-  - **Introducción**: si se adopta «envío», adaptar el párrafo de terminología del Contexto (hoy dice que se usa «comunicación» en sentido amplio). No tocar hasta hablarlo.
-- ¿El código fuente es un entregable obligatorio del TFM? ¿Existe en la FIB la opción de memoria confidencial o de publicación aplazada (UPCommons)?
-
 **MGS (responsable del TFM en la empresa)**
 
 - Qué se puede incluir en la memoria: código propio (¿fragmentos?, ¿cuánto?), nombres de módulos y de sistemas corporativos, capturas. Mientras tanto se sigue el criterio de `memoria/Notas_pendientes.md` (módulos por función, sistemas corporativos en genérico).
