@@ -43,7 +43,7 @@ Borradores de la memoria, un fichero por capítulo. Los documentos de análisis 
 | [Gantt.md](Diagramas/Gantt.md) | Planificación temporal del proyecto |
 
 Los diagramas están escritos en Mermaid/PlantUML. Los de Mermaid se renderizan
-directamente en GitHub o en [Mermaid Live Editor](https://mermaid.live); los de PlantUML
+directamente en GitHub o en [Mermaid Live Editor](https://mermaid.ai/live); los de PlantUML
 (p. ej. [Casos_de_Uso.md](Diagramas/Casos_de_Uso.md), [Diagrama_Clases.md](Diagramas/Diagrama_Clases.md))
 se pueden renderizar pegando el código en [PlantText](https://www.planttext.com) o en el
 [PlantUML Web Server](https://www.plantuml.com/plantuml). Las imágenes ya renderizadas
