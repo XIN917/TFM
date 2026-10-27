@@ -27,9 +27,9 @@ El nombre `OrganismosPublicos` deja abierta la puerta a otras fuentes, pero el M
 2. Clasificar por departamento antes de abrir. La señal base es organismo emisor y concepto. No se lee el documento.
 3. Según `tipoEnvio`, solo si la confianza supera el umbral:
    - Comunicación (`1`): descargar en el mismo ciclo, extraer información relevante del documento principal y seguir, sujeto a autorización de tratamiento.
-   - Notificación (`2`): conforme al diseño temporal vigente, el lote de madrugada comparece, guarda documento, anexos y acuse cuando existan, obtiene información relevante del principal si el tratamiento está autorizado y deriva. La política temporal sigue pendiente de cierre.
-4. Publicar el evento de comunicación clasificada (RF-07).
-5. Ejecutar la acción del canal: ticket obligatorio, email deseable (RF-08).
+   - Notificación (`2`): conforme al diseño temporal vigente, el lote de madrugada comparece, guarda documento, anexos y acuse cuando existan, obtiene información relevante del principal si el tratamiento está autorizado y la deja lista para derivar (RF-08). La política temporal sigue pendiente de cierre.
+4. Publicar el evento de comunicación clasificada (RF-07). Pendiente de decisión; mientras tanto, la comunicación queda lista para derivar en BBDD.
+5. Ejecutar la acción del canal en un proceso independiente: ticket obligatorio, email deseable (RF-08).
 6. Revisión humana (RF-09) y reclasificación por Operador o Agente IA (RF-10).
 
 Generar el evento (RF-07) y ejecutar la acción (RF-08) son pasos separados, para que Ticketing no sea la única salida posible.
@@ -56,58 +56,55 @@ Generar el evento (RF-07) y ejecutar la acción (RF-08) son pasos separados, par
 | Operador / Administrador | Usa el frontal HV: cola de revisión y consulta local (RF-09, RF-11). |
 | Departamento | Trabaja en el frontal de Ticketing, no en HV. Si cancela un ticket, dispara RF-10. |
 
-Roles en `USUARIO` (autenticación contra el directorio de personal MGS):
+Permisos por funcionalidad de SeguridadMGS, asignadas fuera de la aplicación. Se autoriza por funcionalidad en cada endpoint, nunca por nombre de rol. Los perfiles de negocio (Operador, Administrador) son combinaciones de funcionalidades:
 
-| Rol | Permisos |
+| Funcionalidad | Permite |
 |---|---|
-| `operador` | Ver la cola de revisión y aceptar la propuesta de la IA. |
-| `administrador` | Lo mismo que `operador`, y además reclasificar (RF-09.6). |
+| Consultar | Entrar al frontal, ver la cola de revisión y la consulta local. |
+| Aceptar | Aceptar la propuesta de la IA (RF-09.5). |
+| Editar derivación | Modificar el ticket (RF-11.4/11.5). |
+| Reclasificar | Elegir otro departamento (RF-09.6). Solo Administrador. |
 
-Cada resolución de `REVISION` guarda el `USUARIO` que la hizo.
+`USUARIO` solo da trazabilidad: cada resolución de `REVISION` guarda quién la hizo, y el `USUARIO` se da de alta al resolver por primera vez.
 
 ---
 
 ## 3. Arquitectura
 
-- **Entre componentes:** orientada a eventos (bus corporativo / n8n). Ingesta, ejecución y reclasificación no se llaman en cadena.
+- **Reparto Java / n8n:** n8n programa el sondeo y el lote de madrugada (llama a ApiBack) y aloja los flujos de IA: clasificación e interpretación, con sus prompts y proveedor. Java dirige el flujo y es dueño del estado y de la ventana de 24 h: ingesta, pide a n8n lo que necesita de IA, decide, guarda y deriva.
+- **Estado como cola:** el `estado` de `COMUNICACION` dice qué falta. Cada ciclo procesa lo pendiente; cada paso se puede repetir sin efectos duplicados, y lo que falla (LEMA, IA) se reintenta en el siguiente ciclo. La derivación inicial (RF-08) no la ejecuta el ciclo: es un proceso independiente (`/derivaciones`) sobre las comunicaciones listas. Las reclasificaciones siguen su propio flujo (RF-08).
+- **Eventos:** hacia consumidores externos (RF-07, pendiente de decisión) y desde Ticketing (cancelación, RF-10). Los eventos propios de Ticketing son responsabilidad de ese equipo.
 - **Dentro de Java:** hexagonal: `modelo` / `aplicacion` / `infraestructura` / `api`.
 
-n8n orquesta: dispara el sondeo y el procesamiento documental mediante IA (extracción nativa, OCR o análisis multimodal, según el modelo seleccionado), y publica y consume eventos. Java es dueño del estado y de la ventana de 24 h: el conector LEMA y la persistencia de documentos viven en Java, no en un flujo n8n.
-
 ```
-DEHú/LEMA (SOAP 1.1 + WS-Security X.509)
-        │
-        ▼
-  LemaGateway ──► JDBC ──► HV_OrganismosPublicos
-        │                    ▲
-        ▼                    │
-  Procesamiento documental IA (n8n) ── persiste INTERPRETACION / TEXTOEXTRAIDO
-        │
-        ▼
-  Publicador RF-07 ──► Bus / n8n ──► EjecutarDerivacionService
-                                          │
-                          TicketingGateway ┴ EmailNotificacionGateway
-                                          │
-Departamento cancela ticket ─(outbox de Ticketing)─► evento RF-10
-                                          │
-                              AgenteReclasificacionService
-                                          │
-                              AgenteIAGateway (MCP, proceso externo)
+n8n (programación) ──► ApiBack: /ciclosIngesta, /lotesMadrugada, /derivaciones
+                                │
+DEHú/LEMA ◄── LemaGateway ◄── servicios Java ──► JDBC ──► HV_OrganismosPublicos
+(SOAP + WS-Security X.509)      │
+                                ├─► ClasificacionIAGateway ──► flujo IA de n8n (prompt + modelo)
+                                ├─► InterpretacionIAGateway ──► flujo IA de n8n
+                                ├─► EventosGateway ──► bus corporativo (RF-07, pendiente de decisión)
+                                └─► NotificacionGateway ──► Ticketing / email (RF-08)
+
+Departamento cancela ticket ─(outbox de Ticketing)─► ApiConsumer ─► AgenteReclasificacionService
+                                                                       └─► AgenteIAGateway (MCP, proceso externo)
 
 Operador ──► Vue Web ──► ApiFront (JAX-RS) ──► servicios de revisión/consulta
 ```
 
 | Bloque | RF | Dónde |
 |---|---|---|
-| Ingesta y clasificación | 01–07 | n8n dispara y hace las llamadas a IA (clasificación e interpretación); `LemaGateway`, repositorios y persistencia en Java |
-| Ejecución de canal | 08 | `EjecutarDerivacionService` + `NotificacionGateway` |
+| Ingesta y clasificación | 01–06 (07 pendiente) | n8n programa; Java ejecuta y pide la IA a n8n (`ClasificacionIAGateway`, `InterpretacionIAGateway`) |
+| Ejecución de canal | 08 | Derivación inicial: proceso independiente que programa n8n (`POST /derivaciones`) sobre las comunicaciones listas: `EjecutarDerivacionService` + `NotificacionGateway` |
 | Reclasificación automática | 10 | `ApiConsumer` + `AgenteReclasificacionService` + MCP fuera de WAS |
 | Revisión y consulta | 09, 11 | `ApiFront` + `HVOrganismosPublicosWeb` |
 
 ### 3.1 Convenciones Java
 
 - Paquete raíz: `es.mgs.hv.organismosPublicos`.
-- Estereotipos como Ticketing: `@Servicio`, `@Repositorio`, `@Endpoint`, `@Transaccional`. Sin `AggregateRoot` ni eventos de dominio CDI.
+- Estereotipos como Ticketing: `@Servicio`, `@Repositorio`, `@Endpoint`, `@Transaccional`. Sin clase base `AggregateRoot` ni eventos de dominio CDI.
+- Agregado `ComunicacionAgregado`: la comunicación con sus clasificaciones, derivaciones y revisiones. Las reglas (`tieneRevisionActiva`, `tieneDerivacionExitosa`…) se comprueban sobre él.
+- Transacciones cortas. Ninguna llamada HTTP o SOAP (LEMA, IA, Ticketing) dentro de una transacción. Para escribir sobre una comunicación se lee bloqueada (`queryAgregadoParaActualizar`) y se comprueban las reglas antes de escribir; dos operaciones simultáneas sobre la misma comunicación no se pisan.
 - Cada `*Service` recibe sus dependencias por constructor con `@Inject`. Los tests lo instancian con `new Servicio(gatewayFalso, repoFalso)`, sin servidor.
 - `beans.xml` con `bean-discovery-mode="annotated"` en Business y Comun (`src/META-INF`) y en Front y Web (`WebContent/WEB-INF`).
 - `modelo` solo depende de interfaces; las implementaciones están en `infraestructura`.
@@ -117,7 +114,8 @@ Operador ──► Vue Web ──► ApiFront (JAX-RS) ──► servicios de re
 ### 3.2 Qué no crear
 
 - DAO, EJB/EJBClient/Utils, WebService SOAP propio ni EAR batch aparte.
-- El sondeo es un endpoint Back, lo dispare n8n o un timer del mismo WAR.
+- El sondeo y el lote de madrugada son endpoints Back que dispara n8n. Sin timers en el WAR.
+- Los prompts y el proveedor de IA no viven en Java ni en BBDD: están en los flujos de n8n.
 - El Agente IA no es un WAR en WAS. En Java solo existe `AgenteIAClient`.
 
 ---
@@ -138,6 +136,7 @@ HVOrganismosPublicos/
 │       ├── exception/
 │       │   ├── OrganismosPublicosException.java
 │       │   ├── EntidadNoEncontradaException.java
+│       │   ├── PeticionNoValidaException.java              # 400; entrada mal formada
 │       │   └── ReglaNegocioException.java                  # 409; el mensaje distingue el caso
 │       └── seguridad/
 │           └── UsuarioAutenticado.java
@@ -157,7 +156,6 @@ HVOrganismosPublicos/
 │           │   └── ConfiguradorLogs.java
 │           ├── properties/                                   # carga de ficheros por entorno
 │           ├── exceptions/
-│           │   ├── PeticionNoValidaException.java          # entrada mal formada; la rechaza el adaptador REST
 │           │   └── IntegrationException.java               # fallo de un adaptador de salida
 │           └── util/
 │               ├── Fechas.java
@@ -170,6 +168,7 @@ HVOrganismosPublicos/
 │       └── es/mgs/hv/organismosPublicos/business/
 │           ├── modelo/
 │           │   ├── Comunicacion.java                      # UML
+│           │   ├── ComunicacionAgregado.java
 │           │   ├── Documento.java                         # UML
 │           │   ├── Interpretacion.java                    # UML
 │           │   ├── TextoExtraido.java                     # UML
@@ -191,8 +190,12 @@ HVOrganismosPublicos/
 │           │   ├── UsuarioRepository.java
 │           │   ├── LemaGateway.java                       # UML
 │           │   ├── TicketingGateway.java                  # UML
+│           │   ├── TicketingGestionGateway.java
 │           │   ├── NotificacionGateway.java               # UML
 │           │   ├── AgenteIAGateway.java                   # UML
+│           │   ├── ClasificacionIAGateway.java
+│           │   ├── SolicitudClasificacionIa.java
+│           │   ├── RespuestaClasificacionIa.java
 │           │   ├── InterpretacionIAGateway.java
 │           │   ├── EventosGateway.java
 │           │   ├── AlmacenDocumentosGateway.java
@@ -204,12 +207,14 @@ HVOrganismosPublicos/
 │           │   │   ├── InterpretarComunicacionService.java          # RF-04/05
 │           │   │   └── RegistrarInterpretacionService.java
 │           │   ├── clasificacion/
-│           │   │   ├── RegistrarClasificacionService.java           # RF-02
+│           │   │   ├── ClasificarComunicacionService.java           # RF-02: pide la clasificación
+│           │   │   ├── RegistrarClasificacionService.java           # RF-02: la guarda
 │           │   │   └── GenerarContenidoTicketService.java           # RF-06
 │           │   ├── eventos/
 │           │   │   └── PublicarComunicacionClasificadaService.java  # RF-07
 │           │   ├── derivacion/
 │           │   │   ├── EjecutarDerivacionService.java               # UML RF-08
+│           │   │   ├── IntentoDerivacionService.java                # transacciones de cada intento
 │           │   │   └── NotificacionGatewayResolver.java             # UML
 │           │   ├── revision/
 │           │   │   ├── AceptarClasificacionService.java             # UML RF-09.5
@@ -240,20 +245,17 @@ HVOrganismosPublicos/
 │               ├── mail/
 │               │   └── SmtpMailClient.java
 │               ├── eventos/
-│               │   └── AyEventosClient.java
+│               │   └── EventosClient.java                           # RF-07, pendiente de decisión (§7.3)
 │               ├── ia/
-│               │   ├── InterpretacionIAClient.java
+│               │   ├── ClasificacionIAClient.java                   # flujo IA de n8n
+│               │   ├── InterpretacionIAClient.java                  # flujo IA de n8n
 │               │   └── AgenteIAClient.java                          # UML MCP
 │               └── http/
 │                   └── RestClientSupport.java
 │
 ├── HVOrganismosPublicosApiFrontV1WebService/                       # fase 1
 │   ├── build.xml                                                    # ant generate
-│   ├── openapi/
-│   │   ├── openapi.yaml
-│   │   └── paths/
-│   │       ├── revisiones.yaml
-│   │       └── comunicaciones.yaml
+│   ├── WebContent/META-INF/openapi/openapi.yaml                     # contrato
 │   ├── gen/                                                        # ant generate; no editar
 │   ├── src/es/mgs/hv/organismosPublicos/api/front/v1/
 │   │   ├── impl/
@@ -322,9 +324,9 @@ HVOrganismosPublicos/
 │   ├── gen/
 │   ├── src/es/mgs/hv/organismosPublicos/api/back/v1/
 │   │   ├── impl/
-│   │   │   ├── IngestaApiImpl.java                                 # POST sondeo RF-01/02/03
-│   │   │   ├── InterpretacionesApiImpl.java                        # POST procesamiento documental
-│   │   │   └── DerivacionesApiImpl.java                            # POST RF-08
+│   │   │   ├── CiclosIngestaApiImpl.java                           # POST /ciclosIngesta
+│   │   │   ├── LotesMadrugadaApiImpl.java                          # POST /lotesMadrugada
+│   │   │   └── DerivacionesApiImpl.java                            # POST /derivaciones
 │   │   ├── mappers/
 │   │   ├── exception/mappers/
 │   │   └── listeners/ApiServletContextListener.java
@@ -365,12 +367,12 @@ HVOrganismosPublicos/
 
 | Módulo | Contenido |
 |---|---|
-| Beans | Excepciones de aplicación (`EntidadNoEncontradaException`, `ReglaNegocioException`) y DTOs de evento. El 409 es `ReglaNegocioException`. Sin SQL ni SOAP. |
-| Comun | log4j2, carga de properties, `PeticionNoValidaException`, `IntegrationException` y `ObjectMappers`. |
+| Beans | Excepciones de aplicación (`EntidadNoEncontradaException`, `PeticionNoValidaException`, `ReglaNegocioException`) y DTOs de evento. El 400 es `PeticionNoValidaException` y el 409 `ReglaNegocioException`. Sin SQL ni SOAP. |
+| Comun | log4j2, carga de properties, `IntegrationException` y `ObjectMappers`. |
 | Business | Modelo, aplicación e infraestructura (`JdbcTemplate`, `*SQLServer`, `LemaClient`, `TicketingClient`, `AgenteIAClient`). |
 | ApiFront + WasEAR | REST del Operador. EAR: WAR + Business + Beans + Comun. |
 | Web + WebEAR | SPA Vue (UIBaseProject) y servlets de seguridad. EAR: WAR + Comun, sin Business. |
-| ApiBack | Endpoints que llama n8n: sondeo, interpretación, derivación. |
+| ApiBack | Endpoints que llama n8n: ciclo de ingesta, lote de madrugada y derivación. |
 | ApiConsumer | Evento de cancelación (RF-10). |
 | Migraciones | SQL del esquema. |
 | Properties | `{local\|desa\|usua\|prod}#*.properties`, en el disco del servidor (`PATH_PROPERTIES_SERVIDOR`). |
@@ -384,14 +386,17 @@ Classpath (ya aplicado en RAD): Business → Beans + Comun; Test → Business; F
 
 | Clase | Métodos |
 |---|---|
-| `Comunicacion` | `tieneDerivacionAsociada`, `tieneDerivacionExitosa`, `tieneRevisionActiva`, `derivacionActiva`, `contarIntentosReclasificacion`, `registrarDerivacion`, `registrarClasificacion`, `escalarARevision`. Crea `Documento`, `Clasificacion`, `Derivacion` y `Revision`. |
+| `ComunicacionAgregado` | `tieneDerivacionAsociada`, `tieneDerivacionExitosa`, `tieneDerivacionPendiente`, `tieneRevisionActiva`, `derivacionActiva`, `ultimaClasificacionIa`, `contarIntentosReclasificacion`, `registrarDerivacion`, `registrarClasificacion`, `escalarARevision`, `resolverRevisionActiva`, `marcarEnProceso`, `marcarProcesada` |
 | `Documento` | `verificarIntegridad` |
 | `Derivacion` | `esModificableInPlace`, `actualizar` |
 | `Revision` | `resolver(Usuario)` |
-| `ComunicacionRepository` | `save`, `query`, `queryPorIdentificadorDehu`, `queryListado`, `queryRevisionesPendientes` |
+| `ComunicacionRepository` | `saveNueva` (no inserta si el `identificador` ya existe), `query`, `queryListado`, `queryAgregado`, `queryAgregadoParaActualizar` (con bloqueo), `saveAgregado`, `saveResultadoDerivacion`, `queryRevisionesPendientes` |
+| `DepartamentoRepository` | `queryColaDestino`, `existsActivo` |
 | `LemaGateway` | `localiza`, `peticionAcceso`, `consultaAnexos`, `consultaAcusePdf` (implementado por `LemaClient`) |
-| `TicketingGateway` | `crearTicket`, `finalizarTicket`, `modificarTicket` |
+| `TicketingGateway` | `crearTicket` |
+| `TicketingGestionGateway` | `cerrarPorReclasificacion`, `modificarTicket` (sin implementar hasta que Ticketing lo exponga) |
 | `NotificacionGateway` | `soportaCanal`, `ejecutar` |
+| `ClasificacionIAGateway` | `clasificar(SolicitudClasificacionIa)` → `RespuestaClasificacionIa` (RF-02) |
 | `AgenteIAGateway` | `intentarAutocorreccion` |
 
 `ConstantesDominio`:
@@ -400,7 +405,8 @@ Classpath (ya aplicado en RAD): Business → Beans + Comun; Test → Business; F
 - Origen de clasificación: `ia`, `operador`.
 - Canal: `ticket`, `email`.
 - Tipo de documento: `principal`, `anexo`, `acuse`.
-- Rol: `operador`, `administrador`.
+- Estado de `DERIVACION`: `en_curso`, `exito`, `fallo`, `desconocido`.
+- Motivo de `REVISION`: `umbral` (confianza baja), `sin_criterio` (el modelo no propone departamento), entre otros.
 
 Dependencias de cada servicio:
 
@@ -409,17 +415,21 @@ Dependencias de cada servicio:
 | `IngestarComunicacionesService` | `LemaGateway`, `ComunicacionRepository`, `AlmacenDocumentosGateway` |
 | `InterpretarComunicacionService` | `InterpretacionIAGateway`, `ComunicacionRepository` |
 | `RegistrarInterpretacionService` | `ComunicacionRepository` |
-| `RegistrarClasificacionService` | `ComunicacionRepository`, `DepartamentoRepository` |
+| `ClasificarComunicacionService` | `ComunicacionRepository`, `DepartamentoRepository`, `ClasificacionIAGateway`, `RegistrarClasificacionService` |
+| `RegistrarClasificacionService` | `ComunicacionRepository` |
 | `GenerarContenidoTicketService` | `ComunicacionRepository` |
 | `PublicarComunicacionClasificadaService` | `EventosGateway`, `ComunicacionRepository` |
-| `EjecutarDerivacionService` | `ComunicacionRepository`, `NotificacionGatewayResolver` |
+| `EjecutarDerivacionService` | `IntentoDerivacionService`, `NotificacionGatewayResolver` |
+| `IntentoDerivacionService` | `ComunicacionRepository` |
 | `NotificacionGatewayResolver` | `@Any Instance<NotificacionGateway>` |
-| `AceptarClasificacionService` | `ComunicacionRepository`, `TicketingGateway` |
-| `ReclasificarComunicacionService` | `ComunicacionRepository`, `TicketingGateway` |
+| `AceptarClasificacionService` | `ComunicacionRepository`, `UsuarioRepository` |
+| `ReclasificarComunicacionService` | `ComunicacionRepository`, `UsuarioRepository`, `TicketingGateway`, `TicketingGestionGateway` |
 | `ConsultarComunicacionesService` | `ComunicacionRepository` |
 | `ConsultarRevisionService` | `ComunicacionRepository` |
-| `ModificarDerivacionService` | `ComunicacionRepository`, `TicketingGateway` |
+| `ModificarDerivacionService` | `ComunicacionRepository`, `TicketingGestionGateway` |
 | `AgenteReclasificacionService` | `ComunicacionRepository`, `AgenteIAGateway` (`LIMITE_INTENTOS = 2`) |
+
+Un caso de uso con llamada externa entre dos escrituras usa dos servicios: uno que llama (fuera de transacción) y otro con las transacciones (`ClasificarComunicacionService` / `RegistrarClasificacionService`, `EjecutarDerivacionService` / `IntentoDerivacionService`). El interceptor de `@Transaccional` no actúa en llamadas dentro del mismo bean.
 
 ---
 
@@ -429,21 +439,30 @@ Solo las reglas que el código no puede violar.
 
 ### RF-01 Detección y registro inicial
 
-- n8n o un timer llama al endpoint Back, que ejecuta `localiza()`. Si la lista está vacía, no se hace nada.
+- n8n llama al endpoint Back, que ejecuta `localiza()`. Si no hay envíos nuevos ni pendientes, no se hace nada.
+- Se rechaza (y se registra en log) un envío sin `identificador`, sin `fechaPuestaDisposicion` o con `tipoEnvio` desconocido.
 - Guardar, al procesar `localiza()` y antes de `peticionAcceso()`, los campos que esa segunda respuesta no devuelve: `concepto`, organismo emisor, organismo emisor raíz, `fechaPuestaDisposicion`, `tipoEnvio`, `vinculo`, titular y `metadatosPublicos`. `metadatosPublicos` se guarda tal como llega; no se interpreta ni entra en la clasificación.
 - Idempotencia por `identificador` DEHú: un envío ya registrado no se reprocesa.
 - Reintentos con backoff ante fallos SOAP, de certificado o de red, sin perder el envío pendiente.
 - Lotes de menos de 1000 peticiones por operación LEMA.
 - Comunicación (`tipoEnvio` `1`): `peticionAcceso(identificador, codigoOrigen)` en el mismo ciclo. Acceder no tiene efectos jurídicos y no hay acuse.
-- Notificación (`tipoEnvio` `2`): el sondeo no comparece. `peticionAcceso()` es la comparecencia y puede abrir el plazo de respuesta. La ejecuta el lote de madrugada, solo si la clasificación ya superó el umbral: abre, guarda anexos y acuse cuando existan, y deriva enseguida. Por debajo del umbral no se abre.
+- Notificación (`tipoEnvio` `2`): el sondeo no comparece. `peticionAcceso()` es la comparecencia y puede abrir el plazo de respuesta. La ejecuta el lote de madrugada, solo si la clasificación ya superó el umbral: abre, guarda anexos y acuse cuando existan, y la deja lista para derivar. Por debajo del umbral no se abre.
 - La fecha límite de comparecencia se calcula provisionalmente a partir de `fechaPuestaDisposicion` y de las reglas de cómputo previstas. Hasta validar este cálculo con los vencimientos reales y la normativa aplicable, el resultado tendrá carácter orientativo y no se considerará una fecha de vencimiento confirmada por LEMA. No debe utilizarse como único criterio para decidir el momento de acceso a una notificación.
 
 ### RF-02 Clasificación
 
 - Se clasifica antes de abrir nada. La señal base es organismo emisor y concepto de `localiza()`. No se leen principal, anexos ni acuse. Otro metadato de `localiza()` solo entra si una muestra real demuestra que discrimina. El concepto se reconoce por la materia, sin igualdad exacta. Los DIR3 observados no son la clave universal del organismo.
 - Resultado: el departamento. No hay catálogo de tipos.
-- n8n llama al modelo con el prompt versionado (reglas en estado «Prompt» de `Criterios_Clasificacion.md`) y envía a Java departamento, score, `modelo` y `versionPrompt`. Java comprueba que el departamento existe y está activo en `DEPARTAMENTO`; si no, revisión.
-- Umbral de confianza configurable en properties, sin tocar código. Por debajo: `REVISION` (RF-09); no se abre el envío ni se publica acción automática. Si la decisión usa el score o el `estado` que devuelve el prompt se fija tras la experimentación.
+- Se clasifican en cada ciclo los envíos `pendiente` sin clasificación de IA ni revisión abierta: los nuevos y los que fallaron antes.
+- `ClasificarComunicacionService` pide la clasificación al flujo de IA de n8n (`ClasificacionIAGateway`), fuera de transacción. Solo envía metadatos: `concepto` y organismo emisor y raíz (código y nombre). El prompt versionado y el modelo están en n8n (reglas en estado «Prompt» de `Criterios_Clasificacion.md`).
+- Respuesta: `departamentoId` (el `id` de `DEPARTAMENTO`), `estado` (`clasificado` | `revision_humana` | `sin_clasificar`), `score` (puede ser nulo), `modelo` y `versionPrompt`.
+- Si la llamada falla o la respuesta no se puede leer, no se guarda nada: el envío sigue `pendiente` y se reintenta en el siguiente ciclo.
+- `RegistrarClasificacionService` guarda la `CLASIFICACION` en su transacción, con la comunicación bloqueada; si ya se clasificó, no hace nada.
+- Decisión configurable en properties, sin tocar código: por umbral sobre `score` o por `estado`. Se fija tras la experimentación.
+- Va a `REVISION` (RF-09), sin abrir el envío ni acción automática:
+  - confianza por debajo del umbral o `estado=revision_humana` (motivo `umbral`), con la propuesta guardada;
+  - `estado=sin_clasificar` (motivo `sin_criterio`), sin propuesta: se resuelve reclasificando (RF-09.6);
+  - `departamentoId` que no existe o no está activo.
 - Sin regla aplicable: sin clasificar. Reglas en conflicto: revisión humana. No se clasifica por descarte ni con reglas pendientes.
 - Reglas en el prompt y pendientes: §6.
 
@@ -463,7 +482,7 @@ Solo las reglas que el código no puede violar.
 - Procesamiento textual y semántico del documento principal de las comunicaciones y notificaciones (`tipoEnvio` `1` y `2`), cuando el tratamiento mediante IA externa esté autorizado. Se permite extracción nativa, OCR o procesamiento multimodal directo con modelos de OpenAI o Mistral. Un mismo servicio puede obtener el texto y la interpretación sin requerir dos llamadas independientes. Anexos y acuse se archivan sin procesar.
 - La interpretación está orientada a identificar el asunto, las solicitudes o requerimientos, las actuaciones expresas, los plazos indicados y otros datos útiles para el departamento. No se presupone un plazo universal ni se calculan vencimientos jurídicos definitivos con el modelo. La política temporal de sondeo y comparecencia sigue pendiente de cierre.
 - Salidas diferenciadas: representación textual conservada en `TEXTOEXTRAIDO`; interpretación estructurada orientada a la tramitación (asunto, requerimientos, actuaciones expresas, plazos documentados, organismo, expediente, importes y partes). Las inferencias se diferencian de los datos explícitos; si falta información se indica. El indicador de confianza de interpretación requiere definición y validación; no asumir probabilidad calibrada del proveedor.
-- n8n puede orquestar el procesamiento documental; Java persiste `INTERPRETACION`, `TEXTOEXTRAIDO` y `CLASIFICACION`.
+- Mismo patrón que RF-02: `InterpretarComunicacionService` pide la interpretación al flujo de IA de n8n (`InterpretacionIAGateway`), fuera de transacción, y `RegistrarInterpretacionService` persiste `INTERPRETACION` y `TEXTOEXTRAIDO`. Si falla, se reintenta en el siguiente ciclo.
 
 ### RF-06 Contenido del ticket
 
@@ -471,30 +490,44 @@ Título, información relevante para la tramitación cuando esté disponible, ca
 
 ### RF-07 Evento
 
-- Exactamente un evento por comunicación con contenido RF-06 completo.
-- Payload: contenido RF-06, departamento/cola e `identificador` DEHú.
-- Se publica aunque no haya consumidor. Infra: AYEventos / n8n.
+- Requisito: publicar un evento por comunicación con contenido RF-06 completo, en la arquitectura de eventos corporativa, exista o no consumidor. Payload previsto: `comunicacionId`, contenido RF-06, departamento/cola e `identificador` DEHú.
+- **Pendiente de decisión:** no está confirmado cómo publicaría Java en el bus ni quién consumiría (§7.3, §13). Hasta decidirlo no se implementa la publicación, y RF-07 no se da por cumplido.
+- Lo que sí se implementa es el desacoplamiento de RF-07.2, mediante el estado persistido: al completar RF-06, la comunicación queda lista para derivar en BBDD, y la ingesta no llama al canal. Esto no sustituye a la publicación del evento.
 - No hay tabla `EVENTO`: la trazabilidad es `CLASIFICACION` + `DERIVACION`.
 
 ### RF-08 Derivación
 
+- La derivación inicial es un proceso independiente de la ingesta: `POST /derivaciones` (§8.2), que programa n8n, deriva las comunicaciones listas sin derivación inicial `exito`, `en_curso` ni `desconocido`. Ni los ciclos ni la aceptación de una revisión derivan. Las reclasificaciones (RF-09.6, RF-10.4, RF-11.5) siguen el flujo descrito al final de este apartado.
 - El canal sale de `Clasificacion.canalAsignado` y del catálogo `DEPARTAMENTO`, no de un `if` por tipo.
-- Ticket obligatorio. Email (RF-08.2) no obligatorio, pero planificado justo después del ticket (`EmailNotificacionGateway`). Si no da tiempo, no bloquea el cierre del MVP.
-- Idempotencia: si ya hay una `DERIVACION` con `estado=exito` (`tieneDerivacionExitosa()`), no se repite. Un `fallo` sí se reintenta.
+- Ticket obligatorio, creado con la API back de Ticketing (`POST /tickets`) en `DEPARTAMENTO.colaDestino`. Email (RF-08.2) no obligatorio, pero planificado justo después del ticket (`EmailNotificacionGateway`). Si no da tiempo, no bloquea el cierre del MVP.
+- Cada intento es una fila `DERIVACION`. Se registra `en_curso` antes de llamar al canal y, después, pasa a:
+  - `exito`: la comunicación queda `procesada`;
+  - `fallo`: seguro que no se ejecutó (la petición no salió, Ticketing la rechazó con 400, 401, 403 o 404, o falta configuración);
+  - `desconocido`: no se sabe si se ejecutó (timeout, 5xx, otros 4xx, respuesta sin id); no se reintenta para no duplicar el ticket.
+- Reintentos: un `fallo` se reintenta en la siguiente ejecución de `/derivaciones`, como máximo `maxReintentos` veces tras el intento inicial (2 por defecto, 3 intentos en total; `0` los desactiva). Se cuentan las filas `DERIVACION` iniciales (`esReclasificacion=0`) de la comunicación; no hace falta otra columna. Al llegar al límite, deja de intentarse y queda para conciliación. Es independiente del límite de RF-10.
+- Con una derivación `exito` no se repite (`tieneDerivacionExitosa()`). Con una `en_curso` o `desconocido` no se lanza otra (`tieneDerivacionPendiente()`). La aplicación nunca cambia por su cuenta un `en_curso` ni un `desconocido`, y las filas de `DERIVACION` no se borran.
+- La respuesta de `/derivaciones` resume lo derivado, lo fallido y lo pendiente de conciliar (`desconocido`, `en_curso` que no termina, límite alcanzado), que también va al log.
+- Conciliación manual, excepcional, sin API ni funcionalidad del frontal. La ejecuta una persona con permiso en Ticketing y de escritura en BBDD, con una incidencia que registra quién, cuándo, qué comunicación y por qué.
+  1. Comprobar en el frontal de Ticketing si el ticket existe, por la referencia de la derivación y el `identificador` DEHú que lleva la descripción.
+  2. Si existe, registrar `exito` con su código.
+  3. Si no existe, solo se crea uno si consta que el intento anterior terminó sin crearlo (para un `en_curso`, que la llamada terminó: log del intento o reinicio de la aplicación). Se crea con el contenido RF-06 completo: título y resumen de la fila `DERIVACION`, principal, anexos y acuse del almacenamiento (RF-03), `identificador` DEHú y referencia de la derivación. Si no consta, la derivación queda como está, pendiente de conciliación.
+  4. El registro va en una sola transacción, con la comunicación bloqueada como lo hace la aplicación (`UPDLOCK`) y comprobando de nuevo el estado. Un `desconocido` o `en_curso` pasa a `exito` si el ticket existía, o a `fallo` si se creó uno nuevo; en ese caso, y cuando se parte de un `fallo`, se añade una fila `exito` con el código del nuevo ticket. La comunicación pasa a `procesada`. Si la comprobación no cuadra, no se escribe nada. El índice único impide dos derivaciones iniciales `exito`.
+  - El SQL de este procedimiento (README de `HVOrganismosPublicosMigraciones`) no está validado: verificarlo en desa es requisito previo a producción (§13).
+- Si Ticketing ofrece búsqueda por referencia externa (§7.2), `desconocido` podrá conciliarse sin intervención manual.
 - Reclasificación (RF-09.6, RF-10.4, RF-11.5): finalizar el ticket original y crear uno nuevo con `esReclasificacion=true` y `ticketRelacionadoId` = ticket original. No cuenta como duplicado. Ticketing no transfiere de cola (`PATCH` no toca `cola`).
 
 ### RF-09 Revisión humana
 
 - Confianza baja → `REVISION` con `resuelto=false`. Ninguna comunicación se pierde entre pasos.
 - UI (09.2): metadatos de `localiza()` y clasificación propuesta. No se abre el documento para decidir el departamento.
-- Aceptar (09.5) fija el departamento. Una comunicación sigue el ciclo de descarga del sondeo. Una notificación no se abre aquí: queda para el lote de madrugada, que archiva y deriva.
-- Reclasificar (09.6) → solo `administrador`. Elige el departamento; finalizar + crear.
+- Aceptar (09.5) fija el departamento; no deriva. Una comunicación sigue el ciclo de descarga del sondeo. Una notificación no se abre aquí: queda para el lote de madrugada, que la archiva. Cuando queda lista, la deriva el proceso de RF-08.
+- Reclasificar (09.6) → funcionalidad Reclasificar (Administrador). Elige el departamento; finalizar + crear si ya hay ticket. Es la única forma de resolver una revisión sin propuesta (`sin_criterio`), así que es necesaria para vaciar la cola.
 - Feedback (09.3): deseable, asíncrono, no bloquea el cierre.
 
 ### RF-10 Agente IA
 
 - Entrada: evento de cancelación del ticket (outbox de Ticketing).
-- Intentos = filas `CLASIFICACION` con `origen=ia` y `nIntentos>1`. Límite: 2.
+- Intentos = filas `CLASIFICACION` con `origen=ia` y `nIntentos>1`. Límite: 2 (`LIMITE_INTENTOS`), independiente de los reintentos de RF-08.
 - En el límite: escalar a RF-09 sin llamar al agente.
 - Con margen: `AgenteIAGateway.intentarAutocorreccion`. El agente propone; si supera el umbral, él mismo finaliza + crea (`AgenteIAClient` usa `TicketingGateway`). Si no, escala a revisión.
 - No hay bucle interno: el siguiente intento llega con la siguiente cancelación.
@@ -529,38 +562,39 @@ SQL Server (`HV_OrganismosPublicos`), JDBC propio (`JdbcTemplate` + `*Repository
 | `INTERPRETACION` | 1:1 opcional | Resultado de la IA |
 | `TEXTOEXTRAIDO` | 1:1 opcional desde `INTERPRETACION` | Texto completo, con retención configurable |
 | `CLASIFICACION` | 1:N, solo inserciones | Historial de clasificaciones |
-| `DERIVACION` | 1:N, solo inserciones | Resultado de RF-08 |
+| `DERIVACION` | 1:N, una fila por intento | Resultado de RF-08 |
 | `REVISION` | 1:N opcional | Una fila por escalado |
-| `DEPARTAMENTO` | catálogo | Colas, canales y criterios de reparto |
-| `USUARIO` | catálogo | Roles de la app |
+| `DEPARTAMENTO` | catálogo | Colas y canales |
+| `USUARIO` | catálogo | Quién resuelve revisiones (trazabilidad) |
 | `REALIZADAS` | ninguna | Envíos ya realizados para evaluar la clasificación (RF-12.4–12.6). Fuera del flujo |
 
 Campos:
 
-- **COMUNICACION:** `id` (UUID, PK), `identificador` (índice único), `codigoOrigen`, `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre`, `organismoEmisorRaizCodigo`, `organismoEmisorRaizNombre`, `fechaPuestaDisposicion`, `tipoEnvio`, `vinculo`, `titularNombre`, `titularNif`, `fechaEvento`, `estado` (interno), `metadatosPublicos` (base64 de `localiza()`, `nvarchar(max)`; no se interpreta ni entra en el prompt), `fechaIngesta`.
+- **COMUNICACION:** `id` (UUID, PK), `identificador` (índice único), `codigoOrigen`, `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre`, `organismoEmisorRaizCodigo`, `organismoEmisorRaizNombre`, `fechaPuestaDisposicion` (obligatorio; la consulta filtra y ordena por él), `tipoEnvio`, `vinculo`, `titularNombre`, `titularNif`, `fechaEvento`, `estado` (interno), `metadatosPublicos` (base64 de `localiza()`, `nvarchar(max)`; no se interpreta ni entra en el prompt), `fechaIngesta`.
 - **DOCUMENTO:** `id`, `comunicacion_id`, `tipo`, `nombre`, `mimeType`, `hashSha256`, `algoritmoHash`, `csvResguardo` (el del documento en `peticionAcceso()`), `referenciaDocumento` (anexo por referencia), `metadatos` (`documento.metadatos` o `acusePdf.metadatos` en base64, `nvarchar(max)`; vacío en anexos; no se interpreta), `rutaAlmacenamiento`, `fechaDescarga`.
 - **INTERPRETACION:** `id`, `comunicacion_id`, `entidadesExtraidas` (JSON en `nvarchar`), `scoreConfianza`, `fechaProcesado`.
 - **TEXTOEXTRAIDO:** `id`, `interpretacion_id`, `textoExtraido`, `fechaCreacion`.
-- **CLASIFICACION:** `id`, `comunicacion_id`, `origen` (`ia` | `operador`), `modelo` y `versionPrompt` (solo si hubo LLM; los envía n8n), `nIntentos` (`1`, `2`, `3`…; solo si `origen=ia`), `usuario_id` (solo si `origen=operador`), `departamentoAsignado` (obligatorio), `canalAsignado`, `scoreConfianza`, `resultado`, `fecha`.
-- **DERIVACION:** `id`, `comunicacion_id`, `canal`, `identificadorExterno`, `titulo`, `resumen`, `departamento` (FK), `estado` (`exito` | `fallo`), `esReclasificacion`, `ticketRelacionadoId`, `fechaEjecucion`.
+- **CLASIFICACION:** `id`, `comunicacion_id`, `origen` (`ia` | `operador`), `modelo` y `versionPrompt` (solo si hubo LLM; los envía n8n), `nIntentos` (`1`, `2`, `3`…; solo si `origen=ia`), `usuario_id` (solo si `origen=operador`), `departamentoAsignado` (obligatorio), `canalAsignado`, `scoreConfianza` (nulo si el modelo no lo da), `resultado` (`estado` devuelto por el modelo en filas `ia`), `fecha`.
+- **DERIVACION:** `id`, `comunicacion_id`, `canal`, `identificadorExterno`, `titulo`, `resumen`, `departamento` (FK), `estado` (`en_curso` | `exito` | `fallo` | `desconocido`; la aplicación solo lo actualiza desde `en_curso`), `esReclasificacion`, `ticketRelacionadoId`, `fechaEjecucion` (inicio del intento). Índice único que impide dos derivaciones iniciales activas de la misma comunicación. Las filas no se borran.
 - **REVISION:** `id`, `comunicacion_id`, `usuario_id` (nulo hasta resolver), `motivo`, `resuelto`, `fechaEntrada`, `fechaResolucion`.
 - **DEPARTAMENTO:** `id`, `nombre`, `colaDestino`, `permiteEmail`, `activo`.
-- **USUARIO:** `id` (= `PERSONA.id` de Personas, sin FK física), `rol`, `activo`.
+- **USUARIO:** `id` (= `PERSONA.id` de Personas, sin FK física), `rol` (sin uso: los permisos están en SeguridadMGS), `activo`.
 - **REALIZADAS:** `id`, `identificador` (único; nunca presente en `COMUNICACION`), `codigoOrigen`, `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre`, `organismoEmisorRaizCodigo`, `organismoEmisorRaizNombre`, `fechaPuestaDisposicion`, `tipoEnvio`, `vinculo`, `titularNombre`, `titularNif`, `estadoDehu`, `referenciaPdfAcuse`, `csvResguardo` (del envío), `rutaDocumento`, `hashSha256`, `algoritmoHash` (solo si se descargó el principal), `departamentoEsperado` (FK, etiquetado), `departamentoPropuesto` (FK), `scoreConfianza`, `modelo`, `fechaClasificacion`, `fechaCarga`.
 
-Semilla de `DEPARTAMENTO`: Asesoría Fiscal, Coordinación DGS, SAC, Red de Mediación, Canal Directo, Recursos Humanos y Área de Siniestros. Faltan las colas reales de Ticketing. Los nombres deben coincidir con los que devuelve el prompt.
+Semilla de `DEPARTAMENTO` y reglas del prompt de clasificación. El prompt devuelve el `id`, y el `enum` de su esquema de respuesta son estos `id`. Las reglas viven en el prompt de n8n, no en BBDD; los IDs de regla son los del catálogo vivo `Criterios_Clasificacion.md` del repo TFM. Faltan las colas reales de Ticketing. Los DIR3 son ejemplos observados (`E00119006` DGSFP, `EA0028512` AEAT, `E00127105` Catastro, `EA0042298` TGSS); no son la clave de la regla.
 
-Reglas del prompt de clasificación (lo mantiene n8n; IDs del catálogo vivo `Criterios_Clasificacion.md` del repo TFM). Los DIR3 son ejemplos observados (`E00119006` DGSFP, `EA0028512` AEAT, `E00127105` Catastro, `EA0042298` TGSS); no son la clave de la regla.
+| `id` | Departamento | Reglas |
+|---|---|---|
+| `ASESORIA_FISCAL` | Asesoría Fiscal | AEAT (R01); Dirección General del Catastro (R02); TGSS cuando el concepto es embargo o levantamiento de embargo, aunque venga abreviado (R03) |
+| `COORDINACION_DGS` | Coordinación DGS | DGSFP: Inspección, análisis de balances, Solvencia, DEC (R04) |
+| `SAC` | SAC | DGSFP: Modelo 2B, Reclamaciones. El concepto puede llevar variación de formato (R05) |
+| `RED_MEDIACION` | Red de Mediación | DGSFP: Exclusivos, Mediación (R06); DGSFP cuando los metadatos identifican el área remitente Distribución (R07) |
+| `CANAL_DIRECTO` | Canal Directo | Entidad Pública Empresarial red.es, con concepto o referencia asociados a Kit Digital (por ejemplo KD). «Kit Digital» no es un literal obligatorio (R08) |
+| `RECURSOS_HUMANOS` | Recursos Humanos | AEPD (R09) |
+| `AREA_SINIESTROS` | Área de Siniestros | Órganos judiciales con sección, plaza y número de procedimiento o actuación procesal en el concepto (R13); administraciones autonómicas con facturas o recursos sobre facturas, facturas hospitalarias, abono de precio público o citaciones por tráfico (R14); administraciones con daños a bienes públicos (R15); Guardia Civil con citaciones o diligencias (R16) |
+| `SUCURSAL_CENTRAL` | Sucursal Central | Sin reglas activas (R12 pendiente) |
 
-| Departamento | Reglas |
-|---|---|
-| Asesoría Fiscal | AEAT (R01); Dirección General del Catastro (R02); TGSS cuando el concepto es embargo o levantamiento de embargo, aunque venga abreviado (R03) |
-| Coordinación DGS | DGSFP: Inspección, análisis de balances, Solvencia, DEC (R04) |
-| SAC | DGSFP: Modelo 2B, Reclamaciones. El concepto puede llevar variación de formato (R05) |
-| Red de Mediación | DGSFP: Exclusivos, Mediación (R06); DGSFP cuando los metadatos identifican el área remitente Distribución (R07) |
-| Canal Directo | Entidad Pública Empresarial red.es, con concepto o referencia asociados a Kit Digital (por ejemplo KD). «Kit Digital» no es un literal obligatorio (R08) |
-| Recursos Humanos | AEPD (R09) |
-| Área de Siniestros | Órganos judiciales con sección, plaza y número de procedimiento o actuación procesal en el concepto (R13); administraciones autonómicas con facturas o recursos sobre facturas, facturas hospitalarias, abono de precio público o citaciones por tráfico (R14); administraciones con daños a bienes públicos (R15); Guardia Civil con citaciones o diligencias (R16) |
+Un cambio de reglas es una nueva versión del prompt (`versionPrompt`), sin tocar Java ni BBDD. Un departamento nuevo es una fila en una migración más el `enum` del prompt.
 
 - R07: falta comprobar si LEMA trae el área remitente (`concepto`, `metadatosPublicos` u otro metadato previo a comparecer). Si no llega, la regla no se dispara.
 - R09: la gestiona una unidad de RRHH (Servicio Jurídico y de Cumplimiento Normativo); no es departamento propio. Falta confirmar la cola de Ticketing.
@@ -640,13 +674,18 @@ Datos de cada petición:
 
 ### 7.2 Ticketing
 
-- HTTP / OpenAPI. Se crea el ticket en la cola `DEPARTAMENTO.colaDestino`.
-- `modificarTicket` necesita la audiencia back, no confirmada.
+- HTTP / OpenAPI, audiencia back. Se crea el ticket en la cola `DEPARTAMENTO.colaDestino`.
+- Hoy la audiencia back solo crea tickets y consulta tipos. Finalizar por reclasificación y `modificarTicket` (`TicketingGestionGateway`) esperan a que Ticketing los exponga.
+- Buscar un ticket por referencia externa permitiría resolver `desconocido` sin intervención manual (RF-08). Depende de Ticketing.
+- El cliente tiene timeouts de conexión y lectura acotados. Los valores recomendados dependen de Ticketing.
+- Los eventos que genere Ticketing al crear o modificar tickets, y su publicación, son responsabilidad de ese equipo.
 - Las cancelaciones no salen por webhook sino por un outbox interno.
 
-### 7.3 Bus de eventos / n8n
+### 7.3 n8n y bus de eventos
 
-n8n orquesta RF-01 a RF-08. Java publica en el bus corporativo con el mismo patrón que Ticketing/AYEventos. n8n y el bus se tratan como piezas distintas hasta que Infra confirme el cableado.
+- n8n programa el sondeo, el lote de madrugada y la derivación: llama a `POST /ciclosIngesta`, `POST /lotesMadrugada` y `POST /derivaciones` (§8.2), esta última con independencia de las otras dos. La frecuencia vive en n8n.
+- n8n aloja los flujos de IA de clasificación e interpretación. Java los llama por HTTP (`ClasificacionIAClient`, `InterpretacionIAClient`), siempre fuera de transacción. Cambiar de proveedor o de prompt se hace en n8n.
+- Publicación de RF-07: pendiente de decisión. Kafka es el sistema de eventos corporativo, pero no está confirmado cómo publicaría Java (`EventosGateway`), ni el topic, ni quién consumiría. No se implementa hasta que Infra lo confirme (§13).
 
 ### 7.4 Agente IA / MCP
 
@@ -654,7 +693,10 @@ Proceso fuera de WAS, accedido por `AgenteIAGateway`. Su única herramienta MCP 
 
 ### 7.5 Seguridad
 
-Login del Operador contra el directorio de personal con `GestorBackendFilter`, como Ticketing Front (`codApp` pendiente de Infra). `USUARIO` solo guarda los roles de esta app.
+- Frontal: entrada por el portal corporativo y servlet de seguridad, como Ticketing Web.
+- ApiFront: `GestorBackendFilter` y funcionalidades de SeguridadMGS declaradas en cada endpoint (§2). 401 sin usuario, 403 sin funcionalidad. Business no comprueba permisos.
+- ApiBack: credencial de servicio para n8n; mecanismo pendiente de Infra.
+- Identidad: el `codPersona` de la sesión es el `USUARIO.id`.
 
 ### 7.6 Correo
 
@@ -666,22 +708,22 @@ SMTP corporativo vía `EmailNotificacionGateway` (RF-08.2).
 
 OpenAPI 3, recursos en camelCase plural, `x-area: hv`, `x-subarea: def`, `x-version: v1`. Prefijo en el gateway: `/api/{front|back|consumer}/hv/def/v1`. Context root en WAS: Front `HVOrganismosPublicos/api/front/v1`, Web `appt/HVOrganismosPublicosWeb`. El navegador nunca ve SOAP ni el certificado.
 
-Errores: `401` no autenticado, `403` sin rol, `404` no existe, `409` regla de negocio (derivación duplicada, revisión ya resuelta, límite de RF-10, comunicación no editable).
+Errores: `400` petición no válida, `401` no autenticado, `403` sin funcionalidad, `404` no existe, `409` regla de negocio (derivación duplicada, revisión ya resuelta, límite de RF-10, comunicación no editable).
 
 ### 8.1 Front (Operador) — fase 1
 
-| Método | Path | Rol | RF | Servicio |
+| Método | Path | Funcionalidad | RF | Servicio |
 |---|---|---|---|---|
-| `GET` | `/revisiones` | operador, administrador | 09.1 | `ConsultarRevisionService` |
-| `GET` | `/revisiones/{id}` | operador, administrador | 09.2 | `ConsultarRevisionService` (metadatos de `localiza()` y propuesta de departamento; el documento solo si ya consta abierto) |
-| `GET` | `/revisiones/{id}/documentos/{documentoId}` | operador, administrador | 09.2 | binario local |
-| `POST` | `/revisiones/{id}/aceptacion` | operador, administrador | 09.5 | `AceptarClasificacionService` |
-| `POST` | `/revisiones/{id}/reclasificacion` | administrador | 09.6 | `ReclasificarComunicacionService` (body: `departamento`) |
-| `GET` | `/comunicaciones` | operador, administrador | 11.1, 11.6 | `ConsultarComunicacionesService` (query: `estado`, `texto`, `tipoEnvio`; cada ítem trae `editable`; frontend presenta dos listados independientes) |
-| `GET` | `/comunicaciones/{id}` | operador, administrador | 11.1–11.3 | detalle con `editable` |
-| `GET` | `/comunicaciones/{id}/documentos/{documentoId}` | operador, administrador | 11 | binario local |
-| `PATCH` | `/comunicaciones/{id}` | operador, administrador | 11.4 / 11.5 | `ModificarDerivacionService` (body: `titulo`, `resumen`, `departamentoDestino`) |
-| `GET` | `/departamentos` | operador, administrador | 09.6, 11.5 | `DEPARTAMENTO` activos |
+| `GET` | `/revisiones` | Consultar | 09.1 | `ConsultarRevisionService` (query: `tipoEnvio`, fechas sobre `fechaPuestaDisposicion`, paginación; orden por entrada en revisión) |
+| `GET` | `/revisiones/{id}` | Consultar | 09.2 | `ConsultarRevisionService` (metadatos de `localiza()` y propuesta de departamento; el documento solo si ya consta abierto) |
+| `GET` | `/revisiones/{id}/documentos/{documentoId}` | Consultar | 09.2 | binario local |
+| `POST` | `/revisiones/{id}/aceptacion` | Aceptar | 09.5 | `AceptarClasificacionService` |
+| `POST` | `/revisiones/{id}/reclasificacion` | Reclasificar | 09.6 | `ReclasificarComunicacionService` (body: `departamento`) |
+| `GET` | `/comunicaciones` | Consultar | 11.1, 11.6 | `ConsultarComunicacionesService` (query: `tipoEnvio`, `estado`, fechas, paginación; el frontend presenta dos listados independientes) |
+| `GET` | `/comunicaciones/{id}` | Consultar | 11.1–11.3 | detalle con `editable` |
+| `GET` | `/comunicaciones/{id}/documentos/{documentoId}` | Consultar | 11 | binario local |
+| `PATCH` | `/comunicaciones/{id}` | Editar derivación | 11.4 / 11.5 | `ModificarDerivacionService` (body: `titulo`, `resumen`, `departamentoDestino`) |
+| `GET` | `/departamentos` | Consultar | 09.6, 11.5 | `DEPARTAMENTO` activos |
 
 ### 8.2 Back (n8n) — fase 2
 
@@ -689,14 +731,11 @@ Credencial de servicio, no de Operador.
 
 | Método | Path | RF | Servicio |
 |---|---|---|---|
-| `POST` | `/ciclosIngesta` | 01 | `IngestarComunicacionesService`: `localiza()`, persiste metadatos y devuelve a n8n los envíos nuevos para clasificar. Sin envíos nuevos → `204` |
-| `POST` | `/clasificaciones` | 02, 03 | `RegistrarClasificacionService`: n8n envía departamento, score, `modelo` y `versionPrompt`. Java valida el departamento y guarda `CLASIFICACION`. Una comunicación sobre el umbral sigue a `peticionAcceso()` en el mismo ciclo (RF-03). Una notificación sobre el umbral queda para el lote de madrugada. Por debajo del umbral, revisión y no se abre |
-| `POST` | `/lotesMadrugada` | 01, 03, 06, 08 | Comparece las notificaciones ya clasificadas por encima del umbral, archiva documento, anexos y acuse cuando existan, permite su interpretación documental si está autorizada y deriva conforme al flujo. No vuelve a clasificar |
-| `POST` | `/interpretaciones` | 04–06 | `RegistrarInterpretacionService` + `GenerarContenidoTicketService`. No clasifica. Solo hay documento que interpretar si ya se abrió |
-| `POST` | `/eventos/comunicacionClasificada` | 07 | `PublicarComunicacionClasificadaService` (solo si n8n no publica al bus) |
-| `POST` | `/derivaciones` | 08 | `EjecutarDerivacionService` |
+| `POST` | `/ciclosIngesta` | 01–06 | `localiza()` y registro de envíos nuevos (`IngestarComunicacionesService`); clasificación de los pendientes pidiéndola al flujo de IA de n8n (`ClasificarComunicacionService`). Comunicación sobre el umbral: `peticionAcceso()`, documentos, interpretación si está autorizada y RF-06 en el mismo ciclo; queda lista para derivar. Notificación sobre el umbral: queda para el lote de madrugada. Por debajo: revisión, sin abrir. Responde un resumen del ciclo; sin nada que procesar → `204` |
+| `POST` | `/lotesMadrugada` | 03–06 | Comparece las notificaciones ya clasificadas por encima del umbral o aceptadas, archiva documento, anexos y acuse, interpreta si está autorizado y las deja listas para derivar. No vuelve a clasificar |
+| `POST` | `/derivaciones` | 08 | Deriva las comunicaciones listas (`EjecutarDerivacionService`), con idempotencia y el límite de reintentos (RF-08). Independiente de los ciclos: no llama a LEMA. Responde un resumen: derivadas, fallidas y pendientes de conciliar; sin nada que derivar → `204` |
 
-El procesamiento documental se ejecuta mediante una de dos vías de integración, evitando duplicar el procesamiento: n8n obtiene la representación textual y la interpretación y las envía a `POST /interpretaciones`, o Java las solicita mediante `InterpretarComunicacionService`. La extracción/OCR y la interpretación pueden resolverse en una misma llamada multimodal; se conserva `TEXTOEXTRAIDO`.
+Cada paso es idempotente y se puede relanzar: lo que falla en un ciclo se reintenta en el siguiente. La derivación inicial se reintenta en la siguiente ejecución de `/derivaciones`, con límite (RF-08). La extracción/OCR y la interpretación pueden resolverse en una misma llamada multimodal; se conserva `TEXTOEXTRAIDO`.
 
 ### 8.3 Consumer — fase 3
 
@@ -731,7 +770,7 @@ Vue 3 + TypeScript + Vite + Pinia sobre UIBaseProject, sin replicar el acabado v
 | Resiliencia | Una caída de SE/PRO no pierde envíos ya detectados. |
 | Rendimiento | `TEXTOEXTRAIDO` fuera de los listados. |
 | Auditabilidad | Log del resultado de cada llamada SOAP y de cada clasificación con su score. |
-| Extensibilidad | Otra fuente distinta de DEHú = otro adapter de entrada al mismo bus. |
+| Extensibilidad | Reglas de reparto = nueva versión del prompt en n8n. Proveedor o modelo de IA = cambio en el flujo de n8n. Departamento = fila de `DEPARTAMENTO` + `enum` del prompt. Canal = otra `NotificacionGateway`. Otra fuente distinta de DEHú = otro adaptador de entrada como `LemaGateway`. |
 | Entornos | local / desa / usua / prod, y SE / PRO en LEMA. |
 
 ---
@@ -740,12 +779,18 @@ Vue 3 + TypeScript + Vite + Pinia sobre UIBaseProject, sin replicar el acabado v
 
 Properties (`{entorno}#organismosPublicos.properties`, patrón Ticketing):
 
-- LEMA: URL/WSDL de SE y PRO, NIF titular, timeouts, tamaño de lote, frecuencia de sondeo (esta puede vivir en n8n).
-- Umbral de confianza.
+- LEMA: URL/WSDL de SE y PRO, NIF titular, timeouts, tamaño de lote. La frecuencia de sondeo vive en n8n.
+- Clasificación: regla de decisión (umbral o `estado`) y umbral.
+- URLs de los flujos de IA de n8n (clasificación e interpretación).
 - Días de retención de `TEXTOEXTRAIDO`.
-- JNDI del datasource SQLPortal.
-- URLs de Ticketing Front/Back, AYEventos y Agente IA.
+- Ticketing: tipo y subtipo de ticket. La URL del back va por `resource-env-ref` del WAS, como en Ticketing.
+- URL del Agente IA.
+- Derivación (RF-08): `organismosPublicos.derivacion.maxReintentos` (2; `0` desactiva los reintentos). El límite de RF-10 no es una propiedad.
 - `PATH_PROPERTIES_SERVIDOR` (resource-env-ref en WAS).
+
+Las properties se leen al crear los servicios (`@ApplicationScoped`): un cambio de valor requiere reiniciar la aplicación en WAS. No hay recarga dinámica.
+
+El datasource SQLPortal se obtiene por JNDI de WAS, no por propiedad.
 
 `HVOrganismosPublicosServer` configura el datasource e instala el certificado para WS-Security.
 
@@ -759,7 +804,7 @@ Binarios: ruta en el servidor o volumen. FILESTREAM no, salvo que se decida con 
 
 | Capa | Qué demuestra |
 |---|---|
-| `HVOrganismosPublicosTest` (JUnit 5) | Umbral, límite de 2 en RF-10, idempotencia de derivación, finalizar + crear frente a in-place, integridad del hash, `tieneDerivacionExitosa` frente a `tieneDerivacionAsociada`. Gateways simulados. |
+| `HVOrganismosPublicosTest` (JUnit 5) | Regla de decisión de RF-02 (umbral y `estado`), reintento sin guardar si falla la IA, límite de 2 en RF-10, estados de derivación (`en_curso`, `fallo`, `desconocido`), límite de reintentos de RF-08 (incluido `0`), un `exito` registrado a mano bloquea cualquier nueva derivación inicial, `/derivaciones` independiente de LEMA, finalizar + crear frente a in-place, integridad del hash, `tieneDerivacionExitosa` frente a `tieneDerivacionAsociada`. Gateways simulados, incluido el flujo de IA. |
 | `npm run test` (Vue) | `vue-tsc` + eslint. |
 | FT Playwright | Flujos del Operador contra desa/usua. |
 | SE LEMA | Llamadas SOAP reales, con certificado de pruebas y alta de Gran Destinatario. |
@@ -776,8 +821,8 @@ La evidencia para el TFM son los tests de `HVOrganismosPublicosTest`, no los E2E
 | 04 | El documento principal de cada comunicación o notificación procesada dispone de representación textual verificable, con independencia del mecanismo de extracción. |
 | 05 | La interpretación produce información estructurada útil para la tramitación, distinguiendo los requerimientos y plazos expresos de las inferencias y señalando datos no determinados. |
 | 06 | El contenido generado es válido según el esquema de la API de Ticketing, sin intervención manual, en el 100% de los casos clasificados con confianza suficiente. |
-| 07 | Toda comunicación que complete RF-06 genera exactamente un evento publicado, verificable con independencia del resultado de RF-08. |
-| 08 | Toda comunicación clasificada con éxito produce exactamente una acción por el canal ticket, en un tiempo máximo definido por SLA. El email (RF-08.2) no es requisito de cierre. |
+| 07 | Toda comunicación que complete RF-06 genera exactamente un evento publicado, verificable con independencia del resultado de RF-08. **Pendiente:** depende de la decisión de publicación (§13). El desacoplamiento por estado no cumple este criterio. |
+| 08 | Toda comunicación clasificada con éxito produce exactamente una acción por el canal ticket, en un tiempo máximo definido por SLA, o queda señalada para conciliación manual (`desconocido`, `en_curso` que no termina o límite de reintentos). Nunca dos tickets iniciales. El email (RF-08.2) no es requisito de cierre. |
 | 09 | El 100% de las comunicaciones detectadas tienen un estado final trazable: acción automática o revisión humana. Ninguna se pierde entre pasos. |
 | 10 | Toda comunicación reportada como mal clasificada obtiene una resolución automática (ticket reclasificado) o una escalada a revisión humana. Nunca queda sin resultado ni requiere un aviso aparte de la creación del ticket. |
 | 11 | El Operador consulta cualquier registro local sin depender de DEHú. Solo puede modificar el ticket si ya hay una derivación. La comunicación tal como la entregó DEHú nunca se modifica; la modificación actualiza el ticket in-place o crea uno nuevo según cambie o no la cola. |
@@ -801,7 +846,7 @@ Orden de trabajo, pensado para avanzar sin n8n ni LEMA al principio:
 2. RF-08/09 con `TicketingGateway` falso: aceptar, reclasificar, idempotencia.
 3. ApiFront + Web contra BBDD local.
 4. `LemaGateway`, RF-01/02/03, alerta de 24 h y ApiBack.
-5. RF-04 a RF-07 y n8n.
+5. RF-04 a RF-06 y n8n. RF-07, cuando se decida la publicación (§13).
 6. Ticketing real.
 7. Email (RF-08.2).
 8. RF-11.4/11.5, cuando exista la audiencia back.
@@ -830,9 +875,15 @@ Mientras no se cierren, se implementa lo descrito aquí sin fijar valores en có
 | Procesamiento documental OpenAI/Mistral | Seleccionar modelo y API; probar PDFs digitales, escaneados y mixtos, transcripción completa, coste, latencia y calidad. No se presupone OCR independiente ni confianza calibrada. |
 | Audiencia back de Ticketing | Bloquea RF-11.4/11.5. |
 | Quién publica el outbox de cancelación en el bus | Bloquea RF-10. |
-| Deduplicado por `identificador` DEHú al crear tickets | RF-08.5; preguntar al equipo de Ticketing. |
+| Buscar o deduplicar tickets por referencia externa | Resolver `desconocido` sin intervención manual y RF-08.5. Depende de Ticketing. |
+| Regla de decisión de RF-02 | Umbral sobre `score` o `estado` del prompt; se elige tras la experimentación (§10). |
+| Alta de `SAC` y `RECURSOS_HUMANOS` en `DEPARTAMENTO` | Migración con los `id` de §6 y sus colas. |
+| Credencial de servicio de ApiBack | Infra: cómo autentica el gateway a n8n. |
+| Publicación de RF-07 | Requisito sin cumplir. Infra: si Java puede publicar en Kafka y cómo, topic, garantías y consumidores. Después, decidir si entra en el MVP y si RF-08 pasa a consumir el evento. |
+| SQL de la conciliación manual de RF-08 | No validado. Verificarlo en desa (bloqueo, comprobación previa, alta de `exito`, paso a `procesada`, índice único) antes de producción. |
+| Timeouts del cliente de Ticketing | Valores recomendados por Ticketing. |
 | Si el umbral de RF-10 lo compara el agente o el servicio | Se implementa lo diagramado: el agente compara y actúa. |
-| `codApp` de GestorBackend y grupos de Git | Infra. |
+| Grupos de acceso de Git | Infra. |
 | Servidor SMTP y remitente del email | Infra. Bloquea probar RF-08.2 contra correo real; el código va por properties. |
 | Colas reales de Ticketing por departamento | Semilla de `DEPARTAMENTO`. |
 | Alcance real de `localizaRealizadas()` | Cuántos devuelve, qué periodo cubre (el portal solo enseña 30 días), si el tipo `1` trae comunicaciones, si aparece al momento de comparecer y si trae `metadatosPublicos`. Condiciona RF-12.4. |

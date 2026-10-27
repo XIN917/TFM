@@ -18,11 +18,11 @@
 
 ### RF-08 — Ejecución de la acción resultante
 
-`EjecutarDerivacionService` consume el evento de "comunicación clasificada" (RF-07, vía Bus de Eventos Corporativo — no hay endpoint HTTP nuevo para esta rebanada) y ejecuta la acción en el canal que ya decidió la clasificación (`Clasificacion.canalAsignado`).
+`EjecutarDerivacionService` ejecuta la derivación inicial de las comunicaciones listas para derivar, en un proceso independiente de la ingesta: n8n lo programa y llama a `POST /derivaciones` (`DerivacionController`). La acción va al canal que ya decidió la clasificación (`Clasificacion.canalAsignado`). La publicación del evento RF-07 está pendiente de decisión (`PRD.md` §13); el desacoplamiento lo da, por ahora, el estado persistido. Las reclasificaciones (RF-09.6, RF-10.4, RF-11.5) no pasan por este proceso.
 
 **Por qué una interfaz nueva y no reutilizar `TicketingGateway`**: RF-08.4 exige que "la selección de canal debe resolverse por configuración/reglas, no por código específico de cada caso" para que añadir un canal nuevo no toque el resto del pipeline. `TicketingGateway` ya está pensada para las operaciones específicas de Ticketing (crear/finalizar/modificar un ticket concreto), no para representar "un canal de notificación genérico". Por eso se introduce `NotificacionGateway`, con una única operación (`ejecutar`) común a los canales soportados, implementada por `TicketingNotificacionGateway` (que delega en el `TicketingGateway` ya existente — patrón Adapter) y `EmailNotificacionGateway`. `EjecutarDerivacionService` no conoce ninguna clase concreta de canal: `NotificacionGatewayResolver` (GRASP Pure Fabrication) recibe todas las implementaciones registradas vía CDI (`@Inject @Any Instance<NotificacionGateway>`) y resuelve cuál usar según `canal`. Es el caso — anticipado ya en la rebanada RF-09 como pendiente — donde **OCP y Polymorphism quedan finalmente demostrados**: añadir un canal nuevo es una clase que implementa `NotificacionGateway`, sin modificar `EjecutarDerivacionService` ni `NotificacionGatewayResolver`.
 
-**Idempotencia (RF-08.5)**: `Comunicacion.tieneDerivacionExitosa()`, distinta de `tieneDerivacionAsociada()` (usada en RF-11 para decidir solo-lectura/editable): una `Derivacion` con `estado='fallo'` debe permitir reintento, no bloquearlo, así que la comprobación mira `estado='exito'`, no solo "existe una fila".
+**Idempotencia (RF-08.5)**: `Comunicacion.tieneDerivacionExitosa()`, distinta de `tieneDerivacionAsociada()` (usada en RF-11 para decidir solo-lectura/editable): una `Derivacion` con `estado='fallo'` permite reintento dentro del límite configurado (se cuentan las filas `Derivacion` iniciales), así que la comprobación mira `estado='exito'`, no solo "existe una fila". Un `en_curso` o `desconocido` bloquea cualquier intento nuevo. Reintentos y conciliación manual: `PRD.md` RF-08.
 
 ### RF-10 — Reclasificación automática (Agente IA)
 
@@ -36,7 +36,7 @@
 
 ### RF-11.5 — Cambio de departamento (finalizar + crear)
 
-Cuando `Derivacion.esModificableInPlace(cambios)` da `false` — el `cambios.departamentoDestino` propuesto por el Operador es distinto del `departamento` actual de la `Derivacion` —, `ModificarDerivacionService` no llama a `TicketingGateway.modificarTicket()`, sino que reutiliza literalmente el mismo mecanismo ya cerrado en RF-09.6 (`ReclasificarComunicacionService`) y RF-10.4 (`AgenteIAClient`): `TicketingGateway.finalizarTicket(derivacion.identificadorExterno)` para cerrar el ticket original, seguido de `TicketingGateway.crearTicket(nuevaDerivacion)` para abrir uno nuevo en la cola correcta. La nueva `Derivacion` se crea con `Comunicacion.registrarDerivacion(...)` (Creator, ya establecido desde RF-09), marcada con `esReclasificacion = true` y `ticketRelacionadoId` apuntando al ticket original — los mismos dos campos que ya estaban en el ER (`ER_Explicacion.md`) precisamente para cubrir este caso, confirmado con Dani, y que hasta ahora solo se usaban desde RF-09.6/RF-10.4.
+Cuando `Derivacion.esModificableInPlace(cambios)` da `false` — el `cambios.departamentoDestino` propuesto por el Operador es distinto del `departamento` actual de la `Derivacion` —, `ModificarDerivacionService` no llama a `TicketingGateway.modificarTicket()`, sino que reutiliza literalmente el mismo mecanismo ya cerrado en RF-09.6 (`ReclasificarComunicacionService`) y RF-10.4 (`AgenteIAClient`): `TicketingGateway.finalizarTicket(derivacion.identificadorExterno)` para cerrar el ticket original, seguido de `TicketingGateway.crearTicket(nuevaDerivacion)` para abrir uno nuevo en la cola correcta. La nueva `Derivacion` se crea con `Comunicacion.registrarDerivacion(...)` (Creator, ya establecido desde RF-09), marcada con `esReclasificacion = true` y `ticketRelacionadoId` apuntando al ticket original — los mismos dos campos que ya estaban en el ER (`ER_Explicacion.md`) precisamente para cubrir este caso, confirmado con el equipo de Ticketing, y que hasta ahora solo se usaban desde RF-09.6/RF-10.4.
 
 **Se diagrama como propuesta de alto nivel, no como diseño técnico cerrado** — misma cautela que ya declaraba la nota de diseño de RF-11 en `Especificacion_Requisitos.md`: sigue condicionada a que se confirme la disponibilidad real de la API "audiencia back" de Ticketing y sus capacidades exactas (ver `Especificacion_Requisitos.md`, sección 6, tabla de riesgos). Deliberadamente **no** se introduce todavía un colaborador compartido que unifique los tres sitios que reconstruyen este mismo mecanismo (RF-09.6, RF-10.4, RF-11.5) — sigue siendo, como ya se apuntaba antes de diagramar esta rebanada, un candidato razonable pero no forzado mientras sean solo tres usos concretos y no haya señal de que vaya a crecer (YAGNI).
 
@@ -334,7 +334,6 @@ package "aplicacion" {
 
     class AceptarClasificacionService <<Servicio>> {
         -comunicacionRepository: ComunicacionRepository
-        -ticketingGateway: TicketingGateway
         --
         +aceptar(id: UUID, usuario: Usuario): void
     }
@@ -450,12 +449,19 @@ package "api" {
         +consultar(filtros: Object): Response
         +modificar(id: String, cambios: CambiosDerivacion): Response
     }
+
+    class DerivacionController <<Endpoint>> {
+        -ejecutarService: EjecutarDerivacionService
+        --
+        +derivarPendientes(): Response
+    }
 }
 
 RevisionController --> AceptarClasificacionService : usa >
 RevisionController --> ReclasificarComunicacionService : usa >
 RegistroController --> ModificarDerivacionService : usa >
 RegistroController ..> CambiosDerivacion : usa >
+DerivacionController --> EjecutarDerivacionService : usa >
 
 AceptarClasificacionService --> ComunicacionRepository : usa >
 ReclasificarComunicacionService --> ComunicacionRepository : usa >
@@ -463,7 +469,6 @@ EjecutarDerivacionService --> ComunicacionRepository : usa >
 AgenteReclasificacionService --> ComunicacionRepository : usa >
 ModificarDerivacionService --> ComunicacionRepository : usa >
 
-AceptarClasificacionService --> TicketingGateway : usa >
 ReclasificarComunicacionService --> TicketingGateway : usa >
 ModificarDerivacionService --> TicketingGateway : usa >
 

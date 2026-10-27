@@ -6,7 +6,7 @@ Seis flujos independientes (cada uno con su propio inicio/fin, sin referencias c
 
 ## 1. Sistema (automático) — Detección, sondeo y clasificación
 
-Sondeo periódico de `localiza()`. Los dos tipos se clasifican antes de abrir el documento. La señal base es organismo emisor y concepto. Si la confianza no basta, van a revisión y no se abre. **Comunicación (`1`)**, ya clasificada: `peticionAcceso()` en el mismo ciclo, anexos solo si la respuesta trae `anexosReferencia`, sin `consultaAcusePdf()`. Se extrae y resume el documento principal y se genera el ticket del departamento ya asignado. No se clasifica otra vez. **Notificación (`2`)** por encima del umbral: queda clasificada para el lote de madrugada. En el sondeo no hay `peticionAcceso()`, anexo, acuse, resumen ni ticket.
+Sondeo periódico de `localiza()`. Los dos tipos se clasifican antes de abrir el documento. La señal base es organismo emisor y concepto. Si la confianza no basta, van a revisión y no se abre. **Comunicación (`1`)**, ya clasificada: `peticionAcceso()` en el mismo ciclo, anexos solo si la respuesta trae `anexosReferencia`, sin `consultaAcusePdf()`. Se extrae y resume el documento principal, se genera el ticket del departamento ya asignado y queda lista para derivar: la deriva un proceso independiente (RF-08). La publicación del evento (RF-07) está pendiente de decisión. No se clasifica otra vez. **Notificación (`2`)** por encima del umbral: queda clasificada para el lote de madrugada. En el sondeo no hay `peticionAcceso()`, anexo, acuse, resumen ni ticket.
 
 ```mermaid
 %%{init: {"flowchart": {"wrappingWidth": 600}}}%%
@@ -51,11 +51,11 @@ flowchart TD
     subgraph SIS2["Sistema (automático)"]
         direction TB
         b1["Generar contenido del ticket del departamento ya asignado"]
-        b2["Generar y publicar evento"]
+        b2["Publicar evento (RF-07, pendiente de decisión)"]
         b1 --> b2
     end
 
-    b2 --> procReg["Registrar en historial de envíos procesados"] --> decLoop
+    b2 --> procReg["Dejar lista para derivar (la deriva un proceso aparte)"] --> decLoop
 
     style SIS1 fill:#E3F2FD,stroke:#90CAF9,color:#000000,font-weight:bold,font-size:14px
     style SIS2 fill:#E3F2FD,stroke:#90CAF9,color:#000000,font-weight:bold,font-size:14px
@@ -129,7 +129,7 @@ flowchart TD
 
 ## 3. Lote de madrugada — Comparecencia y derivación
 
-Entran las notificaciones ya clasificadas por encima del umbral. No se clasifica otra vez. `peticionAcceso()` es la comparecencia y puede abrir el plazo de respuesta. Los anexos por referencia se piden solo si la respuesta trae `referenciaDocumento`. El acuse se descarga en el mismo ciclo cuando existe. No se extrae ni se resume el documento. Se genera el ticket del departamento ya asignado, sin ese resumen, y se deriva enseguida. Una notificación por debajo del umbral no entra.
+Entran las notificaciones ya clasificadas por encima del umbral. No se clasifica otra vez. `peticionAcceso()` es la comparecencia y puede abrir el plazo de respuesta. Los anexos por referencia se piden solo si la respuesta trae `referenciaDocumento`. El acuse se descarga en el mismo ciclo cuando existe. No se extrae ni se resume el documento. Se genera el ticket del departamento ya asignado, sin ese resumen, y queda lista para derivar: la deriva un proceso independiente (RF-08). Una notificación por debajo del umbral no entra.
 
 ```mermaid
 %%{init: {"flowchart": {"wrappingWidth": 600}}}%%
@@ -160,11 +160,11 @@ flowchart TD
     subgraph SIS2["Sistema (automático)"]
         direction TB
         b1["Generar el ticket del departamento ya asignado, sin resumen del documento"]
-        b2["Generar y publicar evento"]
+        b2["Publicar evento (RF-07, pendiente de decisión)"]
         b1 --> b2
     end
 
-    b2 --> procReg["Registrar en historial de envíos procesados"] --> decMas
+    b2 --> procReg["Dejar lista para derivar (la deriva un proceso aparte)"] --> decMas
     decMas -->|sí| n2
     decMas -->|no| stop1(("Fin"))
 

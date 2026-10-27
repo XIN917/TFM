@@ -5,7 +5,7 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 ## Próximos pasos
 
 - [ ] Cerrar con las áreas las reglas en estado Confirmada/Pendiente de `Criterios_Clasificacion.md` (R10–R12): TGSS salvo embargo, Corredores y Sucursal Central
-- [ ] Nueva versión del prompt con R13–R16 y «Área de Siniestros» en el `enum` de `schema.json` (v1.0 no la incluye)
+- [ ] Nueva versión del prompt con R13–R16; el `enum` de `schema.json` pasa a los `id` de `DEPARTAMENTO` (`ASESORIA_FISCAL`…), incluido `AREA_SINIESTROS`, y la respuesta añade `versionPrompt`
 - [ ] Few-shot: separar los ejemplos que van al prompt de los que se usan para evaluar (no evaluar con los mismos). Faltan ejemplos de R15, R16 y de otras reglas
 - [ ] Siniestros reparte hoy por descarte (lo que no es de otra área), pero el prompt prohíbe clasificar por descarte, y hay envíos de Siniestros cuyo concepto es solo una referencia de expediente, sin materia, que no encajan en R13–R16 (una liquidación autonómica también podría ser tributaria). Sin ejemplos del resto de áreas no se puede medir cuántos envíos ajenos caerían en Siniestros. Decidir entre reglas positivas por organismo y materia (lo dudoso a revisión) o Siniestros como destino por defecto, y reunir ejemplos de las demás áreas para evaluarlo
 - [ ] Conciliar con Asesoría Fiscal y RRHH el destino inicial de los embargos TGSS (R03)
@@ -14,8 +14,9 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 - [ ] Con acceso a LEMA, antes de cargar `REALIZADAS` (RF-12.4): cuántos envíos devuelve `localizaRealizadas()` y qué periodo cubre (el portal solo muestra 30 días); si `tipoEnvio` `1` devuelve comunicaciones; si un envío comparecido aparece al momento (en el portal sí); si trae `metadatosPublicos`. Comprobar también si se pueden recuperar anexos y acuse de envíos antiguos (el límite de 24 h aplica a `consultaAnexos()` y `consultaAcusePdf()`)
 - [ ] En pruebas LEMA: nombre del elemento de los anexos con URL directa (no vienen en `anexosReferencia`; hasta confirmarlo no tienen columna) y formato real de `acusePdf.metadatos` (en los ejemplos contiene el `csvResguardo`)
 - [ ] Tras la experimentación, decidir cómo se mide la confianza de la clasificación: umbral sobre el score (configurable) o el `estado` del prompt (`clasificado` / `revision_humana` / `sin_clasificar`). El prompt v1.0 devuelve `score` siempre `null`
-- [ ] Regenerar las imágenes del ER y de clases en `Diagramas/img/` tras el cambio
-- [ ] Copiar `PRD.md` a `HVOrganismosPublicos`
+- [ ] Alinear diagramas con el PRD (27/10) y regenerar sus imágenes: clases (`ComunicacionAgregado`, `ClasificacionIAGateway`, `TicketingGestionGateway`, `IntentoDerivacionService`, sin `criteriosReparto`; la fuente PlantUML ya incluye `DerivacionController`, falta la imagen), componentes (n8n programa los ciclos y la derivación y aloja la IA; Java dirige el flujo; RF-07 discontinuo, pendiente), flujos 1 y 3 (`img/flujos/`) y ER
+- [ ] Decidir la publicación de RF-07 cuando Infra responda: si entra en el MVP y si RF-08 pasa a consumir el evento. Hasta entonces RF-07 no se da por cumplido
+- [ ] Antes de producción: verificar en desa el SQL de la conciliación manual de RF-08 (bloqueo, comprobación previa, alta de `exito`, paso a `procesada`, índice único). No darlo por validado
 - [ ] Si se hace RF-12.6, acordar el tamaño de la muestra, quién accede a los documentos y cuándo se borran (contienen datos personales de terceros)
 - [ ] Decidir el periodo de retención de `TEXTOEXTRAIDO` (tras hablarlo con los compañeros)
 - [ ] Validar con Seguridad y Protección de Datos las condiciones para remitir documentos reales a OpenAI o Mistral (datos personales, contratos, retención y transferencias). Definir el comportamiento alternativo de derivación si el tratamiento no se autoriza o falla; no asumir que el ticket se genera sin interpretación hasta que se acuerde.
@@ -54,9 +55,12 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 - Campo `motivoResolucion` en `POST /tickets/{id}/estado` — ¿contradice lo de «sin motivo en frontend»?
 - Quién consume el outbox de cancelación y cómo llega al bus / n8n
 - ¿La creación de tickets permite deduplicar por identificador externo (el `identificador` DEHú)? Relevante para RF-08.5
+- Cola destino de cada departamento (con miembros activos) y timeouts recomendados para la API back. Bloquean derivar en real (RF-08)
 
 **Infra**
 
+- Publicación de RF-07: si Java puede publicar en Kafka y cómo (cliente o servicio intermedio), topic, garantías de entrega y quién consumiría. Sin respuesta, RF-07 sigue pendiente (no hay alternativa provisional).
+- Credencial de servicio con la que n8n llama a ApiBack (`/ciclosIngesta`, `/lotesMadrugada`, `/derivaciones`).
 - Canal email (RF-08.2): qué servidor SMTP corporativo y qué remitente usa la aplicación. No es obligatorio en el MVP, pero está planificado tras el ticket.
 
 **IT / Seguridad**

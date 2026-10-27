@@ -85,7 +85,7 @@ erDiagram
     string titulo
     string resumen
     string departamento FK
-    string estado
+    string estado "en_curso | exito | fallo | desconocido"
     boolean esReclasificacion
     string ticketRelacionadoId
     datetime fechaEjecucion
@@ -108,7 +108,7 @@ erDiagram
   }
   USUARIO {
     string id PK, FK "= PERSONA.id (tabla externa, clave compartida)"
-    string rol
+    string rol "nullable; sin uso"
     boolean activo
   }
 
@@ -159,7 +159,6 @@ Cada fila representa **un envío recibido de DEHú** (notificación o comunicaci
 | `estado` | Interno | Ciclo de vida propio del sistema: `pendiente → en_proceso → en_revision / procesada` — no es un estado de DEHú |
 | `fechaEvento`, `fechaIngesta` | Mixto | `fechaEvento` viene de `peticionAcceso()` o `consultaRealizadas()`; `fechaIngesta` es el timestamp interno de cuándo se procesó |
 | `metadatosPublicos` | `localiza()` | Base64 tal como llega (`nvarchar(max)`); la guía no documenta su contenido. No vuelve en `peticionAcceso()`. No se interpreta ni entra en la clasificación |
-
 ---
 
 ## Resumen completo de relaciones
@@ -220,10 +219,11 @@ Historial completo de decisiones de clasificación — no se sobrescribe, se acu
 
 ### `DERIVACION` (1:N)
 
-El resultado de RF-08: cada vez que se ejecuta una acción real hacia un departamento (crear ticket o, si se implementa RF-08.2, enviar email), queda una fila aquí.
+El resultado de RF-08: cada intento de acción hacia un departamento (crear ticket o, si se implementa RF-08.2, enviar email) es una fila.
 
+- `estado` — `en_curso` se registra antes de llamar al canal; después pasa a `exito`, `fallo` (seguro que no se ejecutó; se reintenta con un límite configurable, contando las filas iniciales) o `desconocido` (no se sabe; no se reintenta para no duplicar el ticket). La aplicación solo lo actualiza desde `en_curso`; las filas no se borran. Lo que no se resuelve solo va a la conciliación manual de `PRD.md` RF-08
 - `departamento` (FK) — a qué departamento se derivó
-- `esReclasificacion` + `ticketRelacionadoId` — cubren el caso confirmado con Dani: Ticketing no permite cambiar de cola, así que una reclasificación finaliza el ticket original y crea uno nuevo, enlazados por este campo nativo de la API
+- `esReclasificacion` + `ticketRelacionadoId` — cubren el caso confirmado con el equipo de Ticketing: Ticketing no permite cambiar de cola, así que una reclasificación finaliza el ticket original y crea uno nuevo, enlazados por este campo nativo de la API
 
 ### `REVISION` (1:N opcional)
 
@@ -261,7 +261,7 @@ Envíos que DEHú ya tiene como realizados (aceptados, rechazados o expirados), 
 
 ### `USUARIO`
 
-Gestiona el control de acceso al frontal propio (operador/administrador — RF-09, restricción de reclasificación a admin).
+Trazabilidad de quién resuelve revisiones. Los permisos (consultar, aceptar, editar derivación, reclasificar) se asignan como funcionalidades en SeguridadMGS, no aquí; `rol` queda sin uso. El `USUARIO` se da de alta al resolver por primera vez.
 
 - `id` — clave compartida con `PERSONA` (tabla externa de la empresa, con todos los empleados): `USUARIO.id` es directamente el `id` de `PERSONA`, no un UUID propio. Así se evita duplicar nombre/email, que ya viven en `PERSONA`.
 - `PERSONA` no se dibuja en el ER porque es una tabla externa, gestionada por otro sistema — solo se anota la referencia.
