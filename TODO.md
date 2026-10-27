@@ -13,8 +13,7 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 - [ ] Con acceso a LEMA: dónde llega el área remitente Distribución de DGSFP (R07: `concepto`, `metadatosPublicos` u otro metadato previo a comparecer). No abrir el documento para buscarlo
 - [ ] Con acceso a LEMA, antes de cargar `REALIZADAS` (RF-12.4): cuántos envíos devuelve `localizaRealizadas()` y qué periodo cubre (el portal solo muestra 30 días); si `tipoEnvio` `1` devuelve comunicaciones; si un envío comparecido aparece al momento (en el portal sí); si trae `metadatosPublicos`. Comprobar también si se pueden recuperar anexos y acuse de envíos antiguos (el límite de 24 h aplica a `consultaAnexos()` y `consultaAcusePdf()`)
 - [ ] En pruebas LEMA: nombre del elemento de los anexos con URL directa (no vienen en `anexosReferencia`; hasta confirmarlo no tienen columna) y formato real de `acusePdf.metadatos` (en los ejemplos contiene el `csvResguardo`)
-- [ ] Comentar con la tutora de empresa el cambio del ER: fuera `DEPARTAMENTO.criteriosReparto`, nueva `CLASIFICACION.versionPrompt` (la clasificación la llama n8n)
-- [ ] Decidir la confianza de la clasificación: el prompt v1.0 devuelve `score` siempre `null`, pero RF-02 decide con un umbral sobre el score. Elegir umbral o el `estado` del prompt (`clasificado` / `revision_humana` / `sin_clasificar`)
+- [ ] Tras la experimentación, decidir cómo se mide la confianza de la clasificación: umbral sobre el score (configurable) o el `estado` del prompt (`clasificado` / `revision_humana` / `sin_clasificar`). El prompt v1.0 devuelve `score` siempre `null`
 - [ ] Regenerar las imágenes del ER y de clases en `Diagramas/img/` tras el cambio
 - [ ] Copiar `PRD.md` a `HVOrganismosPublicos`
 - [ ] Si se hace RF-12.6, acordar el tamaño de la muestra, quién accede a los documentos y cuándo se borran (contienen datos personales de terceros)

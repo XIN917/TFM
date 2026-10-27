@@ -443,7 +443,7 @@ Solo las reglas que el código no puede violar.
 - Se clasifica antes de abrir nada. La señal base es organismo emisor y concepto de `localiza()`. No se leen principal, anexos ni acuse. Otro metadato de `localiza()` solo entra si una muestra real demuestra que discrimina. El concepto se reconoce por la materia, sin igualdad exacta. Los DIR3 observados no son la clave universal del organismo.
 - Resultado: el departamento. No hay catálogo de tipos.
 - n8n llama al modelo con el prompt versionado (reglas en estado «Prompt» de `Criterios_Clasificacion.md`) y envía a Java departamento, score, `modelo` y `versionPrompt`. Java comprueba que el departamento existe y está activo en `DEPARTAMENTO`; si no, revisión.
-- Umbral de confianza configurable. Por debajo: `REVISION` (RF-09); no se abre el envío ni se publica acción automática.
+- Umbral de confianza configurable en properties, sin tocar código. Por debajo: `REVISION` (RF-09); no se abre el envío ni se publica acción automática. Si la decisión usa el score o el `estado` que devuelve el prompt se fija tras la experimentación.
 - Sin regla aplicable: sin clasificar. Reglas en conflicto: revisión humana. No se clasifica por descarte ni con reglas pendientes.
 - Reglas en el prompt y pendientes: §6.
 
