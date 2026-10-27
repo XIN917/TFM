@@ -4,11 +4,18 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 
 ## Próximos pasos
 
-- [ ] Cerrar reglas de Siniestros y validar Sucursal Central. Fiscal, Coordinación DGS, Red de Mediación y Canal Directo ya están en el catálogo del PRD. Interlocutores: `_local/interlocutores_reparto.md`. Resúmenes: `_local/reuniones/`
-- [ ] Cuando haya acceso a LEMA, comprobar qué devuelve `localiza()` para una notificación DGSFP que hoy se ve como área remitente Distribución (`concepto`, `metadatosPublicos` u otro dato previo a comparecer). Hasta entonces no entra en el prompt. No abrir el documento para buscarlo. Exclusivos y Mediación sí entran, por concepto. Detalle en `_local/reuniones/`
-- [ ] Validar con RRHH la regla TGSS salvo embargo. Está fuera del prompt. RRHH no consulta hoy el buzón DEHú. Interlocutor en `_local/interlocutores_reparto.md`
+- [ ] Cerrar con las áreas las reglas en estado Confirmada/Pendiente de `Criterios_Clasificacion.md` (R10–R12): TGSS salvo embargo, Corredores y Sucursal Central
+- [ ] Nueva versión del prompt con R13–R16 y «Área de Siniestros» en el `enum` de `schema.json` (v1.0 no la incluye)
+- [ ] Few-shot: separar los ejemplos que van al prompt de los que se usan para evaluar (no evaluar con los mismos). Faltan ejemplos de R15, R16 y de otras reglas
+- [ ] Siniestros reparte hoy por descarte (lo que no es de otra área), pero el prompt prohíbe clasificar por descarte, y hay envíos de Siniestros cuyo concepto es solo una referencia de expediente, sin materia, que no encajan en R13–R16 (una liquidación autonómica también podría ser tributaria). Sin ejemplos del resto de áreas no se puede medir cuántos envíos ajenos caerían en Siniestros. Decidir entre reglas positivas por organismo y materia (lo dudoso a revisión) o Siniestros como destino por defecto, y reunir ejemplos de las demás áreas para evaluarlo
+- [ ] Conciliar con Asesoría Fiscal y RRHH el destino inicial de los embargos TGSS (R03)
+- [ ] Confirmar la cola de Ticketing de AEPD → RRHH (R09)
+- [ ] Con acceso a LEMA: dónde llega el área remitente Distribución de DGSFP (R07: `concepto`, `metadatosPublicos` u otro metadato previo a comparecer). No abrir el documento para buscarlo
 - [ ] Con acceso a LEMA, antes de cargar `REALIZADAS` (RF-12.4): cuántos envíos devuelve `localizaRealizadas()` y qué periodo cubre (el portal solo muestra 30 días); si `tipoEnvio` `1` devuelve comunicaciones; si un envío comparecido aparece al momento (en el portal sí); si trae `metadatosPublicos`. Comprobar también si se pueden recuperar anexos y acuse de envíos antiguos (el límite de 24 h aplica a `consultaAnexos()` y `consultaAcusePdf()`)
 - [ ] En pruebas LEMA: nombre del elemento de los anexos con URL directa (no vienen en `anexosReferencia`; hasta confirmarlo no tienen columna) y formato real de `acusePdf.metadatos` (en los ejemplos contiene el `csvResguardo`)
+- [ ] Comentar con la tutora de empresa el cambio del ER: fuera `DEPARTAMENTO.criteriosReparto`, nueva `CLASIFICACION.versionPrompt` (la clasificación la llama n8n)
+- [ ] Decidir la confianza de la clasificación: el prompt v1.0 devuelve `score` siempre `null`, pero RF-02 decide con un umbral sobre el score. Elegir umbral o el `estado` del prompt (`clasificado` / `revision_humana` / `sin_clasificar`)
+- [ ] Regenerar las imágenes del ER y de clases en `Diagramas/img/` tras el cambio
 - [ ] Copiar `PRD.md` a `HVOrganismosPublicos`
 - [ ] Si se hace RF-12.6, acordar el tamaño de la muestra, quién accede a los documentos y cuándo se borran (contienen datos personales de terceros)
 - [ ] Decidir el periodo de retención de `TEXTOEXTRAIDO` (tras hablarlo con los compañeros)
@@ -31,8 +38,7 @@ Tareas abiertas y preguntas. Contexto y decisiones cerradas: `Estado.md`.
 
 **Áreas de negocio**
 
-- Siniestros y Sucursal Central siguen sin regla activa. No convertir en regla lo observado (ayuntamientos, juzgados, Guardia Civil, contratación) hasta validarlo. Nombres en `_local/interlocutores_reparto.md`.
-- DGSFP + Corredores → Red de Mediación: observado, sin consolidar. Fuera del prompt.
+- Notificaciones judiciales que afectan a empleados: sin destino inicial validado (no hay regla).
 - Interpretación documental: se contempla para los documentos principales de notificaciones y comunicaciones, condicionada a la autorización de IA externa. Sigue pendiente acordar la salida operativa cuando no se pueda procesar el documento.
 
 **Ponente**

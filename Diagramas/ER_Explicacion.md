@@ -68,6 +68,7 @@ erDiagram
     uuid comunicacion_id FK
     string origen "ia | operador"
     string modelo "nullable"
+    string versionPrompt "nullable"
     int nIntentos "nullable; 1, 2, 3… si origen = ia"
     string usuario_id FK "nullable; USUARIO.id si origen = operador"
     string departamentoAsignado FK
@@ -103,7 +104,6 @@ erDiagram
     string nombre
     string colaDestino
     boolean permiteEmail
-    text criteriosReparto
     boolean activo
   }
   USUARIO {
@@ -212,9 +212,10 @@ Historial completo de decisiones de clasificación — no se sobrescribe, se acu
 
 - `origen` — `ia` u `operador`
 - `modelo` — nombre del modelo si hubo LLM; vacío si la clasificación salió solo de metadatos o si `origen = operador`
+- `versionPrompt` — versión del prompt con que n8n llamó al modelo; la devuelve n8n junto al resultado. Permite saber qué reglas estaban activas en cada clasificación. Vacío si no hubo LLM
 - `nIntentos` — `1`, `2`, `3`… solo en filas `ia`. Vacío si `origen = operador`. La inicial es `1`; el tope de reclasificaciones (RF-10.2) cuenta filas `origen = ia` con `nIntentos > 1`, sin campo contador en `COMUNICACION`
 - `usuario_id` (FK, nullable) — el operador de esa fila. Obligatorio si `origen = operador`; vacío si `origen = ia`. Varias clasificaciones de operadores distintos quedan en filas distintas, cada una con su id. No sustituye a `REVISION.usuario_id`, que es quién resolvió esa escalada
-- `departamentoAsignado` (FK, obligatorio) — a qué departamento va la comunicación. Es la única categorización: el modelo clasifica por departamento, con `DEPARTAMENTO.criteriosReparto`. RF-09.6 corrige el departamento. Toda fila tiene departamento.
+- `departamentoAsignado` (FK, obligatorio) — a qué departamento va la comunicación. Es la única categorización: el modelo clasifica por departamento con las reglas del prompt (`Criterios_Clasificacion.md`). Debe existir y estar activo en `DEPARTAMENTO`. RF-09.6 corrige el departamento. Toda fila tiene departamento.
 - Esta tabla es el historial de auditoría: no se sobrescribe, se acumula
 
 ### `DERIVACION` (1:N)
@@ -245,7 +246,6 @@ Catálogo/diccionario, no cuelga directamente de `COMUNICACION` — se referenci
 | `id`, `nombre` | Identidad del departamento |
 | `colaDestino` | Cola de Ticketing asociada, cuando el canal es ticket |
 | `permiteEmail` | Si el email está habilitado como canal (normal o de contingencia) para este departamento — RF-08.2 |
-| `criteriosReparto` | Organismos y materias confirmados cuyo dato ya está en `localiza()` (p. ej. «DGSFP: Modelo 2B, Reclamaciones»). Con este texto se construye el prompt. Una regla confirmada en negocio pero aún no localizable en LEMA no se escribe aquí. Cambiar el reparto es cambiar datos, no código. El concepto no se compara por igualdad exacta |
 | `activo` | Si el departamento sigue operativo |
 
 ### `REALIZADAS`
@@ -257,7 +257,7 @@ Envíos que DEHú ya tiene como realizados (aceptados, rechazados o expirados), 
 - `referenciaPdfAcuse` (referencia al PDF del acuse, base64) y `csvResguardo` del envío — de `localizaRealizadas()`, tal como llegan
 - `rutaDocumento`, `hashSha256`, `algoritmoHash` — solo si se descargó el principal con `consultaRealizadas()` para analizarlo o etiquetarlo (RF-12.6). Anexos y acuse no se piden
 - `departamentoEsperado` — el departamento correcto, etiquetado a mano o con las áreas
-- `departamentoPropuesto`, `scoreConfianza`, `modelo`, `fechaClasificacion` — la última clasificación con el mismo prompt y umbral que el flujo normal. Para comparar varias versiones de `criteriosReparto` haría falta una tabla hija
+- `departamentoPropuesto`, `scoreConfianza`, `modelo`, `fechaClasificacion` — la última clasificación con el mismo prompt y umbral que el flujo normal. Para comparar varias versiones del prompt haría falta una tabla hija
 
 ### `USUARIO`
 

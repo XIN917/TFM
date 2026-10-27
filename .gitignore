@@ -1,10 +1,8 @@
 .DS_Store
 .env
 
-# Notas de trabajo locales
+# Notas locales (opcional; no versionar)
 _local/
 
-_pdftool/
-
-# Datos
+# Datos sensibles o de experimentación fuera de este repo
 data/

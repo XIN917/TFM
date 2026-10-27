@@ -99,7 +99,7 @@ Operador ──► Vue Web ──► ApiFront (JAX-RS) ──► servicios de re
 
 | Bloque | RF | Dónde |
 |---|---|---|
-| Ingesta y clasificación | 01–07 | n8n dispara; `LemaGateway`, repositorios y persistencia IA en Java |
+| Ingesta y clasificación | 01–07 | n8n dispara y hace las llamadas a IA (clasificación e interpretación); `LemaGateway`, repositorios y persistencia en Java |
 | Ejecución de canal | 08 | `EjecutarDerivacionService` + `NotificacionGateway` |
 | Reclasificación automática | 10 | `ApiConsumer` + `AgenteReclasificacionService` + MCP fuera de WAS |
 | Revisión y consulta | 09, 11 | `ApiFront` + `HVOrganismosPublicosWeb` |
@@ -204,7 +204,7 @@ HVOrganismosPublicos/
 │           │   │   ├── InterpretarComunicacionService.java          # RF-04/05
 │           │   │   └── RegistrarInterpretacionService.java
 │           │   ├── clasificacion/
-│           │   │   ├── ClasificarComunicacionService.java           # RF-02
+│           │   │   ├── RegistrarClasificacionService.java           # RF-02
 │           │   │   └── GenerarContenidoTicketService.java           # RF-06
 │           │   ├── eventos/
 │           │   │   └── PublicarComunicacionClasificadaService.java  # RF-07
@@ -409,7 +409,7 @@ Dependencias de cada servicio:
 | `IngestarComunicacionesService` | `LemaGateway`, `ComunicacionRepository`, `AlmacenDocumentosGateway` |
 | `InterpretarComunicacionService` | `InterpretacionIAGateway`, `ComunicacionRepository` |
 | `RegistrarInterpretacionService` | `ComunicacionRepository` |
-| `ClasificarComunicacionService` | `ComunicacionRepository`, `DepartamentoRepository` |
+| `RegistrarClasificacionService` | `ComunicacionRepository`, `DepartamentoRepository` |
 | `GenerarContenidoTicketService` | `ComunicacionRepository` |
 | `PublicarComunicacionClasificadaService` | `EventosGateway`, `ComunicacionRepository` |
 | `EjecutarDerivacionService` | `ComunicacionRepository`, `NotificacionGatewayResolver` |
@@ -441,10 +441,11 @@ Solo las reglas que el código no puede violar.
 ### RF-02 Clasificación
 
 - Se clasifica antes de abrir nada. La señal base es organismo emisor y concepto de `localiza()`. No se leen principal, anexos ni acuse. Otro metadato de `localiza()` solo entra si una muestra real demuestra que discrimina. El concepto se reconoce por la materia, sin igualdad exacta. Los DIR3 observados no son la clave universal del organismo.
-- Resultado: el departamento. No hay catálogo de tipos. El prompt se construye solo con `DEPARTAMENTO.criteriosReparto` (reglas confirmadas y ya realizables con `localiza()`).
+- Resultado: el departamento. No hay catálogo de tipos.
+- n8n llama al modelo con el prompt versionado (reglas en estado «Prompt» de `Criterios_Clasificacion.md`) y envía a Java departamento, score, `modelo` y `versionPrompt`. Java comprueba que el departamento existe y está activo en `DEPARTAMENTO`; si no, revisión.
 - Umbral de confianza configurable. Por debajo: `REVISION` (RF-09); no se abre el envío ni se publica acción automática.
-- DGSFP no va a un solo departamento: la materia separa Coordinación DGS, SAC y Red de Mediación. Exclusivos y Mediación entran por concepto. Distribución → Red de Mediación está confirmada en negocio y fuera del prompt: el área remitente se ve en un aviso de la sede y no es un campo documentado de `localiza()`.
-- TGSS salvo embargo → RRHH está fuera del prompt hasta validarlo con RRHH. No consultar hoy el buzón no excluye a un departamento como destino.
+- Sin regla aplicable: sin clasificar. Reglas en conflicto: revisión humana. No se clasifica por descarte ni con reglas pendientes.
+- Reglas en el prompt y pendientes: §6.
 
 ### RF-03 Almacenamiento documental (crítico)
 
@@ -540,30 +541,30 @@ Campos:
 - **DOCUMENTO:** `id`, `comunicacion_id`, `tipo`, `nombre`, `mimeType`, `hashSha256`, `algoritmoHash`, `csvResguardo` (el del documento en `peticionAcceso()`), `referenciaDocumento` (anexo por referencia), `metadatos` (`documento.metadatos` o `acusePdf.metadatos` en base64, `nvarchar(max)`; vacío en anexos; no se interpreta), `rutaAlmacenamiento`, `fechaDescarga`.
 - **INTERPRETACION:** `id`, `comunicacion_id`, `entidadesExtraidas` (JSON en `nvarchar`), `scoreConfianza`, `fechaProcesado`.
 - **TEXTOEXTRAIDO:** `id`, `interpretacion_id`, `textoExtraido`, `fechaCreacion`.
-- **CLASIFICACION:** `id`, `comunicacion_id`, `origen` (`ia` | `operador`), `modelo` (solo si hubo LLM), `nIntentos` (`1`, `2`, `3`…; solo si `origen=ia`), `usuario_id` (solo si `origen=operador`), `departamentoAsignado` (obligatorio), `canalAsignado`, `scoreConfianza`, `resultado`, `fecha`.
+- **CLASIFICACION:** `id`, `comunicacion_id`, `origen` (`ia` | `operador`), `modelo` y `versionPrompt` (solo si hubo LLM; los envía n8n), `nIntentos` (`1`, `2`, `3`…; solo si `origen=ia`), `usuario_id` (solo si `origen=operador`), `departamentoAsignado` (obligatorio), `canalAsignado`, `scoreConfianza`, `resultado`, `fecha`.
 - **DERIVACION:** `id`, `comunicacion_id`, `canal`, `identificadorExterno`, `titulo`, `resumen`, `departamento` (FK), `estado` (`exito` | `fallo`), `esReclasificacion`, `ticketRelacionadoId`, `fechaEjecucion`.
 - **REVISION:** `id`, `comunicacion_id`, `usuario_id` (nulo hasta resolver), `motivo`, `resuelto`, `fechaEntrada`, `fechaResolucion`.
-- **DEPARTAMENTO:** `id`, `nombre`, `colaDestino`, `permiteEmail`, `criteriosReparto` (texto), `activo`.
+- **DEPARTAMENTO:** `id`, `nombre`, `colaDestino`, `permiteEmail`, `activo`.
 - **USUARIO:** `id` (= `PERSONA.id` de Personas, sin FK física), `rol`, `activo`.
 - **REALIZADAS:** `id`, `identificador` (único; nunca presente en `COMUNICACION`), `codigoOrigen`, `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre`, `organismoEmisorRaizCodigo`, `organismoEmisorRaizNombre`, `fechaPuestaDisposicion`, `tipoEnvio`, `vinculo`, `titularNombre`, `titularNif`, `estadoDehu`, `referenciaPdfAcuse`, `csvResguardo` (del envío), `rutaDocumento`, `hashSha256`, `algoritmoHash` (solo si se descargó el principal), `departamentoEsperado` (FK, etiquetado), `departamentoPropuesto` (FK), `scoreConfianza`, `modelo`, `fechaClasificacion`, `fechaCarga`.
 
-Semilla de `DEPARTAMENTO`. `criteriosReparto` es el texto del prompt: solo reglas confirmadas cuyo dato ya está en `localiza()`. Los DIR3 son ejemplos observados (`E00119006` DGSFP, `EA0028512` AEAT, `E00127105` Catastro, `EA0042298` TGSS); no son la clave de la regla. Faltan las colas reales de Ticketing.
+Semilla de `DEPARTAMENTO`: Asesoría Fiscal, Coordinación DGS, SAC, Red de Mediación, Canal Directo, Recursos Humanos y Área de Siniestros. Faltan las colas reales de Ticketing. Los nombres deben coincidir con los que devuelve el prompt.
 
-| Departamento | `criteriosReparto` |
+Reglas del prompt de clasificación (lo mantiene n8n; IDs del catálogo vivo `Criterios_Clasificacion.md` del repo TFM). Los DIR3 son ejemplos observados (`E00119006` DGSFP, `EA0028512` AEAT, `E00127105` Catastro, `EA0042298` TGSS); no son la clave de la regla.
+
+| Departamento | Reglas |
 |---|---|
-| Coordinación DGS | DGSFP: Inspección, análisis de balances, Solvencia, DEC |
-| SAC | DGSFP: Modelo 2B, Reclamaciones. El concepto puede llevar variación de formato |
-| Red de Mediación | DGSFP: Exclusivos, Mediación |
-| Asesoría Fiscal | AEAT; Dirección General del Catastro; TGSS cuando el concepto es embargo o levantamiento de embargo, aunque venga abreviado |
-| Canal Directo | Entidad Pública Empresarial red.es, con concepto o referencia asociados a Kit Digital (por ejemplo KD). «Kit Digital» no es un literal obligatorio |
-| Servicio Jurídico | AEPD |
+| Asesoría Fiscal | AEAT (R01); Dirección General del Catastro (R02); TGSS cuando el concepto es embargo o levantamiento de embargo, aunque venga abreviado (R03) |
+| Coordinación DGS | DGSFP: Inspección, análisis de balances, Solvencia, DEC (R04) |
+| SAC | DGSFP: Modelo 2B, Reclamaciones. El concepto puede llevar variación de formato (R05) |
+| Red de Mediación | DGSFP: Exclusivos, Mediación (R06); DGSFP cuando los metadatos identifican el área remitente Distribución (R07) |
+| Canal Directo | Entidad Pública Empresarial red.es, con concepto o referencia asociados a Kit Digital (por ejemplo KD). «Kit Digital» no es un literal obligatorio (R08) |
+| Recursos Humanos | AEPD (R09) |
+| Área de Siniestros | Órganos judiciales con sección, plaza y número de procedimiento o actuación procesal en el concepto (R13); administraciones autonómicas con facturas o recursos sobre facturas, facturas hospitalarias, abono de precio público o citaciones por tráfico (R14); administraciones con daños a bienes públicos (R15); Guardia Civil con citaciones o diligencias (R16) |
 
-Fuera del prompt, y por tanto sin fila activa de criterio:
-
-- DGSFP + Distribución → Red de Mediación. Regla de negocio confirmada. El área remitente se ve en un aviso de la sede, no en `localiza()` documentado. Entra si una muestra real lo muestra en `concepto`, `metadatosPublicos` u otro metadato previo a comparecer.
-- DGSFP + Corredores → Red de Mediación. Observado, sin consolidar.
-- TGSS salvo embargo → RRHH. Identificado por Asesoría Fiscal; pendiente de validación directa con RRHH. RRHH no consulta hoy el buzón DEHú.
-- Siniestros y Sucursal Central. Sin regla hasta cerrar su catálogo. Un ayuntamiento no implica un departamento.
+- R07: falta comprobar si LEMA trae el área remitente (`concepto`, `metadatosPublicos` u otro metadato previo a comparecer). Si no llega, la regla no se dispara.
+- R09: la gestiona una unidad de RRHH (Servicio Jurídico y de Cumplimiento Normativo); no es departamento propio. Falta confirmar la cola de Ticketing.
+- Sin fila activa: TGSS salvo embargo → RRHH (R10), Corredores (R11) y Sucursal Central (R12). Un ayuntamiento no implica un departamento.
 
 Agrupar varias notificaciones por referencia de acuerdo es una necesidad identificada en Canal Directo y no es requisito del MVP. La clasificación de ese departamento es la fila de arriba.
 
@@ -688,7 +689,8 @@ Credencial de servicio, no de Operador.
 
 | Método | Path | RF | Servicio |
 |---|---|---|---|
-| `POST` | `/ciclosIngesta` | 01, 02, 03 | `IngestarComunicacionesService`: `localiza()`, persiste metadatos y clasifica (RF-02) antes de abrir. Sin envíos nuevos → `204`. Una comunicación sobre el umbral sigue a `peticionAcceso()` en el mismo ciclo (RF-03). Una notificación sobre el umbral queda para el lote de madrugada. Por debajo del umbral, revisión y no se abre |
+| `POST` | `/ciclosIngesta` | 01 | `IngestarComunicacionesService`: `localiza()`, persiste metadatos y devuelve a n8n los envíos nuevos para clasificar. Sin envíos nuevos → `204` |
+| `POST` | `/clasificaciones` | 02, 03 | `RegistrarClasificacionService`: n8n envía departamento, score, `modelo` y `versionPrompt`. Java valida el departamento y guarda `CLASIFICACION`. Una comunicación sobre el umbral sigue a `peticionAcceso()` en el mismo ciclo (RF-03). Una notificación sobre el umbral queda para el lote de madrugada. Por debajo del umbral, revisión y no se abre |
 | `POST` | `/lotesMadrugada` | 01, 03, 06, 08 | Comparece las notificaciones ya clasificadas por encima del umbral, archiva documento, anexos y acuse cuando existan, permite su interpretación documental si está autorizada y deriva conforme al flujo. No vuelve a clasificar |
 | `POST` | `/interpretaciones` | 04–06 | `RegistrarInterpretacionService` + `GenerarContenidoTicketService`. No clasifica. Solo hay documento que interpretar si ya se abrió |
 | `POST` | `/eventos/comunicacionClasificada` | 07 | `PublicarComunicacionClasificadaService` (solo si n8n no publica al bus) |
@@ -821,8 +823,8 @@ Mientras no se cierren, se implementa lo descrito aquí sin fijar valores en có
 | Subdepartamentos de Siniestros | Clasificación interna documental fuera del MVP hasta disponer de criterios suficientes. |
 | Cobertura LEMA para destinatarios personas físicas | Comprobar durante integración si los envíos cuyos avisos recibe MGS pero que identifican a una persona física como destinataria aparecen con la autorización de Gran Destinatario de MGS. No ampliar por ello el alcance a Notific@. |
 | Vencimiento de acceso | Contrastar fechas reales con `localiza()` y validar el cómputo jurídico; no confundir estimaciones con vencimientos confirmados ni con plazos de actuación. |
-| Cómo aparece Distribución en `localiza()` | La regla DGSFP + Distribución → Red de Mediación está confirmada y fuera del prompt. Hay que ver si el dato llega en `concepto`, `metadatosPublicos` u otro metadato previo a comparecer (RF-02). |
-| Catálogo de Siniestros y Sucursal Central | Sin reglas activas hasta cerrarlo. Tampoco Corredores, ni TGSS → RRHH hasta validarlo con RRHH (RF-02). |
+| Cómo aparece Distribución en `localiza()` | R07 solo se dispara si el dato llega en `concepto`, `metadatosPublicos` u otro metadato previo a comparecer (§6). |
+| Reglas sin activar | R10–R12 (TGSS salvo embargo, Corredores, Sucursal Central) hasta validarlas (§6). |
 | Interpretación de notificaciones | Incluida en el alcance funcional, condicionada a la autorización de tratamiento mediante IA externa. |
 | Retención de `TEXTOEXTRAIDO` | Valor del parámetro. |
 | Procesamiento documental OpenAI/Mistral | Seleccionar modelo y API; probar PDFs digitales, escaneados y mixtos, transcripción completa, coste, latencia y calidad. No se presupone OCR independiente ni confianza calibrada. |

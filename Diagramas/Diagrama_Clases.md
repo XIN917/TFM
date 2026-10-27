@@ -228,6 +228,7 @@ package "modelo" {
         +id: UUID
         +origen: String
         +modelo: String
+        +versionPrompt: String
         +nIntentos: Integer
         +usuarioId: String
         +departamentoAsignado: String
@@ -268,7 +269,6 @@ package "modelo" {
         +nombre: String
         +colaDestino: String
         +permiteEmail: boolean
-        +criteriosReparto: String
         +activo: boolean
     }
 

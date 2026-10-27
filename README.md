@@ -5,21 +5,21 @@ tramitación de comunicaciones electrónicas de la administración pública (DEH
 mediante IA (OCR + LLM), integrada con el sistema interno de ticketing de la empresa
 colaboradora (MGS Seguros).
 
-Este repositorio reúne toda la documentación de análisis y diseño, diagramas y anexos
-generados durante el desarrollo del TFM, que después se formalizarán en la memoria
-final.
+Este repositorio reúne la documentación de análisis y diseño del TFM (diagramas, requisitos, memoria en borrador). Convenciones de redacción y confidencialidad: [Estado.md](Estado.md) (apartado «Convenciones del repo»).
 
 ## Contenido
 
 | Documento | Descripción |
 |---|---|
 | [Propuesta de proyecto.md](Propuesta%20de%20proyecto.md) | Propuesta inicial: motivación, objetivos y alcance |
-| [Especificacion_Requisitos.md](Especificacion_Requisitos.md) | Especificación funcional completa (requisitos RF-01 a RF-11) |
-| [DEHu_Campos_Respuesta_Servicios.md](DEHu_Campos_Respuesta_Servicios.md) | Referencia de campos y servicios web LEMA/DEHú |
-| [Estado.md](Estado.md) | Estado actual, contexto y decisiones cerradas |
+| [Especificacion_Requisitos.md](Especificacion_Requisitos.md) | Especificación funcional (RF-01 a RF-12) |
+| [Criterios_Clasificacion.md](Criterios_Clasificacion.md) | Fuente única de reglas de reparto (IDs R01…, estado y bloqueos) |
+| [DEHu_Campos_Respuesta_Servicios.md](DEHu_Campos_Respuesta_Servicios.md) | Campos y servicios web LEMA/DEHú |
+| [Estado.md](Estado.md) | Contexto, decisiones cerradas, convenciones del repo |
 | [TODO.md](TODO.md) | Tareas pendientes y preguntas abiertas |
 | [Estructura_Memoria.md](Estructura_Memoria.md) | Estructura de la memoria final del TFM |
-| [PRD.md](PRD.md) | Producto e implementación: módulos WAS, arquitectura, RFs, datos, endpoints |
+| [PRD.md](PRD.md) | Producto e implementación (copia de trabajo hacia `HVOrganismosPublicos`) |
+| [`docs/`](docs/) | Guía DEHú (PDF), instrucciones certificado LEMA (docx) |
 
 ### Memoria ([`memoria/`](memoria/))
 
