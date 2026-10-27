@@ -43,11 +43,12 @@ Estados: **Prompt** (entra en el prompt de clasificación) · **Confirmada** (ne
 - Los DIR3 observados son ejemplos, no clave de la regla.
 - Los avisos por correo y los portales propios (p. ej. el de Seguridad Social que usa RRHH) sirven para descubrir reglas; la entrada del clasificador es solo DEHú/LEMA.
 - Distinciones que dependen del contenido del documento (p. ej. embargos de empleados frente a mediadores, deudas vinculadas a siniestros) no son reglas por metadatos.
+- Área de Siniestros no es un destino por defecto: solo se asigna cuando otra regla lo excluye con claridad (R13–R16); un caso dudoso va a revisión humana, no a Siniestros.
 
 ## Cómo añadir o cambiar un criterio
 
 1. Nueva fila con el siguiente ID libre (los IDs no se reutilizan ni se renumeran) o editar la existente. Sin nombres de personas.
 2. Rellenar organismo, condición, departamento, estado y bloqueo, en términos generales y comprobando que el dato llega en `localiza()`. Los casos concretos no se añaden aquí.
 3. Si hay discrepancia con una regla existente, anotarla en la nota sin sustituir la regla hasta validarla.
-4. Si el estado es **Prompt** o pasa a serlo: nueva versión del prompt, cargarla en n8n y actualizar `PRD.md` §6.
+4. Si el estado es **Prompt** o pasa a serlo: nueva versión del prompt y cargarla en n8n. `PRD.md` §6 solo cambia si se añade o retira un departamento (ver punto 5); no repite reglas.
 5. Si cambia el catálogo de departamentos: actualizar también el `enum` de `schema.json` y la semilla de `DEPARTAMENTO` (los nombres deben coincidir).
