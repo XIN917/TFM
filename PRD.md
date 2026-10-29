@@ -25,9 +25,9 @@ El nombre `OrganismosPublicos` deja abierta la puerta a otras fuentes, pero el M
 
 1. Detectar el envío con `localiza()` y guardar los metadatos que `peticionAcceso()` no devuelve.
 2. Clasificar por departamento antes de abrir. La señal base es organismo emisor y concepto. No se lee el documento.
-3. Según `tipoEnvio`, solo si la confianza supera el umbral:
-   - Comunicación (`1`): descargar en el mismo ciclo, extraer información relevante del documento principal y seguir, sujeto a autorización de tratamiento.
-   - Notificación (`2`): clasificada por encima del umbral, o con departamento asignado por revisión humana (RF-09.5/09.6), queda `pendiente_descarga` a la espera de que el Operador pulse el botón de descarga en el frontal (RF-01.5); al pulsarlo, comparece, guarda documento, anexos y acuse, obtiene información relevante del principal si el tratamiento está autorizado y la deja lista para derivar (RF-08).
+3. Según `tipoEnvio`:
+   - Comunicación (`1`): descargar en un ciclo, extraer información relevante del documento principal y seguir, sujeto a autorización de tratamiento. Abrirla no tiene efectos jurídicos: se abre antes o después de clasificar según `organismosPublicos.comunicacion.abrirAntesDeClasificar` (RF-01).
+   - Notificación (`2`): solo con departamento (clasificada por encima del umbral o asignado por revisión humana, RF-09.5/09.6). Queda sin abrir, a la espera de que un usuario del frontal pulse el botón de descarga (RF-01.5); al pulsarlo, comparece, guarda documento, anexos y acuse, obtiene información relevante del principal si el tratamiento está autorizado y la deja lista para derivar (RF-08).
 4. Publicar el evento de comunicación clasificada (RF-07). Pendiente de decisión; mientras tanto, la comunicación queda lista para derivar en BBDD.
 5. Ejecutar la acción del canal en un proceso independiente: ticket obligatorio, email deseable (RF-08).
 6. Revisión humana (RF-09) y reclasificación por Operador o Agente IA (RF-10).
@@ -42,7 +42,6 @@ Generar el evento (RF-07) y ejecutar la acción (RF-08) son pasos separados, par
 - MCP genérico: el Agente IA solo puede finalizar un ticket y crear otro (RF-10).
 - Multi-certificado / multi-razón social.
 - Buzón interno (RF-08.3; se mantiene el hueco de numeración).
-- Rol `consulta` para departamentos en el frontal HV, hasta que decidan IT y Seguridad.
 - Aprendizaje continuo del modelo con el feedback del Operador. Persistir ese feedback sí es deseable (RF-09.3).
 - RF-12 (`localizaRealizadas` / `consultaRealizadas`): reconciliación y evaluación de la clasificación con `REALIZADAS`, solo si sobra tiempo.
 - Gestión de usuarios, roles y permisos: responsabilidad de SeguridadMGS.
@@ -57,26 +56,24 @@ Generar el evento (RF-07) y ejecutar la acción (RF-08) son pasos separados, par
 |---|---|
 | DEHú/LEMA | Fuente SOAP. El sistema llama; LEMA no empuja. |
 | Operador / Administrador | Usa el frontal HV: cola de revisión y consulta local (RF-09, RF-11). |
-| Departamento | Trabaja en el frontal de Ticketing, no en HV. Si cancela un ticket, dispara RF-10. |
+| Departamento | Recibe el ticket en el frontal de Ticketing y consulta el detalle y los documentos en el frontal HV (funcionalidad Consultar), al que lleva el enlace de la descripción del ticket (RF-08). Si cancela un ticket, dispara RF-10. |
 
 Permisos por funcionalidad de SeguridadMGS, asignadas fuera de la aplicación. Se autoriza por funcionalidad en cada endpoint, nunca por nombre de rol. Los perfiles de negocio (Operador, Administrador) son combinaciones de funcionalidades:
 
 | Funcionalidad | Permite |
 |---|---|
-| Consultar | Entrar al frontal, ver la cola de revisión y la consulta local. |
+| Consultar | Entrar al frontal, ver la cola de revisión y la consulta local. Por ahora también pulsar el botón de descarga de una notificación (RF-01.5); separarlo en una funcionalidad propia queda pendiente (§13). |
 | Aceptar | Aceptar la propuesta de la IA (RF-09.5). |
 | Editar derivación | Modificar el ticket (RF-11.4/11.5). |
 | Reclasificar | Elegir otro departamento (RF-09.6). Solo Administrador. |
-| Descargar | Pulsar el botón de descarga de una notificación, con confirmación previa de que practica la comparecencia legal (RF-01.5). Funcionalidad nueva; a quién se le asigna lo decide SeguridadMGS — ver `TODO.md`. |
-
 `USUARIO` solo da trazabilidad: cada resolución de `REVISION` guarda quién la hizo, y el `USUARIO` se da de alta al resolver por primera vez.
 
 ---
 
 ## 3. Arquitectura
 
-- **Reparto Java / n8n:** n8n programa el sondeo (llama a ApiBack) y aloja los flujos de IA: clasificación e interpretación, con sus prompts y proveedor. Java dirige el flujo y es dueño del estado y de la ventana de 24 h: ingesta, pide a n8n lo que necesita de IA, decide, guarda y deriva. La comparecencia de una notificación ya no la programa n8n: la dispara el Operador desde el frontal (RF-01.5).
-- **Estado como cola:** el `estado` de `COMUNICACION` dice qué falta. Cada ciclo procesa lo pendiente; cada paso se puede repetir sin efectos duplicados, y lo que falla (LEMA, IA) se reintenta en el siguiente ciclo. La derivación inicial (RF-08) no la ejecuta el ciclo: es un proceso independiente (`/derivaciones`) sobre las comunicaciones listas. Las reclasificaciones siguen su propio flujo (RF-08).
+- **Reparto Java / n8n:** n8n programa el sondeo (llama a ApiBack) y aloja los flujos de IA: clasificación e interpretación, con sus prompts y proveedor. Java dirige el flujo y es dueño del estado y de la ventana de 24 h: ingesta, pide a n8n lo que necesita de IA, decide, guarda y deriva. La comparecencia de una notificación ya no la programa n8n: la dispara un usuario desde el frontal (RF-01.5).
+- **Estado como cola:** el `estado` de `COMUNICACION` dice en qué punto de la clasificación y la derivación está; qué documentos faltan se deduce de `DOCUMENTO`. Cada ciclo procesa lo pendiente; cada paso se puede repetir sin efectos duplicados, y lo que falla (LEMA, IA) se reintenta en el siguiente ciclo. La derivación inicial (RF-08) no la ejecuta el ciclo: es un proceso independiente (`/derivaciones`) sobre las comunicaciones listas. Las reclasificaciones siguen su propio flujo (RF-08).
 - **Eventos:** hacia consumidores externos (RF-07, pendiente de decisión) y desde Ticketing (cancelación, RF-10). Los eventos propios de Ticketing son responsabilidad de ese equipo.
 - **Dentro de Java:** hexagonal: `modelo` / `aplicacion` / `infraestructura` / `api`.
 
@@ -120,7 +117,7 @@ Operador ──► Vue Web ──► ApiFront (JAX-RS) ──► servicios de re
 ### 3.2 Qué no crear
 
 - DAO, EJB/EJBClient/Utils, WebService SOAP propio ni EAR batch aparte.
-- El sondeo es un endpoint Back que dispara n8n; igual la vigilancia de descargas incompletas (*Could*, `/vigilanciaDescargas`). La comparecencia de una notificación es un endpoint Front que dispara el Operador, no n8n. Sin timers en el WAR.
+- El sondeo es un endpoint Back que dispara n8n; igual la vigilancia de descargas incompletas (*Could*, `/vigilanciaDescargas`). La comparecencia de una notificación es un endpoint Front que dispara un usuario del frontal, no n8n. Sin timers en el WAR.
 - Los prompts y el proveedor de IA no viven en Java ni en BBDD: están en los flujos de n8n.
 - El Agente IA no es un WAR en WAS. En Java solo existe `AgenteIAClient`.
 
@@ -219,7 +216,7 @@ HVOrganismosPublicos/
 │           │   ├── eventos/
 │           │   │   └── PublicarComunicacionClasificadaService.java  # RF-07
 │           │   ├── comparecencia/
-│           │   │   ├── ComparecerNotificacionService.java           # RF-01.5: botón del Operador
+│           │   │   ├── ComparecerNotificacionService.java           # RF-01.5: botón de descarga
 │           │   │   └── VigilarDescargasService.java                 # RF-01.5/03, Could: /vigilanciaDescargas
 │           │   ├── derivacion/
 │           │   │   ├── EjecutarDerivacionService.java               # UML RF-08
@@ -396,11 +393,11 @@ Classpath (ya aplicado en RAD): Business → Beans + Comun; Test → Business; F
 
 | Clase | Métodos |
 |---|---|
-| `ComunicacionAgregado` | `tieneDerivacionAsociada`, `tieneDerivacionExitosa`, `tieneDerivacionPendiente`, `tieneRevisionActiva`, `derivacionActiva`, `ultimaClasificacionIa`, `contarIntentosReclasificacion`, `registrarDerivacion`, `registrarClasificacion`, `escalarARevision`, `resolverRevisionActiva`, `marcarEnProceso`, `marcarProcesada`, `marcarPendienteDescarga`, `registrarComparecencia` (RF-01.5: persiste `principal`, filas `DOCUMENTO` pendientes y quién/cuándo pulsó el botón), `documentosPendientes` |
+| `ComunicacionAgregado` | `tieneDerivacionAsociada`, `tieneDerivacionExitosa`, `tieneDerivacionPendiente`, `tieneRevisionActiva`, `derivacionActiva`, `ultimaClasificacionIa`, `contarIntentosReclasificacion`, `registrarDerivacion`, `registrarClasificacion`, `escalarARevision`, `resolverRevisionActiva`, `marcarEnProceso`, `marcarProcesada`, `registrarComparecencia` (RF-01.5: persiste `principal`, filas `DOCUMENTO` pendientes y quién/cuándo pulsó el botón), `documentosPendientes` |
 | `Documento` | `verificarIntegridad`, `estaPendiente` (`fechaDescarga IS NULL`), `registrarIntento` (incrementa `nIntentos`, guarda `ultimoError`), `registrarDescarga` |
 | `Derivacion` | `esModificableInPlace`, `actualizar` |
 | `Revision` | `resolver(Usuario)` |
-| `ComunicacionRepository` | `saveNueva` (no inserta si el `identificador` ya existe), `query`, `queryListado`, `queryAgregado`, `queryAgregadoParaActualizar` (con bloqueo), `saveAgregado`, `saveResultadoDerivacion`, `queryRevisionesPendientes`, `queryPendientesDeAtencion` (RF-11.8: `pendiente_descarga` o con `DOCUMENTO` pendiente, ordenable por tiempo restante) |
+| `ComunicacionRepository` | `saveNueva` (no inserta si el `identificador` ya existe), `query`, `queryListado`, `queryAgregado`, `queryAgregadoParaActualizar` (con bloqueo), `saveAgregado`, `saveResultadoDerivacion`, `queryRevisionesPendientes`, `queryPendientesDeAtencion` (RF-11.8: notificaciones en `en_proceso` sin `principal`, o con `DOCUMENTO` pendiente; ordenable por tiempo restante) |
 | `DepartamentoRepository` | `queryColaDestino`, `existsActivo` |
 | `LemaGateway` | `localiza`, `peticionAcceso`, `consultaAnexos`, `consultaAcusePdf` (implementado por `LemaClient`) |
 | `TicketingGateway` | `crearTicket` |
@@ -411,7 +408,7 @@ Classpath (ya aplicado en RAD): Business → Beans + Comun; Test → Business; F
 
 `ConstantesDominio`:
 
-- Estado de `COMUNICACION`: `pendiente`, `en_proceso`, `pendiente_descarga` (solo notificaciones clasificadas o con departamento asignado por revisión humana, a la espera de que el Operador pulse el botón de descarga — RF-01.5), `en_revision`, `procesada` (`pendiente → en_proceso → pendiente_descarga (solo notificación) / en_revision / procesada`). Es el ciclo interno del sistema, no un estado de DEHú.
+- Estado de `COMUNICACION`: `pendiente` (sin clasificar), `en_revision` (revisión humana abierta), `en_proceso` (con departamento, por IA sobre el umbral o por revisión humana), `procesada` (derivación inicial con `exito`). Transiciones: `pendiente → en_proceso / en_revision`, `en_revision → en_proceso`, `en_proceso → procesada`. Describe la clasificación y la derivación, no la descarga: qué documentos faltan se deduce de `DOCUMENTO` y de `tipoEnvio` (comunicación: la descarga el ciclo, RF-01; notificación: el botón de descarga, RF-01.5). Es el ciclo interno del sistema, no un estado de DEHú.
 - Origen de clasificación: `ia`, `operador`.
 - Canal: `ticket`, `email`.
 - Tipo de documento: `principal`, `anexo`, `acuse`.
@@ -457,14 +454,14 @@ Solo las reglas que el código no puede violar.
 - Idempotencia por `identificador` DEHú: un envío ya registrado no se reprocesa.
 - Reintentos con backoff ante fallos SOAP, de certificado o de red, sin perder el envío pendiente.
 - Lotes de menos de 1000 peticiones por operación LEMA.
-- Comunicación (`tipoEnvio` `1`): `peticionAcceso(identificador, codigoOrigen)` en el mismo ciclo. Acceder no tiene efectos jurídicos y no hay acuse.
-- Notificación (`tipoEnvio` `2`): el sondeo no comparece. `peticionAcceso()` es la comparecencia y puede abrir el plazo de respuesta. Clasificada por encima del umbral, o con departamento asignado por revisión humana (RF-09.5/09.6), pasa a `pendiente_descarga` y espera al botón de descarga del Operador (RF-01.5). Por debajo del umbral no se abre.
+- Comunicación (`tipoEnvio` `1`): `peticionAcceso(identificador, codigoOrigen)`. Acceder no tiene efectos jurídicos y no hay acuse. Cuándo se abre lo decide `organismosPublicos.comunicacion.abrirAntesDeClasificar`: `true`, en el ciclo en que se registra; `false`, cuando tiene departamento (IA por encima del umbral o revisión humana). Si falla, se reintenta en los ciclos siguientes. No cambia RF-02: la clasificación sigue usando solo metadatos.
+- Notificación (`tipoEnvio` `2`): el sondeo no comparece. `peticionAcceso()` es la comparecencia y puede abrir el plazo de respuesta. Clasificada por encima del umbral, o con departamento asignado por revisión humana (RF-09.5/09.6), queda en `en_proceso` sin abrir y espera al botón de descarga del frontal (RF-01.5). Por debajo del umbral no se abre.
 - La fecha límite de comparecencia se calcula provisionalmente a partir de `fechaPuestaDisposicion` y de las reglas de cómputo previstas. Hasta validar este cálculo con los vencimientos reales y la normativa aplicable, el resultado tendrá carácter orientativo y no se considerará una fecha de vencimiento confirmada por LEMA. No debe utilizarse como único criterio para decidir el momento de acceso a una notificación.
 
 ### RF-01.5 Descarga bajo demanda de notificaciones
 
-- `POST /comunicaciones/{id}/descarga` (§8.1), solo con la funcionalidad **Descargar**. El frontal exige confirmación explícita de que la acción practica la comparecencia legal y no es reversible.
-- Aplica a una notificación en `pendiente_descarga`: clasificada por encima del umbral, o con departamento asignado por `AceptarClasificacionService` (RF-09.5) o `ReclasificarComunicacionService` (RF-09.6) — ambos servicios ponen ese estado al resolver una notificación.
+- `POST /comunicaciones/{id}/descarga` (§8.1), con la funcionalidad Consultar. El frontal exige confirmación explícita de que la acción practica la comparecencia legal y no es reversible.
+- Aplica a una notificación en `en_proceso`: clasificada por encima del umbral, o con departamento asignado por `AceptarClasificacionService` (RF-09.5) o `ReclasificarComunicacionService` (RF-09.6). Sin `principal` aún, la llamada comparece; con `principal`, solo reintenta anexos y acuse pendientes.
 - `ComparecerNotificacionService`: si la comunicación no tiene ya `principal` descargado, llama a `peticionAcceso()`. Al tener éxito, en una transacción corta persiste el `principal` (con su `csvResguardo`), una fila `DOCUMENTO` pendiente (`fechaDescarga = NULL`) por cada anexo de la respuesta (`urlDirecta` o `referenciaDocumento`, nunca ambos) y, si aplica, por el acuse; registra `usuarioDescarga` y `fechaClicDescarga`. A continuación, en la misma petición, invoca `consultaAnexos()`/`consultaAcusePdf()` para cada fila pendiente, con reintento acotado (`organismosPublicos.descarga.maxReintentos`); cada intento fallido incrementa `DOCUMENTO.nIntentos` y guarda en `ultimoError` el tipo/código de error, nunca el cuerpo de la respuesta. Lo que no se resuelve queda pendiente, visible en RF-11.7.
 - Idempotente: si la comunicación ya tiene `principal` persistido, no se repite `peticionAcceso()`; la llamada solo reintenta las filas con `fechaDescarga = NULL` que aún no alcanzaron `maxReintentos`.
 - Si `peticionAcceso()` tiene éxito pero la persistencia posterior falla (caída de BBDD a mitad de transacción), la comparecencia ya se produjo sin que quede registro local — incidencia manual; la vía de recuperación exacta está pendiente de definir (§13). Confirmar también si `peticionAcceso()` admite reconsulta sobre el mismo `identificador` (§13).
@@ -475,15 +472,16 @@ Solo las reglas que el código no puede violar.
 - Resultado: el departamento. No hay catálogo de tipos.
 - Se clasifican en cada ciclo los envíos `pendiente` sin clasificación de IA ni revisión abierta: los nuevos y los que fallaron antes.
 - `ClasificarComunicacionService` pide la clasificación al flujo de IA de n8n (`ClasificacionIAGateway`), fuera de transacción. Solo envía metadatos: `concepto` y organismo emisor y raíz (código y nombre). El prompt versionado y el modelo están en n8n (reglas en estado «Prompt» de `Criterios_Clasificacion.md`).
-- Respuesta: `departamentoId` (el `id` de `DEPARTAMENTO`), `estado` (`clasificado` | `revision_humana` | `sin_clasificar`), `score` (puede ser nulo), `modelo` y `versionPrompt`.
+- Respuesta (contrato de `ClasificacionIAGateway`): `departamentoId` (`id` de `DEPARTAMENTO`; nulo si ninguna regla aplica), `score` (puntuación de la propuesta; nula si no hay propuesta), `conflicto` (`true` si varias reglas llevan a departamentos distintos) y `modelo`. El formato de salida del prompt y su traducción a este contrato viven en n8n; cambiarlos no toca Java.
 - Si la llamada falla o la respuesta no se puede leer, no se guarda nada: el envío sigue `pendiente` y se reintenta en el siguiente ciclo.
 - `RegistrarClasificacionService` guarda la `CLASIFICACION` en su transacción, con la comunicación bloqueada; si ya se clasificó, no hace nada.
-- Decisión configurable en properties, sin tocar código: por umbral sobre `score` o por `estado`. Se fija tras la experimentación.
+- Umbral sobre `score` en properties, sin tocar código; su valor se fija tras la experimentación.
 - Va a `REVISION` (RF-09), sin abrir el envío ni acción automática:
-  - confianza por debajo del umbral o `estado=revision_humana` (motivo `umbral`), con la propuesta guardada;
-  - `estado=sin_clasificar` (motivo `sin_criterio`), sin propuesta: se resuelve reclasificando (RF-09.6);
+  - `departamentoId` nulo (motivo `sin_criterio`), sin propuesta: se resuelve reclasificando (RF-09.6);
+  - `conflicto` o `score` por debajo del umbral (motivo `umbral`), con la propuesta guardada;
   - `departamentoId` que no existe o no está activo.
-- Sin regla aplicable: sin clasificar. Reglas en conflicto: revisión humana. No se clasifica por descarte ni con reglas pendientes.
+- Si no va a revisión, la comunicación pasa a `en_proceso` (RF-01).
+- No se clasifica por descarte ni con reglas pendientes.
 - Reglas en el prompt y pendientes: §6.
 
 ### RF-03 Almacenamiento documental (crítico)
@@ -491,10 +489,10 @@ Solo las reglas que el código no puede violar.
 - En el mismo ciclo que `peticionAcceso()`, persistir el documento principal. En comunicaciones, los anexos y el acuse (si aplica) se descargan en ese mismo ciclo automático (RF-01). En notificaciones, `peticionAcceso()` y la persistencia inicial las dispara RF-01.5; anexos y acuse se resuelven desde las filas `DOCUMENTO` pendientes que deja esa misma llamada, con reintento acotado.
 - Anexo con URL directa: descarga HTTP, sin LEMA (`DOCUMENTO.urlDirecta`). Anexo por referencia: `consultaAnexos()`, uno a uno (`DOCUMENTO.referenciaDocumento`).
 - Acuse: `consultaAcusePdf()` con el `csvResguardo` de `peticionAcceso()`. Solo en notificaciones.
-- `consultaAnexos()` y `consultaAcusePdf()` solo funcionan durante 24 h desde `peticionAcceso()`. Pasado ese plazo, el documento no se puede recuperar por API. Los fallos se reintentan de forma automática y acotada (`organismosPublicos.descarga.maxReintentos`); además de los reintentos, un fallo que persiste genera alerta de alta prioridad, con antelación suficiente para no agotar la ventana — no es un reintento silencioso. Antelación, destinatario y canal de la alerta: §13.
+- `consultaAnexos()` y `consultaAcusePdf()` no permiten consultar elementos de notificaciones con más de 1 día de antigüedad (`Especificacion_Requisitos.md`, RF-03). Desde qué momento cuenta ese día (puesta a disposición, `peticionAcceso()`…) está pendiente de verificar con LEMA (§13). Pasado ese plazo, el documento no se puede recuperar por API. Los fallos se reintentan de forma automática y acotada (`organismosPublicos.descarga.maxReintentos`); además de los reintentos, un fallo que persiste genera alerta de alta prioridad, con antelación suficiente para no agotar la ventana — no es un reintento silencioso. Antelación, destinatario y canal de la alerta: §13.
 - `Documento.verificarIntegridad()`: el SHA-256 del principal debe coincidir con el de DEHú.
 - Binarios en almacenamiento de ficheros (`rutaAlmacenamiento`); en BBDD solo metadatos y hash.
-- Guardar en `DOCUMENTO.metadatos` el `documento.metadatos` del principal y el `acusePdf.metadatos` del acuse, tal como llegan y sin interpretar. Si no se guardan al recibirlos, no se pueden recuperar: `consultaRealizadas()` no trae el del documento, y el acuse solo se puede volver a pedir durante 24 h.
+- Guardar en `DOCUMENTO.metadatos` el `documento.metadatos` del principal y el `acusePdf.metadatos` del acuse, tal como llegan y sin interpretar. Si no se guardan al recibirlos, no se pueden recuperar: `consultaRealizadas()` no trae el del documento, y el acuse solo se puede volver a pedir dentro de ese mismo plazo.
 - Guardar también `algoritmoHash` y, en cada anexo por referencia, `referenciaDocumento`; en cada anexo por URL directa, `urlDirecta`. El binario va a fichero. No se persiste la paginación de `localiza()`.
 
 ### RF-04/05 Obtención de texto e interpretación documental
@@ -506,7 +504,7 @@ Solo las reglas que el código no puede violar.
 
 ### RF-06 Contenido del ticket
 
-Título, información relevante para la tramitación cuando esté disponible, campos, adjuntos e `identificador` DEHú. La derivación sin interpretación por falta de autorización o fallo sigue pendiente de decisión.
+Título, información relevante para la tramitación cuando esté disponible, campos e `identificador` DEHú. Sin adjuntos: `POST /tickets` no tiene campo para ellos; los documentos se consultan en HV, por el enlace de la descripción (RF-08). La derivación sin interpretación por falta de autorización o fallo sigue pendiente de decisión.
 
 ### RF-07 Evento
 
@@ -517,9 +515,10 @@ Título, información relevante para la tramitación cuando esté disponible, ca
 
 ### RF-08 Derivación
 
-- La derivación inicial es un proceso independiente de la ingesta: `POST /derivaciones` (§8.2), que programa n8n, deriva las comunicaciones listas sin derivación inicial `exito`, `en_curso` ni `desconocido`. Ni los ciclos ni la aceptación de una revisión derivan. Las reclasificaciones (RF-09.6, RF-10.4, RF-11.5) siguen el flujo descrito al final de este apartado.
+- La derivación inicial es un proceso independiente de la ingesta: `POST /derivaciones` (§8.2), que programa n8n. Una comunicación está **lista** cuando está en `en_proceso`, tiene guardado el documento principal y no tiene derivación inicial `exito`, `en_curso` ni `desconocido`. Si además hay que esperar al acuse de una notificación, o qué hacer cuando un anexo o el acuse no se consiguen, está pendiente (§13). Ni los ciclos ni la aceptación de una revisión derivan. Las reclasificaciones (RF-09.6, RF-10.4, RF-11.5) siguen el flujo descrito al final de este apartado.
 - El canal sale de `Clasificacion.canalAsignado` y del catálogo `DEPARTAMENTO`, no de un `if` por tipo.
 - Ticket obligatorio, creado con la API back de Ticketing (`POST /tickets`) en `DEPARTAMENTO.colaDestino`. Email (RF-08.2) no obligatorio, pero planificado justo después del ticket (`EmailNotificacionGateway`). Si no da tiempo, no bloquea el cierre del MVP.
+- El ticket no lleva documentos: `POST /tickets` no tiene campo de adjuntos. Los documentos se quedan en HV (RF-03). La descripción lleva el `identificador` DEHú, la referencia de la derivación y, si está configurado, el enlace al detalle de la comunicación en el frontal HV (`organismosPublicos.front.detalle.url` + id de la comunicación).
 - Cada intento es una fila `DERIVACION`. Se registra `en_curso` antes de llamar al canal y, después, pasa a:
   - `exito`: la comunicación queda `procesada`;
   - `fallo`: seguro que no se ejecutó (la petición no salió, Ticketing la rechazó con 400, 401, 403 o 404, o falta configuración);
@@ -530,7 +529,7 @@ Título, información relevante para la tramitación cuando esté disponible, ca
 - Conciliación manual, excepcional, sin API ni funcionalidad del frontal. La ejecuta una persona con permiso en Ticketing y de escritura en BBDD, con una incidencia que registra quién, cuándo, qué comunicación y por qué.
   1. Comprobar en el frontal de Ticketing si el ticket existe, por la referencia de la derivación y el `identificador` DEHú que lleva la descripción.
   2. Si existe, registrar `exito` con su código.
-  3. Si no existe, solo se crea uno si consta que el intento anterior terminó sin crearlo (para un `en_curso`, que la llamada terminó: log del intento o reinicio de la aplicación). Se crea con el contenido RF-06 completo: título y resumen de la fila `DERIVACION`, principal, anexos y acuse del almacenamiento (RF-03), `identificador` DEHú y referencia de la derivación. Si no consta, la derivación queda como está, pendiente de conciliación.
+  3. Si no existe, solo se crea uno si consta que el intento anterior terminó sin crearlo (para un `en_curso`, que la llamada terminó: log del intento o reinicio de la aplicación). Se crea con el contenido RF-06 completo: título y resumen de la fila `DERIVACION`, `identificador` DEHú, referencia de la derivación y enlace al detalle en HV, como lo crea la aplicación. Si no consta, la derivación queda como está, pendiente de conciliación.
   4. El registro va en una sola transacción, con la comunicación bloqueada como lo hace la aplicación (`UPDLOCK`) y comprobando de nuevo el estado. Un `desconocido` o `en_curso` pasa a `exito` si el ticket existía, o a `fallo` si se creó uno nuevo; en ese caso, y cuando se parte de un `fallo`, se añade una fila `exito` con el código del nuevo ticket. La comunicación pasa a `procesada`. Si la comprobación no cuadra, no se escribe nada. El índice único impide dos derivaciones iniciales `exito`.
   - El SQL de este procedimiento (README de `HVOrganismosPublicosMigraciones`) no está validado: verificarlo en desa es requisito previo a producción (§13).
 - Si Ticketing ofrece búsqueda por referencia externa (§7.2), `desconocido` podrá conciliarse sin intervención manual.
@@ -540,8 +539,8 @@ Título, información relevante para la tramitación cuando esté disponible, ca
 
 - Confianza baja → `REVISION` con `resuelto=false`. Ninguna comunicación se pierde entre pasos.
 - UI (09.2): metadatos de `localiza()` y clasificación propuesta. No se abre el documento para decidir el departamento.
-- Aceptar (09.5) fija el departamento; no deriva. Una comunicación sigue el ciclo de descarga del sondeo. Una notificación no se abre aquí: pasa a `pendiente_descarga` (RF-01.5), a la espera de que el Operador pulse el botón. Cuando queda lista, la deriva el proceso de RF-08.
-- Reclasificar (09.6) → funcionalidad Reclasificar (Administrador). Elige el departamento; finalizar + crear si ya hay ticket. Si es una notificación sin ticket todavía, pasa a `pendiente_descarga` igual que RF-09.5. Es la única forma de resolver una revisión sin propuesta (`sin_criterio`), así que es necesaria para vaciar la cola.
+- Aceptar (09.5) fija el departamento; no deriva. La comunicación pasa a `en_proceso`. Si no tiene `principal`, una comunicación la descarga el siguiente ciclo (RF-01); una notificación no se abre aquí: espera al botón de descarga del frontal (RF-01.5). Cuando queda lista, la deriva el proceso de RF-08.
+- Reclasificar (09.6) → funcionalidad Reclasificar (Administrador). Elige el departamento; finalizar + crear si ya hay ticket. Si no hay ticket todavía, pasa a `en_proceso` igual que RF-09.5. Es la única forma de resolver una revisión sin propuesta (`sin_criterio`), así que es necesaria para vaciar la cola.
 - Feedback (09.3): deseable, asíncrono, no bloquea el cierre.
 
 ### RF-10 Agente IA
@@ -558,6 +557,8 @@ Título, información relevante para la tramitación cuando esté disponible, ca
 - Editable si y solo si existe al menos una `DERIVACION` (`tieneDerivacionAsociada()`), no según `tipoEnvio`. En revisión pendiente, solo lectura.
 - 11.4, mismo departamento: `modificarTicket` in-place (depende de la audiencia back de Ticketing).
 - 11.5, cambio de departamento: finalizar + crear, como en 09.6.
+- 11.7 Estado de descarga en el detalle: por documento (principal, anexos, acuse), descargado o pendiente, `nIntentos` y `ultimoError`. «Reintentar» vuelve a llamar a `POST /comunicaciones/{id}/descarga` (idempotente, RF-01.5).
+- 11.8 Vista de pendientes de atención: notificaciones en `en_proceso` sin `principal` y envíos con `DOCUMENTO` pendiente, ordenados por el tiempo que queda de la ventana de RF-03 o del plazo de comparecencia (`queryPendientesDeAtencion`).
 
 ### RF-12 Reconciliación y evaluación (opcional)
 
@@ -594,14 +595,14 @@ Campos:
 - **DOCUMENTO:** `id`, `comunicacion_id`, `tipo`, `nombre`, `mimeType`, `hashSha256`, `algoritmoHash`, `csvResguardo` (el del documento en `peticionAcceso()`), `referenciaDocumento` (anexo por referencia), `urlDirecta` (anexo por URL directa; exactamente uno de los dos no nulo en una fila `anexo`), `metadatos` (`documento.metadatos` o `acusePdf.metadatos` en base64, `nvarchar(max)`; vacío en anexos; no se interpreta), `rutaAlmacenamiento`, `fechaDescarga` (nullable; `NULL` = pendiente de descarga o en reintento), `nIntentos` (nullable; solo filas `anexo`/`acuse`; cuenta los intentos de `consultaAnexos()`/`consultaAcusePdf()`), `ultimoError` (nullable; tipo/código del último fallo, nunca el cuerpo de la respuesta — evita guardar datos personales). Índice recomendado: `(comunicacion_id, tipo)`.
 - **INTERPRETACION:** `id`, `comunicacion_id`, `entidadesExtraidas` (JSON en `nvarchar`), `scoreConfianza`, `fechaProcesado`.
 - **TEXTOEXTRAIDO:** `id`, `interpretacion_id`, `textoExtraido`, `fechaCreacion`.
-- **CLASIFICACION:** `id`, `comunicacion_id`, `origen` (`ia` | `operador`), `modelo` y `versionPrompt` (solo si hubo LLM; los envía n8n), `nIntentos` (`1`, `2`, `3`…; solo si `origen=ia`), `usuario_id` (solo si `origen=operador`), `departamentoAsignado` (obligatorio), `canalAsignado`, `scoreConfianza` (nulo si el modelo no lo da), `resultado` (`estado` devuelto por el modelo en filas `ia`), `fecha`.
-- **DERIVACION:** `id`, `comunicacion_id`, `canal`, `identificadorExterno`, `titulo`, `resumen`, `departamento` (FK), `estado` (`en_curso` | `exito` | `fallo` | `desconocido`; la aplicación solo lo actualiza desde `en_curso`), `esReclasificacion`, `ticketRelacionadoId`, `fechaEjecucion` (inicio del intento). Índice único **filtrado** (`estado IN ('en_curso','exito')` y `esReclasificacion=0`): impide dos derivaciones iniciales activas o exitosas a la vez, pero permite varias filas `fallo` de reintento. Las filas no se borran.
+- **CLASIFICACION:** `id`, `comunicacion_id`, `origen` (`ia` | `operador`), `modelo` (solo si hubo LLM; lo envía n8n), `nIntentos` (`1`, `2`, `3`…; solo si `origen=ia`), `usuario_id` (solo si `origen=operador`), `departamentoAsignado` (obligatorio), `canalAsignado`, `scoreConfianza` (nulo si no hay propuesta), `resultado` (sin uso), `fecha`.
+- **DERIVACION:** `id`, `comunicacion_id`, `canal`, `identificadorExterno`, `titulo`, `resumen`, `departamento` (FK), `estado` (`en_curso` | `exito` | `fallo` | `desconocido`; la aplicación solo lo actualiza desde `en_curso`), `esReclasificacion`, `ticketRelacionadoId`, `fechaEjecucion` (inicio del intento). Índice único **filtrado** sobre (`comunicacion_id`, `canal`) con `estado IN ('en_curso','desconocido','exito')` y `esReclasificacion=0` (`UX_DERIVACION_inicial`): impide una segunda derivación inicial mientras otra está en curso, sin resolver o con éxito, pero permite varias filas `fallo` de reintento. Las filas no se borran.
 - **REVISION:** `id`, `comunicacion_id`, `usuario_id` (nulo hasta resolver), `motivo`, `resuelto`, `fechaEntrada`, `fechaResolucion`.
 - **DEPARTAMENTO:** `id`, `nombre`, `colaDestino`, `permiteEmail`, `activo`.
 - **USUARIO:** `id` (= `PERSONA.id` de Personas, sin FK física), `rol` (sin uso: los permisos están en SeguridadMGS), `activo`.
 - **REALIZADAS:** `id`, `identificador` (único; nunca presente en `COMUNICACION`), `codigoOrigen`, `concepto`, `organismoEmisorCodigo`, `organismoEmisorNombre`, `organismoEmisorRaizCodigo`, `organismoEmisorRaizNombre`, `fechaPuestaDisposicion`, `tipoEnvio`, `vinculo`, `titularNombre`, `titularNif`, `estadoDehu`, `referenciaPdfAcuse`, `csvResguardo` (del envío), `rutaDocumento`, `hashSha256`, `algoritmoHash` (solo si se descargó el principal), `departamentoEsperado` (FK, etiquetado), `departamentoPropuesto` (FK), `scoreConfianza`, `modelo`, `fechaClasificacion`, `fechaCarga`.
 
-Semilla de `DEPARTAMENTO`. El prompt de clasificación de n8n devuelve uno de estos `id`, que son también el `enum` de su esquema de respuesta; las reglas que decide cada `id` solo viven en el prompt de n8n, descritas en `Criterios_Clasificacion.md` — **Java no las necesita ni las consulta.** Faltan las colas reales de Ticketing. Los DIR3 son ejemplos observados (`E00119006` DGSFP, `EA0028512` AEAT, `E00127105` Catastro, `EA0042298` TGSS); no son la clave de la regla.
+Semilla de `DEPARTAMENTO`. El prompt de clasificación de n8n devuelve uno de estos `id`, que son también las categorías que admite el prompt; las reglas que decide cada `id` solo viven en el prompt de n8n, descritas en `Criterios_Clasificacion.md` — **Java no las necesita ni las consulta.** Faltan las colas reales de Ticketing. Los DIR3 son ejemplos observados (`E00119006` DGSFP, `EA0028512` AEAT, `E00127105` Catastro, `EA0042298` TGSS); no son la clave de la regla.
 
 | `id` | Departamento |
 |---|---|
@@ -612,11 +613,11 @@ Semilla de `DEPARTAMENTO`. El prompt de clasificación de n8n devuelve uno de es
 | `CANAL_DIRECTO` | Canal Directo |
 | `RECURSOS_HUMANOS` | Recursos Humanos |
 | `AREA_SINIESTROS` | Área de Siniestros |
-| `SUCURSAL_CENTRAL` | Sucursal Central — **pendiente de confirmación de negocio** (ver `Criterios_Clasificacion.md`); no incluir en el `enum` de `schema.json` ni dar de alta en la migración hasta confirmarlo |
+| `SUCURSAL_CENTRAL` | Sucursal Central — **pendiente de confirmación de negocio** (ver `Criterios_Clasificacion.md`); no incluir en las categorías del prompt ni dar de alta en la migración hasta confirmarlo |
 
 Detalle de reglas, estado y bloqueos: `Criterios_Clasificacion.md`.
 
-Un cambio de reglas es una nueva versión del prompt (`versionPrompt`), sin tocar Java ni BBDD. Un departamento nuevo es una fila en una migración más el `enum` del prompt.
+Un cambio de reglas es una nueva versión del prompt en n8n, sin tocar Java ni BBDD. Un departamento nuevo es una fila en una migración más el `enum` del prompt.
 
 Agrupar varias notificaciones por referencia de acuerdo es una necesidad identificada en Canal Directo y no es requisito del MVP.
 
@@ -701,7 +702,7 @@ Datos de cada petición:
 
 ### 7.3 n8n y bus de eventos
 
-- n8n programa el sondeo y la derivación: llama a `POST /ciclosIngesta` y `POST /derivaciones` (§8.2), con independencia entre ambas. La frecuencia vive en n8n. La comparecencia de una notificación ya no la programa n8n: la dispara el Operador desde el frontal (`POST /comunicaciones/{id}/descarga`, §8.1, RF-01.5).
+- n8n programa el sondeo y la derivación: llama a `POST /ciclosIngesta` y `POST /derivaciones` (§8.2), con independencia entre ambas. La frecuencia vive en n8n. La comparecencia de una notificación ya no la programa n8n: la dispara un usuario desde el frontal (`POST /comunicaciones/{id}/descarga`, §8.1, RF-01.5).
 - *(Could, fuera del MVP, se implementa si da tiempo)* n8n puede programar además `POST /vigilanciaDescargas` (§8.2): reintenta anexos/acuse pendientes y avisa si se acerca la ventana de 24 h o el vencimiento de comparecencia sin descargar. Nunca llama a `peticionAcceso()` por primera vez.
 - n8n aloja los flujos de IA de clasificación e interpretación. Java los llama por HTTP (`ClasificacionIAClient`, `InterpretacionIAClient`), siempre fuera de transacción. Cambiar de proveedor o de prompt se hace en n8n.
 - Publicación de RF-07: pendiente de decisión. Kafka es el sistema de eventos corporativo, pero no está confirmado cómo publicaría Java (`EventosGateway`), ni el topic, ni quién consumiría. No se implementa hasta que Infra lo confirme (§13).
@@ -743,7 +744,7 @@ Errores: `400` petición no válida, `401` no autenticado, `403` sin funcionalid
 | `GET` | `/comunicaciones/{id}/documentos/{documentoId}` | Consultar | 11 | binario local |
 | `PATCH` | `/comunicaciones/{id}` | Editar derivación | 11.4 / 11.5 | `ModificarDerivacionService` (body: `titulo`, `resumen`, `departamentoDestino`) |
 | `GET` | `/departamentos` | Consultar | 09.6, 11.5 | `DEPARTAMENTO` activos |
-| `POST` | `/comunicaciones/{id}/descarga` | Descargar | 01.5 | `ComparecerNotificacionService`; solo si `tipoEnvio=2` y `estado=pendiente_descarga`. El frontal confirma antes de llamar que la acción practica la comparecencia legal |
+| `POST` | `/comunicaciones/{id}/descarga` | Consultar | 01.5 | `ComparecerNotificacionService`; solo si `tipoEnvio=2` y `estado=en_proceso`; si ya tiene `principal`, solo reintenta anexos y acuse pendientes. El frontal confirma antes de llamar que la acción practica la comparecencia legal |
 
 ### 8.2 Back (n8n) — fase 2
 
@@ -751,7 +752,7 @@ Credencial de servicio, no de Operador.
 
 | Método | Path | RF | Servicio |
 |---|---|---|---|
-| `POST` | `/ciclosIngesta` | 01–06 | `localiza()` y registro de envíos nuevos (`IngestarComunicacionesService`); clasificación de los pendientes pidiéndola al flujo de IA de n8n (`ClasificarComunicacionService`). Comunicación sobre el umbral: `peticionAcceso()`, documentos, interpretación si está autorizada y RF-06 en el mismo ciclo; queda lista para derivar. Notificación sobre el umbral: pasa a `pendiente_descarga`, a la espera del botón de descarga del Operador (RF-01.5). Por debajo: revisión, sin abrir. Responde un resumen del ciclo; sin nada que procesar → `204` |
+| `POST` | `/ciclosIngesta` | 01–06 | `localiza()` y registro de envíos nuevos (`IngestarComunicacionesService`); clasificación de los pendientes pidiéndola al flujo de IA de n8n (`ClasificarComunicacionService`). Comunicación: `peticionAcceso()`, documentos, interpretación si está autorizada y RF-06, en el momento que fija `abrirAntesDeClasificar` (RF-01); también descarga las comunicaciones en `en_proceso` sin `principal` (aceptadas en revisión o con descarga fallida antes). Notificación sobre el umbral: queda en `en_proceso` sin abrir, a la espera del botón de descarga del frontal (RF-01.5). Por debajo del umbral: revisión; la notificación no se abre. Responde un resumen del ciclo; sin nada que procesar → `204` |
 | `POST` | `/vigilanciaDescargas` *(Could, fuera del MVP)* | 01.5/03 | `VigilarDescargasService`: reintenta `anexo`/`acuse` con `fechaDescarga = NULL` y dentro del límite de intentos; avisa si se acerca la ventana de 24 h o el vencimiento de comparecencia sin descargar. Nunca llama a `peticionAcceso()` por primera vez |
 | `POST` | `/derivaciones` | 08 | Deriva las comunicaciones listas (`EjecutarDerivacionService`), con idempotencia y el límite de reintentos (RF-08). Independiente de los ciclos: no llama a LEMA. Responde un resumen: derivadas, fallidas y pendientes de conciliar; sin nada que derivar → `204` |
 
@@ -800,10 +801,12 @@ Vue 3 + TypeScript + Vite + Pinia sobre UIBaseProject, sin replicar el acabado v
 Properties (`{entorno}#organismosPublicos.properties`, patrón Ticketing):
 
 - LEMA: URL/WSDL de SE y PRO, NIF titular, timeouts, tamaño de lote. La frecuencia de sondeo vive en n8n.
-- Clasificación: regla de decisión (umbral o `estado`) y umbral.
+- Clasificación: umbral sobre `score`.
 - URLs de los flujos de IA de n8n (clasificación e interpretación).
 - Días de retención de `TEXTOEXTRAIDO`.
 - Ticketing: tipo y subtipo de ticket. La URL del back va por `resource-env-ref` del WAS, como en Ticketing.
+- Enlace al detalle en el ticket (RF-08): `organismosPublicos.front.detalle.url`, prefijo al que se añade el id de la comunicación; vacío, sin enlace.
+- Apertura de comunicaciones (RF-01): `organismosPublicos.comunicacion.abrirAntesDeClasificar` (valor por defecto pendiente, §13).
 - URL del Agente IA.
 - Derivación (RF-08): `organismosPublicos.derivacion.maxReintentos` (2; `0` desactiva los reintentos). El límite de RF-10 no es una propiedad.
 - Descarga de notificaciones (RF-01.5): `organismosPublicos.descarga.maxReintentos` (valor por defecto pendiente de experimentación — ver `TODO.md`; `0` desactiva los reintentos, igual que en RF-08).
@@ -825,7 +828,7 @@ Binarios: ruta en el servidor o volumen. FILESTREAM no, salvo que se decida con 
 
 | Capa | Qué demuestra |
 |---|---|
-| `HVOrganismosPublicosTest` (JUnit 5) | Regla de decisión de RF-02 (umbral y `estado`), reintento sin guardar si falla la IA, límite de 2 en RF-10, estados de derivación (`en_curso`, `fallo`, `desconocido`), límite de reintentos de RF-08 (incluido `0`), un `exito` registrado a mano bloquea cualquier nueva derivación inicial, `/derivaciones` independiente de LEMA, finalizar + crear frente a in-place, integridad del hash, `tieneDerivacionExitosa` frente a `tieneDerivacionAsociada`, idempotencia del botón de descarga (RF-01.5: una segunda pulsación no repite `peticionAcceso()`), reintento acotado de anexo/acuse (incluido `0`), trazabilidad de `usuarioDescarga`/`fechaClicDescarga`. Gateways simulados, incluido el flujo de IA. |
+| `HVOrganismosPublicosTest` (JUnit 5) | Regla de decisión de RF-02 (sin propuesta, `conflicto`, umbral), reintento sin guardar si falla la IA, límite de 2 en RF-10, estados de derivación (`en_curso`, `fallo`, `desconocido`), límite de reintentos de RF-08 (incluido `0`), un `exito` registrado a mano bloquea cualquier nueva derivación inicial, `/derivaciones` independiente de LEMA, finalizar + crear frente a in-place, integridad del hash, `tieneDerivacionExitosa` frente a `tieneDerivacionAsociada`, idempotencia del botón de descarga (RF-01.5: una segunda pulsación no repite `peticionAcceso()`), reintento acotado de anexo/acuse (incluido `0`), trazabilidad de `usuarioDescarga`/`fechaClicDescarga`. Gateways simulados, incluido el flujo de IA. |
 | `npm run test` (Vue) | `vue-tsc` + eslint. |
 | FT Playwright | Flujos del Operador contra desa/usua. |
 | SE LEMA | Llamadas SOAP reales, con certificado de pruebas y alta de Gran Destinatario. |
@@ -901,7 +904,7 @@ Mientras no se cierren, se implementa lo descrito aquí sin fijar valores en có
 | Audiencia back de Ticketing | Bloquea RF-11.4/11.5. |
 | Quién publica el outbox de cancelación en el bus | Bloquea RF-10. |
 | Buscar o deduplicar tickets por referencia externa | Resolver `desconocido` sin intervención manual y RF-08.5. Depende de Ticketing. |
-| Regla de decisión de RF-02 | Umbral sobre `score` o `estado` del prompt; se elige tras la experimentación (§10). |
+| Umbral de RF-02 | Valor del umbral sobre `score`; se fija tras la experimentación (§10). Las puntuaciones del prompt son autodeclaradas y sin calibrar. |
 | Alta de `SAC` y `RECURSOS_HUMANOS` en `DEPARTAMENTO` | Migración con los `id` de §6 y sus colas. |
 | Credencial de servicio de ApiBack | Infra: cómo autentica el gateway a n8n. |
 | Publicación de RF-07 | Requisito sin cumplir. Infra: si Java puede publicar en Kafka y cómo, topic, garantías y consumidores. Después, decidir si entra en el MVP y si RF-08 pasa a consumir el evento. |
@@ -916,5 +919,10 @@ Mientras no se cierren, se implementa lo descrito aquí sin fijar valores en có
 | `peticionAcceso()` con éxito y persistencia posterior fallida (RF-01.5) | Incidencia manual; la vía de recuperación exacta está pendiente de definir. |
 | Si `peticionAcceso()` admite reconsulta sobre el mismo `identificador` | Relevante para `VigilarDescargasService` y para recuperar la lista de anexos si la primera respuesta no llegó a persistirse. Verificar en el entorno de pruebas de LEMA. |
 | Valor por defecto de `organismosPublicos.descarga.maxReintentos` | Se fija tras observar fallos reales de `consultaAnexos()`/`consultaAcusePdf()`. |
-| Alta de la funcionalidad **Descargar** en SeguridadMGS | A confirmar con el responsable; no asumir que ya existe. |
+| Funcionalidad propia para la descarga (RF-01.5) | Hoy basta con Consultar: cualquier usuario del frontal puede comparecer. Decidir con la empresa si se restringe; hacerlo es una funcionalidad nueva en SeguridadMGS y cambiar la anotación del endpoint. |
 | `/vigilanciaDescargas` | *Could*, fuera del MVP; se implementa si el calendario lo permite. |
+| Ventana de `consultaAnexos()`/`consultaAcusePdf()` | Desde qué momento cuenta el día de antigüedad (puesta a disposición, `peticionAcceso()`…). Verificar con acceso a LEMA. Condiciona RF-03, la alerta y RF-11.8. |
+| Derivar sin acuse o con un anexo sin descargar | Si la notificación espera al acuse para estar lista (RF-08) y qué hacer cuando un anexo o el acuse no se consiguen. |
+| Valor por defecto de `abrirAntesDeClasificar` | Abrir las comunicaciones al registrarlas o solo con departamento (RF-01). |
+| Enlace al detalle desde el ticket | Si un enlace directo a `/comunicaciones/{id}` abre sesión o debe pasar por el JumpTo del portal; valor de `organismosPublicos.front.detalle.url` por entorno. |
+| Qué ve el departamento en HV | Con Consultar ve todas las comunicaciones y la cola de revisión; no hay filtro por departamento. Decidir si basta o hace falta restringirlo (funcionalidad nueva). |

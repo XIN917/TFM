@@ -51,4 +51,4 @@ Estados: **Prompt** (entra en el prompt de clasificación) · **Confirmada** (ne
 2. Rellenar organismo, condición, departamento, estado y bloqueo, en términos generales y comprobando que el dato llega en `localiza()`. Los casos concretos no se añaden aquí.
 3. Si hay discrepancia con una regla existente, anotarla en la nota sin sustituir la regla hasta validarla.
 4. Si el estado es **Prompt** o pasa a serlo: nueva versión del prompt y cargarla en n8n. `PRD.md` §6 solo cambia si se añade o retira un departamento (ver punto 5); no repite reglas.
-5. Si cambia el catálogo de departamentos: actualizar también el `enum` de `schema.json` y la semilla de `DEPARTAMENTO` (los nombres deben coincidir).
+5. Si cambia el catálogo de departamentos: actualizar también las categorías del prompt y la semilla de `DEPARTAMENTO` (los nombres deben coincidir).
