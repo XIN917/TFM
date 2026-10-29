@@ -125,257 +125,32 @@ Operador ──► Vue Web ──► ApiFront (JAX-RS) ──► servicios de re
 
 ## 4. Estructura de directorios
 
-`# UML` = clase del modelo de diseño (contrato en §4.1).
-
 ```
 HVOrganismosPublicos/
-├── .gitignore
-│
 ├── HVOrganismosPublicosBeans/
-│   └── src/es/mgs/hv/organismosPublicos/bean/
-│       ├── eventos/
-│       │   ├── EventoComunicacionClasificada.java      # RF-07
-│       │   └── EventoCancelacionTicket.java            # RF-10.1
-│       ├── exception/
-│       │   ├── OrganismosPublicosException.java
-│       │   ├── EntidadNoEncontradaException.java
-│       │   ├── PeticionNoValidaException.java              # 400; entrada mal formada
-│       │   └── ReglaNegocioException.java                  # 409; el mensaje distingue el caso
-│       └── seguridad/
-│           └── UsuarioAutenticado.java
-│
 ├── HVOrganismosPublicosComun/
-│   └── src/
-│       ├── META-INF/beans.xml
-│       └── es/mgs/hv/organismosPublicos/comun/
-│           ├── Constantes.java
-│           ├── annotation/
-│           │   ├── Servicio.java
-│           │   ├── Repositorio.java
-│           │   ├── Endpoint.java
-│           │   ├── Transaccional.java
-│           │   └── Client.java
-│           ├── logging/
-│           │   └── ConfiguradorLogs.java
-│           ├── properties/                                   # carga de ficheros por entorno
-│           ├── exceptions/
-│           │   └── IntegrationException.java               # fallo de un adaptador de salida
-│           └── util/
-│               ├── Fechas.java
-│               ├── ConversionUtils.java
-│               └── ObjectMappers.java
-│
 ├── HVOrganismosPublicosBusiness/
-│   └── src/
-│       ├── META-INF/beans.xml
-│       └── es/mgs/hv/organismosPublicos/business/
-│           ├── modelo/
-│           │   ├── Comunicacion.java                      # UML
-│           │   ├── ComunicacionAgregado.java
-│           │   ├── Documento.java                         # UML
-│           │   ├── Interpretacion.java                    # UML
-│           │   ├── TextoExtraido.java                     # UML
-│           │   ├── Clasificacion.java                     # UML
-│           │   ├── Derivacion.java                        # UML
-│           │   ├── Revision.java                          # UML
-│           │   ├── Departamento.java                      # UML
-│           │   ├── Usuario.java                           # UML
-│           │   ├── CambiosDerivacion.java                 # UML
-│           │   ├── ResultadoAutocorreccion.java           # UML
-│           │   ├── EnvioPendiente.java
-│           │   ├── ContenidoTicket.java
-│           │   ├── FiltroConsultaComunicaciones.java
-│           │   ├── Pagina.java
-│           │   ├── TipoEnvio.java
-│           │   ├── ConstantesDominio.java
-│           │   ├── ComunicacionRepository.java            # UML
-│           │   ├── DepartamentoRepository.java
-│           │   ├── UsuarioRepository.java
-│           │   ├── LemaGateway.java                       # UML
-│           │   ├── TicketingGateway.java                  # UML
-│           │   ├── TicketingGestionGateway.java
-│           │   ├── NotificacionGateway.java               # UML
-│           │   ├── AgenteIAGateway.java                   # UML
-│           │   ├── ClasificacionIAGateway.java
-│           │   ├── SolicitudClasificacionIa.java
-│           │   ├── RespuestaClasificacionIa.java
-│           │   ├── InterpretacionIAGateway.java
-│           │   ├── EventosGateway.java
-│           │   ├── AlmacenDocumentosGateway.java
-│           │   └── MailGateway.java
-│           ├── aplicacion/
-│           │   ├── ingesta/
-│           │   │   └── IngestarComunicacionesService.java           # RF-01/02/03
-│           │   ├── interpretacion/
-│           │   │   ├── InterpretarComunicacionService.java          # RF-04/05
-│           │   │   └── RegistrarInterpretacionService.java
-│           │   ├── clasificacion/
-│           │   │   ├── ClasificarComunicacionService.java           # RF-02: pide la clasificación
-│           │   │   ├── RegistrarClasificacionService.java           # RF-02: la guarda
-│           │   │   └── GenerarContenidoTicketService.java           # RF-06
-│           │   ├── eventos/
-│           │   │   └── PublicarComunicacionClasificadaService.java  # RF-07
-│           │   ├── comparecencia/
-│           │   │   ├── ComparecerNotificacionService.java           # RF-01.5: botón de descarga
-│           │   │   └── VigilarDescargasService.java                 # RF-01.5/03, Could: /vigilanciaDescargas
-│           │   ├── derivacion/
-│           │   │   ├── EjecutarDerivacionService.java               # UML RF-08
-│           │   │   ├── IntentoDerivacionService.java                # transacciones de cada intento
-│           │   │   └── NotificacionGatewayResolver.java             # UML
-│           │   ├── revision/
-│           │   │   ├── AceptarClasificacionService.java             # UML RF-09.5
-│           │   │   └── ReclasificarComunicacionService.java         # UML RF-09.6
-│           │   ├── consulta/
-│           │   │   ├── ConsultarComunicacionesService.java          # RF-11
-│           │   │   └── ConsultarRevisionService.java                # RF-09.1/09.2
-│           │   ├── modificacion/
-│           │   │   └── ModificarDerivacionService.java              # UML RF-11.4/11.5
-│           │   └── reclasificacion/
-│           │       └── AgenteReclasificacionService.java            # UML RF-10
-│           └── infraestructura/
-│               ├── persistencia/
-│               │   ├── jdbc/
-│               │   │   └── JdbcTemplate.java
-│               │   ├── ComunicacionRepositorySQLServer.java         # UML
-│               │   ├── DepartamentoRepositorySQLServer.java
-│               │   └── UsuarioRepositorySQLServer.java
-│               ├── almacenamiento/
-│               │   └── AlmacenDocumentosFileSystem.java
-│               ├── lema/
-│               │   └── LemaClient.java                              # UML
-│               ├── ticketing/
-│               │   └── TicketingClient.java                         # UML
-│               ├── notificacion/
-│               │   ├── TicketingNotificacionGateway.java            # UML
-│               │   └── EmailNotificacionGateway.java                # UML
-│               ├── mail/
-│               │   └── SmtpMailClient.java
-│               ├── eventos/
-│               │   └── EventosClient.java                           # RF-07, pendiente de decisión (§7.3)
-│               ├── ia/
-│               │   ├── ClasificacionIAClient.java                   # flujo IA de n8n
-│               │   ├── InterpretacionIAClient.java                  # flujo IA de n8n
-│               │   └── AgenteIAClient.java                          # UML MCP
-│               └── http/
-│                   └── RestClientSupport.java
-│
-├── HVOrganismosPublicosApiFrontV1WebService/                       # fase 1
-│   ├── build.xml                                                    # ant generate
-│   ├── WebContent/META-INF/openapi/openapi.yaml                     # contrato
-│   ├── gen/                                                        # ant generate; no editar
-│   ├── src/es/mgs/hv/organismosPublicos/api/front/v1/
-│   │   ├── impl/
-│   │   │   ├── RevisionesApiImpl.java                              # UML RevisionController
-│   │   │   └── ComunicacionesApiImpl.java                          # UML RegistroController; incluye POST /comunicaciones/{id}/descarga (RF-01.5)
-│   │   ├── mappers/
-│   │   │   ├── ComunicacionMapper.java
-│   │   │   ├── RevisionMapper.java
-│   │   │   └── DerivacionMapper.java
-│   │   ├── listeners/
-│   │   │   └── ApiServletContextListener.java
-│   │   ├── filters/
-│   │   │   ├── CacheControlFilter.java
-│   │   │   ├── Cached.java
-│   │   │   └── LoggingFilter.java
-│   │   ├── exception/mappers/                              # uno por excepción de Beans y Comun; UnknownExceptionMapper, WebApplicationExceptionMapper y RespuestasError
-│   │   └── providers/
-│   │       ├── GestorBackendFeature.java
-│   │       └── JsonProvider.java
-│   └── WebContent/WEB-INF/
-│       ├── web.xml
-│       ├── beans.xml
-│       ├── ibm-web-ext.xml
-│       └── ibm-web-bnd.xml
-├── HVOrganismosPublicosApiFrontV1WasEAR/                            # WAR + Beans + Comun + Business
-│
-├── HVOrganismosPublicosWeb/                                         # fase 1
-│   ├── src/es/mgs/hv/organismosPublicos/web/
-│   │   ├── OrganismosPublicosApplication.java
-│   │   ├── servlet/AbstractHttpServlet.java
-│   │   ├── controller/UsuarioGetController.java
-│   │   ├── api/JsonProvider.java
-│   │   ├── exception/SeguridadAPIException.java
-│   │   ├── shared/jndi/Referencia.java
-│   │   └── seguridad/
-│   │       ├── filtro/SeguridadFilter.java
-│   │       ├── autenticacion/SeguridadProvider.java
-│   │       └── csrf/HttpCSRFTokenProvider.java
-│   ├── frontend/src/
-│   │   ├── main.ts
-│   │   ├── App.vue
-│   │   ├── router.ts
-│   │   ├── client/                                                 # tsclient Front
-│   │   ├── store/
-│   │   │   ├── revisiones.store.ts
-│   │   │   └── comunicaciones.store.ts
-│   │   ├── views/
-│   │   │   ├── ListaRevisiones/ListaRevisionesView.vue             # RF-09.1
-│   │   │   ├── DetalleRevision/DetalleRevisionView.vue             # RF-09.2/09.5/09.6
-│   │   │   ├── ListaComunicaciones/ListaComunicacionesView.vue     # RF-11.1/11.6
-│   │   │   ├── ListaNotificaciones/ListaNotificacionesView.vue     # RF-11.6
-│   │   │   ├── DetalleComunicacion/DetalleComunicacionView.vue     # RF-11; botón de descarga (RF-01.5) y estado de descarga (RF-11.7)
-│   │   │   └── Error/ErrorView.vue
-│   │   └── components/
-│   │       ├── DocumentoViewer.vue
-│   │       ├── TextoExtraidoPanel.vue
-│   │       └── EstadoDescargaPanel.vue                             # RF-11.7: estado por documento, intentos, reintentar
-│   └── WebContent/WEB-INF/
-│       ├── web.xml
-│       ├── beans.xml
-│       ├── ibm-web-ext.xml
-│       └── ibm-web-bnd.xml
-├── HVOrganismosPublicosWebEAR/                                      # WAR + Comun
-│
-├── HVOrganismosPublicosApiBackV1WebService/                         # fase 2
-│   ├── openapi/openapi.yaml
-│   ├── gen/
-│   ├── src/es/mgs/hv/organismosPublicos/api/back/v1/
-│   │   ├── impl/
-│   │   │   ├── CiclosIngestaApiImpl.java                           # POST /ciclosIngesta
-│   │   │   ├── VigilanciaDescargasApiImpl.java                     # POST /vigilanciaDescargas (Could)
-│   │   │   └── DerivacionesApiImpl.java                            # POST /derivaciones
-│   │   ├── mappers/
-│   │   ├── exception/mappers/
-│   │   └── listeners/ApiServletContextListener.java
-│   └── WebContent/WEB-INF/
+├── HVOrganismosPublicosApiFrontV1WebService/      # fase 1; contrato en WebContent/META-INF/openapi/openapi.yaml, gen/ con ant generate
+├── HVOrganismosPublicosApiFrontV1WasEAR/
+├── HVOrganismosPublicosWeb/                       # fase 1; frontend/ (Vue) y servlets de seguridad
+├── HVOrganismosPublicosWebEAR/
+├── HVOrganismosPublicosApiBackV1WebService/       # fase 2
 ├── HVOrganismosPublicosApiBackV1WasEAR/
-│
-├── HVOrganismosPublicosApiConsumerV1WebService/                     # fase 3
-│   ├── openapi/openapi.yaml
-│   ├── gen/
-│   ├── src/es/mgs/hv/organismosPublicos/api/consumer/v1/
-│   │   └── impl/CancelacionesApiImpl.java                          # RF-10
-│   └── WebContent/WEB-INF/
+├── HVOrganismosPublicosApiConsumerV1WebService/   # fase 3
 ├── HVOrganismosPublicosApiConsumerV1WasEAR/
-│
 ├── HVOrganismosPublicosMigraciones/
-│
-├── HVOrganismosPublicosProperties/                                  # disco servidor, no EAR
-│   ├── local#organismosPublicos.properties
-│   ├── desa#organismosPublicos.properties
-│   ├── usua#organismosPublicos.properties
-│   ├── prod#organismosPublicos.properties
-│   ├── local#log4j2.properties
-│   ├── desa#log4j2.properties
-│   ├── usua#log4j2.properties
-│   └── prod#log4j2.properties
-│
+├── HVOrganismosPublicosProperties/                # disco del servidor, no EAR
 ├── HVOrganismosPublicosServer/
-│   ├── datasource.py
-│   └── certificado_lema.py
-│
-├── HVOrganismosPublicosTest/                                        # el test vive en el mismo paquete que la clase; JUnit 5 y fakes de los puertos
-│
-└── HVOrganismosPublicosFT/                                          # fase 3
-    └── tests/
-        ├── operador-revision.spec.ts
-        └── operador-consulta.spec.ts
+├── HVOrganismosPublicosTest/
+└── HVOrganismosPublicosFT/                        # fase 3
 ```
+
+Paquetes de Business bajo `es.mgs.hv.organismosPublicos.business`: `modelo` (entidades, agregado, repositorios y gateways), `aplicacion.<caso de uso>` (servicios) e `infraestructura.<adaptador>` (persistencia, LEMA, Ticketing, IA, correo). Las APIs, bajo `es.mgs.hv.organismosPublicos.api.{front|back|consumer}.v1`. Las clases con contrato de diseño están en §4.1.
 
 | Módulo | Contenido |
 |---|---|
 | Beans | Excepciones de aplicación (`EntidadNoEncontradaException`, `PeticionNoValidaException`, `ReglaNegocioException`) y DTOs de evento. El 400 es `PeticionNoValidaException` y el 409 `ReglaNegocioException`. Sin SQL ni SOAP. |
-| Comun | log4j2, carga de properties, `IntegrationException` y `ObjectMappers`. |
+| Comun | Anotaciones CDI, carga de properties, logs y utilidades (`ObjectMappers`). |
 | Business | Modelo, aplicación e infraestructura (`JdbcTemplate`, `*SQLServer`, `LemaClient`, `TicketingClient`, `AgenteIAClient`). |
 | ApiFront + WasEAR | REST del Operador, incluida la descarga bajo demanda de notificaciones (RF-01.5). EAR: WAR + Business + Beans + Comun. |
 | Web + WebEAR | SPA Vue (UIBaseProject) y servlets de seguridad. EAR: WAR + Comun, sin Business. |
@@ -387,7 +162,7 @@ HVOrganismosPublicos/
 | Test | JUnit 5, sin WAS. Mismo paquete que la clase probada y fakes de los puertos. |
 | FT | Playwright E2E contra desa/usua. |
 
-Classpath (ya aplicado en RAD): Business → Beans + Comun; Test → Business; Front → Beans + Comun + Business; Web → Comun. `/lib` de WasEAR: Beans, Comun, Business. `/lib` de WebEAR: Comun.
+Classpath: Business → Beans + Comun; Test → Business; Front → Beans + Comun + Business; Web → Comun. `/lib` de WasEAR: Beans, Comun, Business. `/lib` de WebEAR: Comun.
 
 ### 4.1 Contrato de clases
 
@@ -401,7 +176,7 @@ Classpath (ya aplicado en RAD): Business → Beans + Comun; Test → Business; F
 | `DepartamentoRepository` | `queryColaDestino`, `existsActivo` |
 | `LemaGateway` | `localiza`, `peticionAcceso`, `consultaAnexos`, `consultaAcusePdf` (implementado por `LemaClient`) |
 | `TicketingGateway` | `crearTicket` |
-| `TicketingGestionGateway` | `cerrarPorReclasificacion`, `modificarTicket` (sin implementar hasta que Ticketing lo exponga) |
+| `TicketingGestionGateway` | `cerrarPorReclasificacion`, `modificarTicket` (depende de que Ticketing los exponga, §13) |
 | `NotificacionGateway` | `soportaCanal`, `ejecutar` |
 | `ClasificacionIAGateway` | `clasificar(SolicitudClasificacionIa)` → `RespuestaClasificacionIa` (RF-02) |
 | `AgenteIAGateway` | `intentarAutocorreccion` |
@@ -531,7 +306,7 @@ Título, información relevante para la tramitación cuando esté disponible, ca
   2. Si existe, registrar `exito` con su código.
   3. Si no existe, solo se crea uno si consta que el intento anterior terminó sin crearlo (para un `en_curso`, que la llamada terminó: log del intento o reinicio de la aplicación). Se crea con el contenido RF-06 completo: título y resumen de la fila `DERIVACION`, `identificador` DEHú, referencia de la derivación y enlace al detalle en HV, como lo crea la aplicación. Si no consta, la derivación queda como está, pendiente de conciliación.
   4. El registro va en una sola transacción, con la comunicación bloqueada como lo hace la aplicación (`UPDLOCK`) y comprobando de nuevo el estado. Un `desconocido` o `en_curso` pasa a `exito` si el ticket existía, o a `fallo` si se creó uno nuevo; en ese caso, y cuando se parte de un `fallo`, se añade una fila `exito` con el código del nuevo ticket. La comunicación pasa a `procesada`. Si la comprobación no cuadra, no se escribe nada. El índice único impide dos derivaciones iniciales `exito`.
-  - El SQL de este procedimiento (README de `HVOrganismosPublicosMigraciones`) no está validado: verificarlo en desa es requisito previo a producción (§13).
+  - No hay procedimiento versionado (pasos y SQL) en el repo: se escribe y valida en desa antes de producción, si sigue haciendo falta (§13). Hasta entonces, las derivaciones pendientes quedan bloqueadas, sin ticket duplicado, y se tratan caso a caso con estas reglas.
 - Si Ticketing ofrece búsqueda por referencia externa (§7.2), `desconocido` podrá conciliarse sin intervención manual.
 - Reclasificación (RF-09.6, RF-10.4, RF-11.5): finalizar el ticket original y crear uno nuevo con `esReclasificacion=true` y `ticketRelacionadoId` = ticket original. No cuenta como duplicado. Ticketing no transfiere de cola (`PATCH` no toca `cola`).
 
@@ -694,7 +469,7 @@ Datos de cada petición:
 ### 7.2 Ticketing
 
 - HTTP / OpenAPI, audiencia back. Se crea el ticket en la cola `DEPARTAMENTO.colaDestino`.
-- Hoy la audiencia back solo crea tickets y consulta tipos. Finalizar por reclasificación y `modificarTicket` (`TicketingGestionGateway`) esperan a que Ticketing los exponga.
+- Finalizar por reclasificación y `modificarTicket` (`TicketingGestionGateway`) dependen de que la audiencia back de Ticketing los exponga (§13).
 - Buscar un ticket por referencia externa permitiría resolver `desconocido` sin intervención manual (RF-08). Depende de Ticketing.
 - El cliente tiene timeouts de conexión y lectura acotados. Los valores recomendados dependen de Ticketing.
 - Los eventos que genere Ticketing al crear o modificar tickets, y su publicación, son responsabilidad de ese equipo.
@@ -809,7 +584,7 @@ Properties (`{entorno}#organismosPublicos.properties`, patrón Ticketing):
 - Apertura de comunicaciones (RF-01): `organismosPublicos.comunicacion.abrirAntesDeClasificar` (valor por defecto pendiente, §13).
 - URL del Agente IA.
 - Derivación (RF-08): `organismosPublicos.derivacion.maxReintentos` (2; `0` desactiva los reintentos). El límite de RF-10 no es una propiedad.
-- Descarga de notificaciones (RF-01.5): `organismosPublicos.descarga.maxReintentos` (valor por defecto pendiente de experimentación — ver `TODO.md`; `0` desactiva los reintentos, igual que en RF-08).
+- Descarga de notificaciones (RF-01.5): `organismosPublicos.descarga.maxReintentos` (valor por defecto pendiente de experimentación, §13; `0` desactiva los reintentos, igual que en RF-08).
 - `PATH_PROPERTIES_SERVIDOR` (resource-env-ref en WAS).
 
 Las properties se leen al crear los servicios (`@ApplicationScoped`): un cambio de valor requiere reiniciar la aplicación en WAS. No hay recarga dinámica.
@@ -819,8 +594,6 @@ El datasource SQLPortal se obtiene por JNDI de WAS, no por propiedad.
 `HVOrganismosPublicosServer` configura el datasource e instala el certificado para WS-Security.
 
 Binarios: ruta en el servidor o volumen. FILESTREAM no, salvo que se decida con Infra.
-
-`.gitignore` del repo HV: `.metadata/`, compilados, `tsclient/`, `node_modules`, Playwright, `.env.*`. Se versionan `.project`, `.classpath` y `.settings`.
 
 ---
 
@@ -837,7 +610,7 @@ La evidencia para el TFM son los tests de `HVOrganismosPublicosTest`, no los E2E
 
 ### 11.2 Evaluación de precisión de la clasificación
 
-El desarrollo y las pruebas del MVP usan datos sintéticos. La precisión de la clasificación (RF-02) se evalúa aparte, con al menos 100 casos reales aportados por las áreas de negocio mediante el proceso interno de solicitud de datos (pendiente de confirmar — ver `TODO.md`), limitados a metadatos (organismo emisor, concepto, departamento real) sin documentos ni datos de cliente. Al medir la precisión, se cuenta aparte la tasa de error específica de Área de Siniestros (ver `Criterios_Clasificacion.md`).
+El desarrollo y las pruebas del MVP usan datos sintéticos. La precisión de la clasificación (RF-02) se evalúa aparte, con al menos 100 casos reales aportados por las áreas de negocio mediante el proceso interno de solicitud de datos (pendiente de confirmar, §13), limitados a metadatos (organismo emisor, concepto, departamento real) sin documentos ni datos de cliente. Al medir la precisión, se cuenta aparte la tasa de error específica de Área de Siniestros (ver `Criterios_Clasificacion.md`).
 
 ### 11.1 Criterios de aceptación
 
@@ -904,11 +677,12 @@ Mientras no se cierren, se implementa lo descrito aquí sin fijar valores en có
 | Audiencia back de Ticketing | Bloquea RF-11.4/11.5. |
 | Quién publica el outbox de cancelación en el bus | Bloquea RF-10. |
 | Buscar o deduplicar tickets por referencia externa | Resolver `desconocido` sin intervención manual y RF-08.5. Depende de Ticketing. |
+| Datos reales para evaluar la clasificación (§11.2) | Confirmar el proceso interno de solicitud de datos a las áreas: al menos 100 casos, solo metadatos. |
 | Umbral de RF-02 | Valor del umbral sobre `score`; se fija tras la experimentación (§10). Las puntuaciones del prompt son autodeclaradas y sin calibrar. |
 | Alta de `SAC` y `RECURSOS_HUMANOS` en `DEPARTAMENTO` | Migración con los `id` de §6 y sus colas. |
 | Credencial de servicio de ApiBack | Infra: cómo autentica el gateway a n8n. |
 | Publicación de RF-07 | Requisito sin cumplir. Infra: si Java puede publicar en Kafka y cómo, topic, garantías y consumidores. Después, decidir si entra en el MVP y si RF-08 pasa a consumir el evento. |
-| SQL de la conciliación manual de RF-08 | No validado. Verificarlo en desa (bloqueo, comprobación previa, alta de `exito`, paso a `procesada`, índice único) antes de producción. |
+| Procedimiento de conciliación manual de RF-08 | Antes de producción: decidir si hace falta un procedimiento con SQL (en un `.sql`, validado en desa: bloqueo, comprobación previa, alta de `exito`, paso a `procesada`, índice único) o basta la búsqueda por referencia en Ticketing (§7.2). |
 | Timeouts del cliente de Ticketing | Valores recomendados por Ticketing. |
 | Si el umbral de RF-10 lo compara el agente o el servicio | Se implementa lo diagramado: el agente compara y actúa. |
 | Grupos de acceso de Git | Infra. |
@@ -919,7 +693,7 @@ Mientras no se cierren, se implementa lo descrito aquí sin fijar valores en có
 | `peticionAcceso()` con éxito y persistencia posterior fallida (RF-01.5) | Incidencia manual; la vía de recuperación exacta está pendiente de definir. |
 | Si `peticionAcceso()` admite reconsulta sobre el mismo `identificador` | Relevante para `VigilarDescargasService` y para recuperar la lista de anexos si la primera respuesta no llegó a persistirse. Verificar en el entorno de pruebas de LEMA. |
 | Valor por defecto de `organismosPublicos.descarga.maxReintentos` | Se fija tras observar fallos reales de `consultaAnexos()`/`consultaAcusePdf()`. |
-| Funcionalidad propia para la descarga (RF-01.5) | Hoy basta con Consultar: cualquier usuario del frontal puede comparecer. Decidir con la empresa si se restringe; hacerlo es una funcionalidad nueva en SeguridadMGS y cambiar la anotación del endpoint. |
+| Funcionalidad propia para la descarga (RF-01.5) | Mientras no se decida, basta con Consultar: cualquier usuario del frontal puede comparecer. Decidir con la empresa si se restringe; hacerlo es una funcionalidad nueva en SeguridadMGS y cambiar la anotación del endpoint. |
 | `/vigilanciaDescargas` | *Could*, fuera del MVP; se implementa si el calendario lo permite. |
 | Ventana de `consultaAnexos()`/`consultaAcusePdf()` | Desde qué momento cuenta el día de antigüedad (puesta a disposición, `peticionAcceso()`…). Verificar con acceso a LEMA. Condiciona RF-03, la alerta y RF-11.8. |
 | Derivar sin acuse o con un anexo sin descargar | Si la notificación espera al acuse para estar lista (RF-08) y qué hacer cuando un anexo o el acuse no se consiguen. |
